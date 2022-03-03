@@ -1,0 +1,33 @@
+syntax = "proto3";
+package pb_gen;
+
+import "objects.proto";
+
+option go_package = "UNS/pb_gen/configs";
+
+message Configuration {
+  Cluster cluster = 1;
+  SchedulersConfiguration schedulersConfiguration = 2;
+}
+
+message SchedulersConfiguration {
+  map<string, SchedulerConfiguration> partitionID2SchedulerConfiguration = 1;
+}
+
+message SchedulerConfiguration {
+  SchedulerType schedulerType = 1;
+  bytes ConfigurationBytes = 2;
+}
+
+enum SchedulerType {
+  naive = 0;
+  UNS = 1;
+}
+
+message NaiveSchedulerConfiguration {
+
+}
+
+message UNSSchedulerConfiguration {
+
+}

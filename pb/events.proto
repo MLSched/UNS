@@ -1,0 +1,36 @@
+syntax = "proto3";
+package pb_gen;
+
+option go_package = "UNS/pb_gen/events";
+
+import "objects.proto";
+import "config.proto";
+
+// RM prefix means an event initiated by Resource Manager
+
+message RMRegisterResourceManagerEvent {
+  string resourceManagerID = 1;
+  Configuration configuration = 2;
+}
+
+message RMUpdateAllocationsEvent {
+  repeated JobAllocation newJobAllocations = 1;
+  repeated JobAllocationRelease releasedJobAllocations = 2;
+}
+
+message JobAllocationRelease {
+  int64 jobAllocationID = 1;
+  bool ended = 2;
+}
+
+message RMUpdateJobsEvent {
+  repeated Job newJobs = 1;
+  repeated int64 removedJobs = 2;
+}
+
+// SS prefix means an event initiated by Resource Manager
+
+message SSUpdateAllocationsEvent {
+  repeated JobAllocation newJobAllocations = 1;
+  repeated JobAllocationRelease releasedJobAllocations = 2;
+}

@@ -1,0 +1,175 @@
+syntax = "proto3";
+package pb_gen;
+
+option go_package = "UNS/pb_gen/objects";
+
+message Job {
+  string jobID = 1;
+  string description = 2;
+  TaskGroup taskGroup = 3;
+
+  bytes extra = 255;
+}
+
+message Task {
+  string taskID = 1;
+  string description = 2;
+
+  bytes extra = 255;
+}
+
+enum TaskGroupType {
+  independent = 0;
+  gang = 1;
+  DAG = 2;
+}
+
+message TaskGroup {
+  TaskGroupType taskGroupType = 1;
+  repeated Task tasks = 2;
+}
+
+message IndependentTaskGroup {
+  TaskGroupType taskGroupType = 1;
+  repeated Task tasks = 2;
+
+  bytes extra = 255;
+}
+
+message GangTaskGroup {
+  TaskGroupType taskGroupType = 1;
+  repeated Task tasks = 2;
+
+  bytes extra = 255;
+}
+
+message DAGTaskGroup {
+  TaskGroupType taskGroupType = 1;
+  repeated Task tasks = 2;
+  map<int64, int64> taskID2Priorities = 3;
+
+  bytes extra = 255;
+}
+
+message Cluster {
+  string resourceManagerID = 1;
+  string description = 2;
+  repeated Partition partitions = 3;
+
+  bytes extra = 255;
+}
+
+message Partition {
+  string partitionID = 1;
+  string description = 2;
+  repeated Node nodes = 3;
+
+  bytes extra = 255;
+}
+
+message Node {
+  string nodeID = 1;
+  string description = 2;
+
+
+  bytes extra = 255;
+}
+
+message CPUSocket {
+  string CPUSocketID = 1;
+  string description = 2;
+  CPU CPU = 3;
+  HostMemory hostMemory = 4;
+  repeated Accelerator accelerators = 5;
+
+  bytes extra = 255;
+}
+
+message CPU {
+  string CPUID = 1;
+  string description = 2;
+
+  bytes extra = 255;
+}
+
+message HostMemory {
+  int64 bytesCapacity = 1;
+  float frequencyMHz = 2;
+  float bandwidthGBPerSec = 3;
+
+  bytes extra = 255;
+}
+
+message CPUMetaInfo {
+  string model = 1;
+  int64 cores = 2;
+  float frequencyGHz = 3;
+  float IPC = 4;
+
+  bytes extra = 255;
+}
+
+message Accelerator {
+  string acceleratorID = 1;
+  string description = 2;
+
+  AcceleratorMetaInfo acceleratorMetaInfo = 3;
+
+  bytes extra = 255;
+}
+
+message AcceleratorMetaInfo {
+  string briefType = 1;
+  AcceleratorMemory acceleratorMemory = 2;
+  float flops = 3;
+  string manufacturer = 4;
+
+  bytes extra = 255;
+}
+
+message AcceleratorMemory {
+  int64 bytesCapacity = 1;
+  float frequencyMHz = 2;
+  float bandwidthGBPerSec = 3;
+
+  bytes extra = 255;
+}
+
+message JobAllocation {
+  string allocationID = 1;
+  string resourceManagerID = 2;
+  string partitionID = 3;
+  Job job = 4;
+  repeated TaskAllocation taskAllocations = 5;
+
+  bytes extra = 255;
+}
+
+message TaskAllocation {
+  Node node = 1;
+  Task task = 2;
+  HostMemoryAllocation hostMemoryAllocation = 3;
+  repeated CPUSocketAllocation CPUSocketAllocations = 4;
+  bool placeholder = 5;
+
+  bytes extra = 255;
+}
+
+message CPUSocketAllocation {
+  string CPUSocketID = 1;
+  int64 cores = 2;
+
+  bytes extra = 255;
+}
+
+message HostMemoryAllocation {
+  int64 allocatedBytesCapacity = 1;
+
+  bytes extra = 255;
+}
+
+message AcceleratorAllocation {
+  string acceleratorID = 1;
+
+  bytes extra = 255;
+}
