@@ -5,13 +5,13 @@ type EventHandler interface {
 }
 
 type Event struct {
-	Data interface{}
+	Data       interface{}
 	ResultChan chan *Result
 }
 
 type Result struct {
 	Succeeded bool
-	Reason string
+	Reason    string
 }
 
 func Reply(resultChan chan *Result, result *Result) {

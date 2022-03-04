@@ -12,7 +12,7 @@ type ABFactory func(configurationBytes []byte, pusher schedulers.EventPusher) (s
 
 var factories = map[configs.SchedulerType]ABFactory{
 	configs.SchedulerType_naive: naive.Build,
-	configs.SchedulerType_UNS: UNS.Build,
+	configs.SchedulerType_UNS:   UNS.Build,
 }
 
 func Build(configuration *configs.SchedulerConfiguration, pusher schedulers.EventPusher) (schedulers.Scheduler, error) {

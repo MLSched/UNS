@@ -19,7 +19,7 @@ type Scheduler struct {
 	Config *configs.NaiveSchedulerConfiguration
 
 	taskAllocationID int64
-	pusher schedulers.EventPusher
+	pusher           schedulers.EventPusher
 }
 
 func (s *Scheduler) GetSchedulerID() string {
@@ -33,8 +33,8 @@ func Build(configurationBytes []byte, pusher schedulers.EventPusher) (schedulers
 		return nil, err
 	}
 	return &Scheduler{
-		Config: c,
-		pusher: pusher,
+		Config:           c,
+		pusher:           pusher,
 		taskAllocationID: 1,
 	}, nil
 }
@@ -106,11 +106,11 @@ func (s *Scheduler) Schedule() {
 					AcceleratorID: acc.GetAcceleratorID(),
 				}
 				taskAllocation := &objects.TaskAllocation{
-					TaskAllocationID:       s.getNextTaskAllocationID(),
-					Node:                   node,
-					Task:                   task,
-					AcceleratorAllocation:  acceleratorAllocation,
-					Placeholder:            false,
+					TaskAllocationID:      s.getNextTaskAllocationID(),
+					Node:                  node,
+					Task:                  task,
+					AcceleratorAllocation: acceleratorAllocation,
+					Placeholder:           false,
 				}
 				taskAllocations = append(taskAllocations, taskAllocation)
 			}
@@ -125,7 +125,7 @@ func (s *Scheduler) Schedule() {
 		}
 	}
 	s.pusher(s.GetSchedulerID(), &events.Event{
-		Data:       &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: newAllocations},
+		Data: &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: newAllocations},
 	})
 }
 

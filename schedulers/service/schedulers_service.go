@@ -17,10 +17,10 @@ var instance schedulers.Service
 func InitSchedulersService() {
 	cluster.InitClusterManager()
 	instance = &SchedulersService{
-		mu: &sync.RWMutex{},
+		mu:                        &sync.RWMutex{},
 		ResourceManagerID2Mapping: make(map[string][]*Mapping),
-		SchedulerID2Mapping: make(map[string]*Mapping),
-		PendingEvents: make(chan eventWithSource, 1024*1024),
+		SchedulerID2Mapping:       make(map[string]*Mapping),
+		PendingEvents:             make(chan eventWithSource, 1024*1024),
 	}
 }
 
@@ -32,18 +32,18 @@ func GetSchedulersServiceInstance() schedulers.Service {
 // 管理ResourceManager与Cluster、Partition、Scheduler的引用以及维护它们的映射关系。
 // 并且负责分发两侧之间的消息。
 type SchedulersService struct {
-	mu *sync.RWMutex
+	mu                        *sync.RWMutex
 	ResourceManagerID2Mapping map[string][]*Mapping
-	SchedulerID2Mapping map[string]*Mapping
+	SchedulerID2Mapping       map[string]*Mapping
 
 	PendingEvents chan eventWithSource
 }
 
-type eventWithSource interface {}
+type eventWithSource interface{}
 
 type eventFromRM struct {
 	*events.Event
-	RMID string
+	RMID        string
 	PartitionID string
 }
 
@@ -53,26 +53,27 @@ type eventFromScheduler struct {
 }
 
 type Mapping struct {
-	ResourceManager resourcemgr.Interface
-	ClusterContext *cluster.Context
+	ResourceManager  resourcemgr.Interface
+	ClusterContext   *cluster.Context
 	PartitionContext *partition.Context
-	Scheduler schedulers.Scheduler
+	Scheduler        schedulers.Scheduler
 }
 
 func (ss *SchedulersService) StartService() {
 	go func() {
 		for {
 			select {
-			case e := <- ss.PendingEvents: {
-				go func() {
-					switch e := e.(type) {
-					case *eventFromRM:
-						ss.handleEventFromRM(e)
-					case *eventFromScheduler:
-						ss.handleEventFromScheduler(e)
-					}
-				}()
-			}
+			case e := <-ss.PendingEvents:
+				{
+					go func() {
+						switch e := e.(type) {
+						case *eventFromRM:
+							ss.handleEventFromRM(e)
+						case *eventFromScheduler:
+							ss.handleEventFromScheduler(e)
+						}
+					}()
+				}
 			}
 		}
 	}()
@@ -81,7 +82,7 @@ func (ss *SchedulersService) StartService() {
 func (ss *SchedulersService) PushFromRM(rmID string, partitionID string, event *events.Event) {
 	ss.PendingEvents <- &eventFromRM{
 		Event:       event,
-		RMID:   	 rmID,
+		RMID:        rmID,
 		PartitionID: partitionID,
 	}
 }
@@ -127,8 +128,8 @@ func (ss *SchedulersService) RegisterRM(event *eventsobjs.RMRegisterResourceMana
 
 func (ss *SchedulersService) PushFromScheduler(schedulerID string, event *events.Event) {
 	ss.PendingEvents <- &eventFromScheduler{
-		Event:      	event,
-		SchedulerID:   	schedulerID,
+		Event:       event,
+		SchedulerID: schedulerID,
 	}
 }
 

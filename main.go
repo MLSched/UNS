@@ -9,5 +9,5 @@ func main() {
 	service.InitSchedulersService()
 	serviceInst := service.GetSchedulersServiceInstance()
 	serviceInst.StartService()
-	time.Sleep(5*time.Second)
+	time.Sleep(5 * time.Second)
 }

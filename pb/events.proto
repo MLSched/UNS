@@ -15,7 +15,7 @@ message RMRegisterResourceManagerEvent {
 
 message RMUpdateAllocationsEvent {
   repeated JobAllocation jobAllocations = 1;
-//  repeated JobAllocationRelease releasedJobAllocations = 2;
+  //  repeated JobAllocationRelease releasedJobAllocations = 2;
 }
 
 //message JobAllocationRelease {
@@ -33,5 +33,5 @@ message RMUpdateJobsEvent {
 
 message SSUpdateAllocationsEvent {
   repeated JobAllocation newJobAllocations = 1;
-//  repeated JobAllocationRelease releasedJobAllocations = 2;
+  //  repeated JobAllocationRelease releasedJobAllocations = 2;
 }

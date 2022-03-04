@@ -12,13 +12,13 @@ import (
 
 type Context struct {
 	Meta *objects.Partition
-	mu *sync.RWMutex
+	mu   *sync.RWMutex
 
 	PendingAllocations  map[string]*objects.JobAllocation
 	UnfinishedJobs      map[string]*objects.Job
 	FinishedAllocations map[string]*objects.JobAllocation
 
-	Time                *time.Time
+	Time *time.Time
 }
 
 func Build(partition *objects.Partition) (*Context, error) {
