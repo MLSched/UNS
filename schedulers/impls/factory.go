@@ -5,27 +5,19 @@ import (
 	"UNS/schedulers"
 	"UNS/schedulers/impls/UNS"
 	"UNS/schedulers/impls/naive"
-	"encoding/json"
 	"fmt"
 )
 
+type ABFactory func(configurationBytes []byte, pusher schedulers.EventPusher) (schedulers.Scheduler, error)
+
+var factories = map[configs.SchedulerType]ABFactory{
+	configs.SchedulerType_naive: naive.Build,
+	configs.SchedulerType_UNS: UNS.Build,
+}
+
 func Build(configuration *configs.SchedulerConfiguration, pusher schedulers.EventPusher) (schedulers.Scheduler, error) {
-	switch configuration.GetSchedulerType() {
-	case configs.SchedulerType_naive:
-		c := &configs.NaiveSchedulerConfiguration{}
-		err := json.Unmarshal(configuration.ConfigurationBytes, c)
-		if err != nil {
-			return nil, err
-		}
-		return naive.New(c, pusher), nil
-	case configs.SchedulerType_UNS:
-		c := &configs.UNSSchedulerConfiguration{}
-		err := json.Unmarshal(configuration.ConfigurationBytes, c)
-		if err != nil {
-			return nil, err
-		}
-		return UNS.New(c, pusher), nil
-	default:
-		return nil, fmt.Errorf("unsupported scheduler type, type is [%s]", configuration.GetSchedulerType())
+	if factory, ok := factories[configuration.GetSchedulerType()]; ok {
+		return factory(configuration.GetConfigurationBytes(), pusher)
 	}
+	return nil, fmt.Errorf("unsupported scheduler type, type is [%s]", configuration.GetSchedulerType())
 }

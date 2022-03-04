@@ -25,9 +25,13 @@ enum SchedulerType {
 }
 
 message NaiveSchedulerConfiguration {
-
+  string SchedulerID = 1;
+  string resourceManagerID = 2;
+  string partitionID = 3;
 }
 
 message UNSSchedulerConfiguration {
-
+  string SchedulerID = 1;
+  string resourceManagerID = 2;
+  string partitionID = 3;
 }

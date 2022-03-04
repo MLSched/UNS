@@ -7,13 +7,14 @@ import (
 )
 
 type Context struct {
-	*objects.Cluster
+	Meta *objects.Cluster
 	partitionContexts map[string]*partition.Context
+
 }
 
 func Build(cluster *objects.Cluster) (*Context, error) {
 	c := &Context{
-		Cluster:           cluster,
+		Meta:           cluster,
 		partitionContexts: make(map[string]*partition.Context, len(cluster.GetPartitions())),
 	}
 	for _, partitionObj := range cluster.GetPartitions() {
@@ -31,4 +32,8 @@ func Build(cluster *objects.Cluster) (*Context, error) {
 
 func (c *Context) GetPartitionContexts() map[string]*partition.Context {
 	return c.partitionContexts
+}
+
+func (c *Context) GetPartitionContext(partitionID string) *partition.Context {
+	return c.partitionContexts[partitionID]
 }

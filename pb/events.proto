@@ -14,23 +14,24 @@ message RMRegisterResourceManagerEvent {
 }
 
 message RMUpdateAllocationsEvent {
-  repeated JobAllocation newJobAllocations = 1;
-  repeated JobAllocationRelease releasedJobAllocations = 2;
+  repeated JobAllocation jobAllocations = 1;
+//  repeated JobAllocationRelease releasedJobAllocations = 2;
 }
 
-message JobAllocationRelease {
-  int64 jobAllocationID = 1;
-  bool ended = 2;
-}
+//message JobAllocationRelease {
+//  string jobID = 1;
+//  repeated string finishedTaskIDs = 2;
+//  repeated string taskAllocationIDs = 3;
+//}
 
 message RMUpdateJobsEvent {
   repeated Job newJobs = 1;
-  repeated int64 removedJobs = 2;
+  repeated string removedJobIDs = 2;
 }
 
 // SS prefix means an event initiated by Resource Manager
 
 message SSUpdateAllocationsEvent {
   repeated JobAllocation newJobAllocations = 1;
-  repeated JobAllocationRelease releasedJobAllocations = 2;
+//  repeated JobAllocationRelease releasedJobAllocations = 2;
 }

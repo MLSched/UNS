@@ -15,6 +15,7 @@ import (
 var instance schedulers.Service
 
 func InitSchedulersService() {
+	cluster.InitClusterManager()
 	instance = &SchedulersService{
 		mu: &sync.RWMutex{},
 		ResourceManagerID2Mapping: make(map[string][]*Mapping),
@@ -110,12 +111,14 @@ func (ss *SchedulersService) RegisterRM(event *eventsobjs.RMRegisterResourceMana
 	}
 	mappings := make([]*Mapping, 0, len(partitionContexts))
 	for _, partitionContext := range partitionContexts {
-		mappings = append(mappings, &Mapping{
+		mapping := &Mapping{
 			ResourceManager:  resourceMgr,
 			ClusterContext:   clusterContext,
 			PartitionContext: partitionContext,
-			Scheduler:        partitionID2Scheduler[partitionContext.GetPartitionID()],
-		})
+			Scheduler:        partitionID2Scheduler[partitionContext.Meta.GetPartitionID()],
+		}
+		mappings = append(mappings, mapping)
+		mapping.Scheduler.StartService()
 	}
 	return &events.Result{
 		Succeeded: true,
@@ -129,38 +132,24 @@ func (ss *SchedulersService) PushFromScheduler(schedulerID string, event *events
 	}
 }
 
-func (ss *SchedulersService) reply(event *events.Event, result *events.Result) {
-	if event.ResultChan != nil {
-		event.ResultChan <- result
-	}
-}
-
-func (ss *SchedulersService) replySucceeded(event *events.Event) {
-	if event.ResultChan != nil {
-		event.ResultChan <- &events.Result{
-			Succeeded: true,
-		}
-	}
-}
-
 func (ss *SchedulersService) handleEventFromRM(e *eventFromRM) {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
 	mappings, ok := ss.ResourceManagerID2Mapping[e.RMID]
 	if !ok {
-		ss.reply(e.Event, &events.Result{
+		events.Reply(e.Event.ResultChan, &events.Result{
 			Succeeded: false,
 			Reason:    fmt.Sprintf("Non-registered RMID, RMID = [%s]", e.RMID),
 		})
 	}
 	for _, mapping := range mappings {
-		if mapping.PartitionContext.GetPartitionID() == e.PartitionID {
-			mapping.Scheduler.HandleEvent(e.Event)
-			ss.replySucceeded(e.Event)
+		if mapping.PartitionContext.Meta.GetPartitionID() == e.PartitionID {
+			mapping.PartitionContext.HandleEvent(e.Event)
+			events.ReplySucceeded(e.Event.ResultChan)
 			return
 		}
 	}
-	ss.reply(e.Event, &events.Result{
+	events.Reply(e.Event.ResultChan, &events.Result{
 		Succeeded: false,
 		Reason:    fmt.Sprintf("Non-existed Partition ID, RMID = [%s], Partition ID = [%s]", e.RMID, e.PartitionID),
 	})
@@ -171,11 +160,11 @@ func (ss *SchedulersService) handleEventFromScheduler(e *eventFromScheduler) {
 	defer ss.mu.RUnlock()
 	mapping, ok := ss.SchedulerID2Mapping[e.SchedulerID]
 	if !ok {
-		ss.reply(e.Event, &events.Result{
+		events.Reply(e.Event.ResultChan, &events.Result{
 			Succeeded: false,
 			Reason:    fmt.Sprintf("Non-existed Scheduler ID, Scheduler ID = [%s]", e.SchedulerID),
 		})
 	}
 	mapping.ResourceManager.HandleEvent(e.Event)
-	ss.replySucceeded(e.Event)
+	events.ReplySucceeded(e.Event.ResultChan)
 }

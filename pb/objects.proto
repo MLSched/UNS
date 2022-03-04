@@ -19,9 +19,10 @@ message Task {
 }
 
 enum TaskGroupType {
-  independent = 0;
-  gang = 1;
-  DAG = 2;
+  single = 0;
+  independent = 1;
+  gang = 2;
+  DAG = 3;
 }
 
 message TaskGroup {
@@ -70,7 +71,7 @@ message Partition {
 message Node {
   string nodeID = 1;
   string description = 2;
-
+  repeated CPUSocket CPUSockets = 3;
 
   bytes extra = 255;
 }
@@ -136,21 +137,26 @@ message AcceleratorMemory {
 }
 
 message JobAllocation {
-  string allocationID = 1;
+  Job job = 1;
   string resourceManagerID = 2;
   string partitionID = 3;
-  Job job = 4;
-  repeated TaskAllocation taskAllocations = 5;
+  repeated TaskAllocation taskAllocations = 4;
+  bool finished = 5;
 
   bytes extra = 255;
 }
 
 message TaskAllocation {
-  Node node = 1;
-  Task task = 2;
-  HostMemoryAllocation hostMemoryAllocation = 3;
-  repeated CPUSocketAllocation CPUSocketAllocations = 4;
-  bool placeholder = 5;
+  string taskAllocationID = 1;
+  Node node = 2;
+  Task task = 3;
+  HostMemoryAllocation hostMemoryAllocation = 4;
+  repeated CPUSocketAllocation CPUSocketAllocations = 5;
+  AcceleratorAllocation acceleratorAllocation = 6;
+  float startTimeStampSecond = 7;
+  float durationSecond = 8;
+  bool placeholder = 9;
+  bool finished = 10;
 
   bytes extra = 255;
 }

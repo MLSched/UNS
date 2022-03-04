@@ -8,7 +8,7 @@ import (
 
 type Scheduler interface {
 	GetSchedulerID() string
-	events.EventHandler
+	StartService()
 }
 
 type EventPusher func(SchedulerID string, event *events.Event)

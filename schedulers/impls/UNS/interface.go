@@ -1,23 +1,30 @@
 package UNS
 
 import (
-	"UNS/events"
 	"UNS/pb_gen/configs"
 	"UNS/schedulers"
+	"encoding/json"
 )
 
 type Scheduler struct {
-
+	Config *configs.UNSSchedulerConfiguration
 }
 
 func (s *Scheduler) GetSchedulerID() string {
-	panic("implement me")
+	return s.Config.GetSchedulerID()
 }
 
-func (s *Scheduler) HandleEvent(event *events.Event) {
-	panic("implement me")
+func (s *Scheduler) StartService() {
+
 }
 
-func New(configuration *configs.UNSSchedulerConfiguration, pusher schedulers.EventPusher) *Scheduler {
-	return &Scheduler{}
+func Build(configurationBytes []byte, pusher schedulers.EventPusher) (schedulers.Scheduler, error) {
+	c := &configs.UNSSchedulerConfiguration{}
+	err := json.Unmarshal(configurationBytes, c)
+	if err != nil {
+		return nil, err
+	}
+	return &Scheduler{
+		Config: c,
+	}, nil
 }
