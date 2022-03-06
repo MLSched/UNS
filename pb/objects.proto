@@ -5,10 +5,21 @@ option go_package = "UNS/pb_gen/objects";
 
 message Job {
   string jobID = 1;
-  string description = 2;
-  TaskGroup taskGroup = 3;
+  JobType jobType = 2;
+  string description = 3;
+  TaskGroup taskGroup = 4;
+  float submitTimeSecond = 5;
 
   bytes extra = 255;
+}
+
+message DLTJobExtra {
+  int64 totalMiniBatches = 1;
+}
+
+enum JobType {
+  jobTypeUnknown = 0;
+  jobTypeDLT = 1;
 }
 
 message Task {
@@ -19,37 +30,35 @@ message Task {
 }
 
 enum TaskGroupType {
-  single = 0;
-  independent = 1;
-  gang = 2;
-  DAG = 3;
+  taskGroupTypeUnknown = 0;
+  taskGroupTypeSingle = 1;
+  taskGroupTypeGang = 2;
 }
 
 message TaskGroup {
   TaskGroupType taskGroupType = 1;
   repeated Task tasks = 2;
+  bytes taskGroupInfoBytes = 3;
 }
 
-message IndependentTaskGroup {
-  TaskGroupType taskGroupType = 1;
-  repeated Task tasks = 2;
-
+message SingleTaskGroup {
   bytes extra = 255;
 }
 
 message GangTaskGroup {
   TaskGroupType taskGroupType = 1;
-  repeated Task tasks = 2;
 
   bytes extra = 255;
 }
 
-message DAGTaskGroup {
-  TaskGroupType taskGroupType = 1;
-  repeated Task tasks = 2;
-  map<int64, int64> taskID2Priorities = 3;
+message GangTaskGroupDLTExtra {
+  DLTGangType DLTGangType = 1;
+}
 
-  bytes extra = 255;
+enum DLTGangType {
+  DLTGangTypeUnknown = 0;
+  DLTGangTypeDataParallel = 1;
+  DLTGangTypePipelineParallel = 2;
 }
 
 message Cluster {
@@ -137,26 +146,25 @@ message AcceleratorMemory {
 }
 
 message JobAllocation {
-  Job job = 1;
+  string jobID = 1;
   string resourceManagerID = 2;
   string partitionID = 3;
   repeated TaskAllocation taskAllocations = 4;
-  bool finished = 5;
+  float startExecutionTimeSecond = 5;
+  float durationSecond = 6;
+  bool placeholder = 7;
+  bool finished = 8;
 
   bytes extra = 255;
 }
 
 message TaskAllocation {
   string taskAllocationID = 1;
-  Node node = 2;
-  Task task = 3;
+  string nodeID = 2;
+  string taskID = 3;
   HostMemoryAllocation hostMemoryAllocation = 4;
   repeated CPUSocketAllocation CPUSocketAllocations = 5;
   AcceleratorAllocation acceleratorAllocation = 6;
-  float startTimeStampSecond = 7;
-  float durationSecond = 8;
-  bool placeholder = 9;
-  bool finished = 10;
 
   bytes extra = 255;
 }

@@ -1,4 +1,4 @@
-package schedulers
+package interfaces
 
 import (
 	"UNS/events"

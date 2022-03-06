@@ -5,8 +5,8 @@ import (
 	"UNS/pb_gen/configs"
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
-	"UNS/schedulers"
 	"UNS/schedulers/cluster"
+	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
 	"encoding/json"
 	"log"
@@ -19,14 +19,14 @@ type Scheduler struct {
 	Config *configs.NaiveSchedulerConfiguration
 
 	taskAllocationID int64
-	pusher           schedulers.EventPusher
+	pusher           interfaces.EventPusher
 }
 
 func (s *Scheduler) GetSchedulerID() string {
 	return s.Config.GetSchedulerID()
 }
 
-func Build(configurationBytes []byte, pusher schedulers.EventPusher) (schedulers.Scheduler, error) {
+func Build(configurationBytes []byte, pusher interfaces.EventPusher) (interfaces.Scheduler, error) {
 	c := &configs.NaiveSchedulerConfiguration{}
 	err := json.Unmarshal(configurationBytes, c)
 	if err != nil {
@@ -72,9 +72,9 @@ func (s *Scheduler) Schedule() {
 	}
 	for _, pendingAllocation := range partitionContext.PendingAllocations {
 		for _, taskAllocation := range pendingAllocation.GetTaskAllocations() {
-			node := taskAllocation.GetNode()
+			nodeID := taskAllocation.GetNodeID()
 			acceleratorAllocation := taskAllocation.GetAcceleratorAllocation()
-			delete(unoccupiedAccelerators[node], acceleratorAllocation.GetAcceleratorID())
+			delete(unoccupiedAccelerators[partitionContext.View.NodeID2Node[nodeID]], acceleratorAllocation.GetAcceleratorID())
 		}
 	}
 
@@ -82,9 +82,9 @@ func (s *Scheduler) Schedule() {
 	for _, job := range unscheduledJobs {
 		taskGroup := job.GetTaskGroup()
 		switch taskGroup.GetTaskGroupType() {
-		case objects.TaskGroupType_single, objects.TaskGroupType_gang:
+		case objects.TaskGroupType_taskGroupTypeSingle, objects.TaskGroupType_taskGroupTypeGang:
 		default:
-			log.Printf("Naive Scheduler support task groups [%v, %v], but received task groupd of [%v]", objects.TaskGroupType_single, objects.TaskGroupType_gang, taskGroup.GetTaskGroupType())
+			log.Printf("Naive Scheduler support task groups [%v, %v], but received task groupd of [%v]", objects.TaskGroupType_taskGroupTypeSingle, objects.TaskGroupType_taskGroupTypeGang, taskGroup.GetTaskGroupType())
 			continue
 		}
 		taskGroupLen := len(taskGroup.GetTasks())
@@ -107,15 +107,14 @@ func (s *Scheduler) Schedule() {
 				}
 				taskAllocation := &objects.TaskAllocation{
 					TaskAllocationID:      s.getNextTaskAllocationID(),
-					Node:                  node,
-					Task:                  task,
+					NodeID:                node.GetNodeID(),
+					TaskID:                task.GetTaskID(),
 					AcceleratorAllocation: acceleratorAllocation,
-					Placeholder:           false,
 				}
 				taskAllocations = append(taskAllocations, taskAllocation)
 			}
 			newAllocation := &objects.JobAllocation{
-				Job:               job,
+				JobID:             job.GetJobID(),
 				ResourceManagerID: s.Config.GetResourceManagerID(),
 				PartitionID:       s.Config.GetPartitionID(),
 				TaskAllocations:   taskAllocations,

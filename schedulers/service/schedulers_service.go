@@ -4,15 +4,15 @@ import (
 	"UNS/events"
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/resourcemgr"
-	"UNS/schedulers"
 	"UNS/schedulers/cluster"
 	"UNS/schedulers/impls"
+	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
 	"fmt"
 	"sync"
 )
 
-var instance schedulers.Service
+var instance interfaces.Service
 
 func InitSchedulersService() {
 	cluster.InitClusterManager()
@@ -24,7 +24,7 @@ func InitSchedulersService() {
 	}
 }
 
-func GetSchedulersServiceInstance() schedulers.Service {
+func GetSchedulersServiceInstance() interfaces.Service {
 	return instance
 }
 
@@ -56,7 +56,7 @@ type Mapping struct {
 	ResourceManager  resourcemgr.Interface
 	ClusterContext   *cluster.Context
 	PartitionContext *partition.Context
-	Scheduler        schedulers.Scheduler
+	Scheduler        interfaces.Scheduler
 }
 
 func (ss *SchedulersService) StartService() {
@@ -99,7 +99,7 @@ func (ss *SchedulersService) RegisterRM(event *eventsobjs.RMRegisterResourceMana
 	}
 	partitionContexts := clusterContext.GetPartitionContexts()
 	partitionID2schedulerConfigurations := event.GetConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()
-	partitionID2Scheduler := make(map[string]schedulers.Scheduler)
+	partitionID2Scheduler := make(map[string]interfaces.Scheduler)
 	for partitionID, c := range partitionID2schedulerConfigurations {
 		s, err := impls.Build(c, ss.PushFromScheduler)
 		if err != nil {

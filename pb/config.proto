@@ -16,12 +16,12 @@ message SchedulersConfiguration {
 
 message SchedulerConfiguration {
   SchedulerType schedulerType = 1;
-  bytes ConfigurationBytes = 2;
+  bytes configurationBytes = 2;
 }
 
 enum SchedulerType {
-  naive = 0;
-  UNS = 1;
+  schedulerTypeNaive = 0;
+  schedulerTypeUNS = 1;
 }
 
 message NaiveSchedulerConfiguration {
@@ -34,4 +34,37 @@ message UNSSchedulerConfiguration {
   string SchedulerID = 1;
   string resourceManagerID = 2;
   string partitionID = 3;
+}
+
+enum PredictorType {
+  predictorTypeUnknown = 0;
+  predictorTypeDLTRandom = 1;
+  predictorTypeDLTDataOriented = 2;
+}
+
+message PredictorConfiguration {
+  PredictorType predictorType = 1;
+  bytes configurationBytes = 2;
+}
+
+message DLTPredictorDataOrientedConfiguration {
+  string dataSourcePath = 1;
+}
+
+message DLTPredictorDataOrientedDataFormat {
+  repeated Job jobs = 1;
+  map<string, DLTTaskData> taskID2Data = 2;
+}
+
+message DLTTaskData {
+  map<string, float> acceleratorType2MiniBatchDurationSecond = 1;
+  message SpaceSharingMiniBatchDuration {
+    message MiniBatchDurationPair {
+      float self = 1;
+      float shared = 2;
+    }
+    map<string, MiniBatchDurationPair> acceleratorType2SpaceSharingData = 2;
+  }
+  map<string, SpaceSharingMiniBatchDuration> spaceSharedTaskID2Data = 2;
+  int64 maximumAcceleratorMemoryCostBytes = 3;
 }

@@ -2,7 +2,7 @@ package UNS
 
 import (
 	"UNS/pb_gen/configs"
-	"UNS/schedulers"
+	"UNS/schedulers/interfaces"
 	"encoding/json"
 )
 
@@ -18,7 +18,7 @@ func (s *Scheduler) StartService() {
 
 }
 
-func Build(configurationBytes []byte, pusher schedulers.EventPusher) (schedulers.Scheduler, error) {
+func Build(configurationBytes []byte, pusher interfaces.EventPusher) (interfaces.Scheduler, error) {
 	c := &configs.UNSSchedulerConfiguration{}
 	err := json.Unmarshal(configurationBytes, c)
 	if err != nil {
