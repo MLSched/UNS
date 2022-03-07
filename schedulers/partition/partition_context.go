@@ -157,15 +157,15 @@ func (c *Context) Clone() *Context {
 			})
 		}
 		cloned.PendingAllocations[jobID] = &objects.JobAllocation{
-			JobID:                    allocation.GetJobID(),
-			ResourceManagerID:        allocation.GetResourceManagerID(),
-			PartitionID:              allocation.GetPartitionID(),
-			TaskAllocations:          allocation.GetTaskAllocations(),
-			StartExecutionTimeSecond: allocation.GetStartExecutionTimeSecond(),
-			DurationSecond:           allocation.GetDurationSecond(),
-			Placeholder:              allocation.GetPlaceholder(),
-			Finished:                 allocation.GetFinished(),
-			Extra:                    allocation.GetExtra(),
+			JobID:                        allocation.GetJobID(),
+			ResourceManagerID:            allocation.GetResourceManagerID(),
+			PartitionID:                  allocation.GetPartitionID(),
+			TaskAllocations:              allocation.GetTaskAllocations(),
+			StartExecutionTimeNanoSecond: allocation.GetStartExecutionTimeNanoSecond(),
+			DurationNanoSecond:           allocation.GetDurationNanoSecond(),
+			Placeholder:                  allocation.GetPlaceholder(),
+			Finished:                     allocation.GetFinished(),
+			Extra:                        allocation.GetExtra(),
 		}
 	}
 	cloned.UnfinishedJobs = c.UnfinishedJobs

@@ -7,6 +7,11 @@ func SortFloat64(data []float64) {
 	sort.Sort(sorter)
 }
 
+func SortInt64(data []int64) {
+	sorter := &Int64Sorter{Data: data}
+	sort.Sort(sorter)
+}
+
 type Sorter struct {
 	LenFunc  func() int
 	LessFunc func(i, j int) bool
@@ -38,6 +43,24 @@ func (f *Float64Sorter) Less(i, j int) bool {
 }
 
 func (f *Float64Sorter) Swap(i, j int) {
+	t := f.Data[i]
+	f.Data[i] = f.Data[j]
+	f.Data[j] = t
+}
+
+type Int64Sorter struct {
+	Data []int64
+}
+
+func (f *Int64Sorter) Len() int {
+	return len(f.Data)
+}
+
+func (f *Int64Sorter) Less(i, j int) bool {
+	return f.Data[i] < f.Data[j]
+}
+
+func (f *Int64Sorter) Swap(i, j int) {
 	t := f.Data[i]
 	f.Data[i] = f.Data[j]
 	f.Data[j] = t

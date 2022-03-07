@@ -12,10 +12,10 @@ type Predictor interface {
 }
 
 type PredictResult interface {
-	GetResult(allocation *objects.JobAllocation) EachPredictResult
+	GetResult(allocation *objects.JobAllocation) (EachPredictResult, bool)
 }
 
 type EachPredictResult interface {
-	GetStartExecutionTime() float64
-	GetFinishTime() float64
+	GetStartExecutionNanoTime() int64
+	GetFinishNanoTime() int64
 }

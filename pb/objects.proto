@@ -8,7 +8,7 @@ message Job {
   JobType jobType = 2;
   string description = 3;
   TaskGroup taskGroup = 4;
-  float submitTimeSecond = 5;
+  int64 submitTimeNanoSecond = 5;
 
   bytes extra = 255;
 }
@@ -150,10 +150,11 @@ message JobAllocation {
   string resourceManagerID = 2;
   string partitionID = 3;
   repeated TaskAllocation taskAllocations = 4;
-  float startExecutionTimeSecond = 5;
-  float durationSecond = 6;
+  int64 startExecutionTimeNanoSecond = 5;
+  int64 durationNanoSecond = 6;
   bool placeholder = 7;
-  bool finished = 8;
+  int64 startAllocateTimeNanoSecond = 8;
+  bool finished = 9;
 
   bytes extra = 255;
 }

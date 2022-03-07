@@ -57,11 +57,11 @@ message DLTPredictorDataOrientedDataFormat {
 }
 
 message DLTTaskData {
-  map<string, float> acceleratorType2MiniBatchDurationSecond = 1;
+  map<string, int64> acceleratorType2MiniBatchDurationNanoSecond = 1;
   message SpaceSharingMiniBatchDuration {
     message MiniBatchDurationPair {
-      float self = 1;
-      float shared = 2;
+      int64 self = 1;
+      int64 shared = 2;
     }
     map<string, MiniBatchDurationPair> acceleratorType2SpaceSharingData = 2;
   }

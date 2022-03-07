@@ -48,7 +48,7 @@ func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocation
 			log.Printf(reason)
 			return fmt.Errorf(reason)
 		}
-		if allocation.GetStartExecutionTimeSecond() == 0 && !allocation.GetPlaceholder() {
+		if allocation.GetStartExecutionTimeNanoSecond() == 0 && !allocation.GetPlaceholder() {
 			reason := fmt.Sprintf("Base prerequisiteCheck failed, a job allocation's start execution time is unset and it is not a placeholder. jobID = %s", job.GetJobID())
 			log.Printf(reason)
 			return fmt.Errorf(reason)
@@ -58,16 +58,22 @@ func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocation
 }
 
 type EachPredictResult struct {
-	StartExecutionTime float64
-	FinishTime         float64
+	StartExecutionNanoTime *int64
+	FinishNanoTime         *int64
 }
 
-func (r *EachPredictResult) GetStartExecutionTime() float64 {
-	return r.StartExecutionTime
+func (r *EachPredictResult) GetStartExecutionNanoTime() int64 {
+	if r.StartExecutionNanoTime != nil {
+		return *r.StartExecutionNanoTime
+	}
+	return 0
 }
 
-func (r *EachPredictResult) GetFinishTime() float64 {
-	return r.FinishTime
+func (r *EachPredictResult) GetFinishNanoTime() int64 {
+	if r.FinishNanoTime != nil {
+		return *r.FinishNanoTime
+	}
+	return 0
 }
 
 type PredictResult struct {
@@ -78,20 +84,31 @@ func NewPredictResult() *PredictResult {
 	return &PredictResult{Results: make(map[*objects.JobAllocation]*EachPredictResult)}
 }
 
-func (r *PredictResult) UpdateStartExecutionTime(allocation *objects.JobAllocation, startExecutionTime float64) {
+func (r *PredictResult) UpdateStartExecutionTime(allocation *objects.JobAllocation, startExecutionNanoTime int64) {
 	if _, ok := r.Results[allocation]; !ok {
 		r.Results[allocation] = &EachPredictResult{}
 	}
-	r.Results[allocation].StartExecutionTime = startExecutionTime
+	r.Results[allocation].StartExecutionNanoTime = &startExecutionNanoTime
 }
 
-func (r *PredictResult) UpdateFinishTime(allocation *objects.JobAllocation, finishTime float64) {
+func (r *PredictResult) UpdateFinishTime(allocation *objects.JobAllocation, finishNanoTime int64) {
 	if _, ok := r.Results[allocation]; !ok {
 		r.Results[allocation] = &EachPredictResult{}
 	}
-	r.Results[allocation].FinishTime = finishTime
+	r.Results[allocation].FinishNanoTime = &finishNanoTime
 }
 
-func (r *PredictResult) GetResult(allocation *objects.JobAllocation) interfaces.EachPredictResult {
-	return r.Results[allocation]
+func (r *PredictResult) IsResultComplete(allocation *objects.JobAllocation) bool {
+	result := r.Results[allocation]
+	if result == nil {
+		return false
+	}
+	if result.StartExecutionNanoTime != nil && result.FinishNanoTime != nil {
+		return true
+	}
+	return false
+}
+
+func (r *PredictResult) GetResult(allocation *objects.JobAllocation) (interfaces.EachPredictResult, bool) {
+	return r.Results[allocation], r.IsResultComplete(allocation)
 }
