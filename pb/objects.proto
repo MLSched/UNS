@@ -153,7 +153,7 @@ message JobAllocation {
   int64 startExecutionTimeNanoSecond = 5;
   int64 durationNanoSecond = 6;
   bool placeholder = 7;
-  int64 startAllocateTimeNanoSecond = 8;
+  int64 startAllocationTimeNanoSecond = 8;
   bool finished = 9;
 
   bytes extra = 255;

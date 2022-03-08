@@ -17,5 +17,4 @@ type Service interface {
 	StartService()
 	RegisterRM(event *eventsobjs.RMRegisterResourceManagerEvent, resourceMgr resourcemgr.Interface) *events.Result
 	PushFromRM(rmID string, partitionID string, event *events.Event)
-	PushFromScheduler(schedulerID string, event *events.Event)
 }

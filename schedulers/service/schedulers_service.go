@@ -145,8 +145,10 @@ func (ss *SchedulersService) handleEventFromRM(e *eventFromRM) {
 	}
 	for _, mapping := range mappings {
 		if mapping.PartitionContext.Meta.GetPartitionID() == e.PartitionID {
-			mapping.PartitionContext.HandleEvent(e.Event)
-			events.ReplySucceeded(e.Event.ResultChan)
+			go func() {
+				mapping.PartitionContext.HandleEvent(e.Event)
+				events.ReplySucceeded(e.Event.ResultChan)
+			}()
 			return
 		}
 	}
@@ -166,6 +168,8 @@ func (ss *SchedulersService) handleEventFromScheduler(e *eventFromScheduler) {
 			Reason:    fmt.Sprintf("Non-existed Scheduler ID, Scheduler ID = [%s]", e.SchedulerID),
 		})
 	}
-	mapping.ResourceManager.HandleEvent(e.Event)
-	events.ReplySucceeded(e.Event.ResultChan)
+	go func() {
+		mapping.ResourceManager.HandleEvent(e.Event)
+		events.ReplySucceeded(e.Event.ResultChan)
+	}()
 }
