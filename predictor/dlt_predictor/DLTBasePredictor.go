@@ -1,6 +1,7 @@
 package dlt_predictor
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/objects"
 	"UNS/predictor/base"
 	"UNS/predictor/interfaces"
@@ -9,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
 )
 
 type DLTBasePredictor struct {
@@ -369,14 +369,9 @@ func (p *DLTBasePredictor) getDataParallelTasksSpaceSharingMiniBatchDuration(ctx
 }
 
 func (p *DLTBasePredictor) getTaskGroup(ctx *PredictSessionContext, jobID string) *objects.TaskGroup {
-	return ctx.partitionContext.UnfinishedJobs[jobID].GetTaskGroup()
+	return ctx.partitionContext.GetUnfinishedJob(jobID).GetTaskGroup()
 }
 
 func (p *DLTBasePredictor) getAllocatedAcceleratorIDs(ctx *PredictSessionContext, allocation *objects.JobAllocation) []string {
-	acceleratorIDs := make([]string, 0)
-	for _, taskAllocation := range allocation.GetTaskAllocations() {
-		acceleratorIDs = append(acceleratorIDs, taskAllocation.GetAcceleratorAllocation().GetAcceleratorID())
-	}
-	sort.Strings(acceleratorIDs)
-	return acceleratorIDs
+	return pb_gen.GetAllocatedAcceleratorIDs(allocation)
 }
