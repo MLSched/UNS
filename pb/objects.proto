@@ -153,19 +153,17 @@ message JobAllocation {
   int64 startExecutionTimeNanoSecond = 5;
   int64 durationNanoSecond = 6;
   bool placeholder = 7;
-  int64 startAllocationTimeNanoSecond = 8;
-  bool finished = 9;
+  bool finished = 8;
 
   bytes extra = 255;
 }
 
 message TaskAllocation {
-  string taskAllocationID = 1;
-  string nodeID = 2;
-  string taskID = 3;
-  HostMemoryAllocation hostMemoryAllocation = 4;
-  repeated CPUSocketAllocation CPUSocketAllocations = 5;
-  AcceleratorAllocation acceleratorAllocation = 6;
+  string nodeID = 1;
+  string taskID = 2;
+  HostMemoryAllocation hostMemoryAllocation = 3;
+  repeated CPUSocketAllocation CPUSocketAllocations = 4;
+  AcceleratorAllocation acceleratorAllocation = 5;
 
   bytes extra = 255;
 }

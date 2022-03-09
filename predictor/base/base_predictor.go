@@ -63,6 +63,9 @@ type EachPredictResult struct {
 }
 
 func (r *EachPredictResult) GetStartExecutionNanoTime() int64 {
+	if r == nil {
+		return 0
+	}
 	if r.StartExecutionNanoTime != nil {
 		return *r.StartExecutionNanoTime
 	}

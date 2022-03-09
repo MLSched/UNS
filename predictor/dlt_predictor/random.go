@@ -1,6 +1,7 @@
 package dlt_predictor
 
 import (
+	"UNS/pb_gen/configs"
 	"UNS/pb_gen/objects"
 	"hash/crc32"
 )
@@ -9,7 +10,7 @@ type RandomPredictor struct {
 	*DLTBasePredictor
 }
 
-func NewRandomPredictor() *RandomPredictor {
+func NewRandomPredictor(configuration *configs.DLTPredictorRandomConfiguration) *RandomPredictor {
 	p := &RandomPredictor{}
 	DLTBase := NewDLTBasePredictor(p)
 	p.DLTBasePredictor = DLTBase
@@ -21,7 +22,7 @@ func (p *RandomPredictor) getDataParallelMiniBatchDurationNanoSecond(ctx *Predic
 		acceleratorID := allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID()
 		return ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorID].GetAcceleratorMetaInfo().GetBriefType()
 	}()
-	duration := p.getMiniBatchDurationNanoSecond(ctx, allocation.GetJobID(), acceleratorType)
+	duration := p.getMiniBatchDurationNanoSecond(ctx, ctx.partitionContext.GetUnfinishedJob(allocation.GetJobID()), acceleratorType)
 	consolidationPenalty := p.getDataParallelConsolidationPenalty(ctx, allocation)
 	return int64(float64(duration) * consolidationPenalty)
 }
@@ -55,23 +56,27 @@ nextAlloc:
 	return 1
 }
 
-func (p *RandomPredictor) getMiniBatchDurationNanoSecond(ctx *PredictSessionContext, jobID string, acceleratorType string) int64 {
-	parallelCount := int64(len(ctx.partitionContext.GetUnfinishedJob(jobID).GetTaskGroup().GetTasks()))
+func (p *RandomPredictor) getMiniBatchDurationNanoSecond(ctx *PredictSessionContext, job *objects.Job, acceleratorType string) int64 {
+	parallelCount := int64(len(job.GetTaskGroup().GetTasks()))
 	acceleratorPenalty := int64(crc32.ChecksumIEEE([]byte(acceleratorType)) % 400 / 100)
-	baseDuration := int64(((crc32.ChecksumIEEE([]byte(jobID)))%1000 + 100) * 10e6)
+	baseDuration := int64(((crc32.ChecksumIEEE([]byte(job.GetJobID())))%1000 + 100) * 10e6)
 	return acceleratorPenalty * baseDuration / parallelCount
 }
 
-func (p *RandomPredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *PredictSessionContext, acceleratorIDs []string, jobIDs []string) map[string]int64 {
+func (p *RandomPredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *PredictSessionContext, accelerators []*objects.Accelerator, jobs []*objects.Job) map[string]int64 {
+	jobIDs := make([]string, 0, len(jobs))
+	for _, job := range jobs {
+		jobIDs = append(jobIDs, job.GetJobID())
+	}
 	if len(jobIDs) == 1 {
-		return map[string]int64{jobIDs[0]: p.getMiniBatchDurationNanoSecond(ctx, jobIDs[0], ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorIDs[0]].GetAcceleratorMetaInfo().GetBriefType())}
+		return map[string]int64{jobIDs[0]: p.getMiniBatchDurationNanoSecond(ctx, jobs[0], accelerators[0].GetAcceleratorMetaInfo().GetBriefType())}
 	}
 	if len(jobIDs) != 2 {
 		panic("getSpaceSharingMiniBatchDurationNanoSecond jobIDs len must be 1 or 2.")
 	}
 	nonSpaceSharingDurationSecond := make(map[string]int64)
-	for _, jobID := range jobIDs {
-		nonSpaceSharingDurationSecond[jobID] = p.getMiniBatchDurationNanoSecond(ctx, jobID, ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorIDs[0]].GetAcceleratorMetaInfo().GetBriefType())
+	for _, job := range jobs {
+		nonSpaceSharingDurationSecond[job.GetJobID()] = p.getMiniBatchDurationNanoSecond(ctx, job, accelerators[0].GetAcceleratorMetaInfo().GetBriefType())
 	}
 	penaltyFactor0 := float64(int(crc32.ChecksumIEEE([]byte(jobIDs[0]+jobIDs[1])))%400+100) / 100.
 	penaltyFactor1 := float64(int(crc32.ChecksumIEEE([]byte(jobIDs[1]+jobIDs[0])))%400+100) / 100.
@@ -88,9 +93,33 @@ func (p *RandomPredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, job
 }
 
 func (p *RandomPredictor) getSingleTaskSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorID string, jobIDs []string) map[string]int64 {
-	return p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, []string{acceleratorID}, jobIDs)
+	return p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, p.getAccelerators(ctx, []string{acceleratorID}), p.getJobs(ctx, jobIDs))
 }
 
 func (p *RandomPredictor) getDataParallelTasksSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorIDs []string, jobIDs []string) map[string]int64 {
-	return p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, acceleratorIDs, jobIDs)
+	return p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, p.getAccelerators(ctx, acceleratorIDs), p.getJobs(ctx, jobIDs))
+}
+
+func (p *RandomPredictor) getJob(ctx *PredictSessionContext, jobID string) *objects.Job {
+	return ctx.partitionContext.GetUnfinishedJob(jobID)
+}
+
+func (p *RandomPredictor) getJobs(ctx *PredictSessionContext, jobIDs []string) []*objects.Job {
+	jobs := make([]*objects.Job, 0, len(jobIDs))
+	for _, jobID := range jobIDs {
+		jobs = append(jobs, p.getJob(ctx, jobID))
+	}
+	return jobs
+}
+
+func (p *RandomPredictor) getAccelerator(ctx *PredictSessionContext, acceleratorID string) *objects.Accelerator {
+	return ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorID]
+}
+
+func (p *RandomPredictor) getAccelerators(ctx *PredictSessionContext, acceleratorIDs []string) []*objects.Accelerator {
+	accelerators := make([]*objects.Accelerator, 0, len(acceleratorIDs))
+	for _, acceleratorID := range acceleratorIDs {
+		accelerators = append(accelerators, p.getAccelerator(ctx, acceleratorID))
+	}
+	return accelerators
 }

@@ -1,0 +1,153 @@
+{
+	"resourceManagerID": "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID",
+	"partitionID": "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
+	"rmConfiguration": {
+		"cluster": {
+			"resourceManagerID": "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID",
+			"description": "SINGLE_PARTITION_DLT_SIMULATOR_CLUSTER",
+			"partitions": [
+				{
+					"partitionID": "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
+					"description": "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION",
+					"nodes": [
+						{
+							"nodeID": "NODE_1",
+							"CPUSockets": [
+								{
+									"CPUSocketID": "CPUSOCKET_1_1",
+									"accelerators": [
+										{
+											"acceleratorID": "ACCELERATOR_1_1_1",
+											"acceleratorMetaInfo": {
+												"briefType": "A100"
+											}
+										},
+										{
+											"acceleratorID": "ACCELERATOR_1_1_2",
+											"acceleratorMetaInfo": {
+												"briefType": "A100"
+											}
+										}
+									]
+								},
+								{
+									"CPUSocketID": "CPUSOCKET_1_2",
+									"accelerators": [
+										{
+											"acceleratorID": "ACCELERATOR_1_2_1",
+											"acceleratorMetaInfo": {
+												"briefType": "V100"
+											}
+										},
+										{
+											"acceleratorID": "ACCELERATOR_1_2_2",
+											"acceleratorMetaInfo": {
+												"briefType": "V100"
+											}
+										}
+									]
+								}
+							]
+						},
+						{
+							"nodeID": "NODE_2",
+							"CPUSockets": [
+								{
+									"CPUSocketID": "CPUSOCKET_2_1",
+									"accelerators": [
+										{
+											"acceleratorID": "ACCELERATOR_2_1_1",
+											"acceleratorMetaInfo": {
+												"briefType": "GTX 2080"
+											}
+										}
+									]
+								},
+								{
+									"CPUSocketID": "CPUSOCKET_2_2",
+									"accelerators": [
+										{
+											"acceleratorID": "ACCELERATOR_2_2_1",
+											"acceleratorMetaInfo": {
+												"briefType": "V100"
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		"schedulersConfiguration": {
+			"partitionID2SchedulerConfiguration": {
+				"SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID": {
+					"configurationBytes": "eyJTY2hlZHVsZXJJRCI6IlNJTkdMRV9QQVJUSVRJT05fRExUX1NJTVVMQVRPUl9TQ0hFRFVMRVIiLCJyZXNvdXJjZU1hbmFnZXJJRCI6IlNJTkdMRV9QQVJUSVRJT05fRExUX1NJTVVMQVRPUl9SRVNPVVJDRV9NQU5BR0VSX0lEIiwicGFydGl0aW9uSUQiOiJTSU5HTEVfUEFSVElUSU9OX0RMVF9TSU1VTEFUT1JfUEFSVElUSU9OX0lEIiwiaW50ZXJ2YWxOYW5vIjoxMDAwMDAwMDAwMH0="
+				}
+			}
+		}
+	},
+	"predictorConfiguration": {
+		"predictorType": 1,
+		"configurationBytes": "e30="
+	},
+	"jobs": [
+		{
+			"jobID": "JOB_1",
+			"jobType": 1,
+			"taskGroup": {
+				"taskGroupType": 2,
+				"tasks": [
+					{
+						"taskID": "JOB_1_TASK_1"
+					},
+					{
+						"taskID": "JOB_1_TASK_2"
+					}
+				],
+				"taskGroupInfoBytes": "eyJleHRyYSI6ImV5SkVURlJIWVc1blZIbHdaU0k2TVgwPSJ9"
+			}
+		},
+		{
+			"jobID": "JOB_2",
+			"jobType": 1,
+			"taskGroup": {
+				"taskGroupType": 1,
+				"tasks": [
+					{
+						"taskID": "JOB_2_TASK_1"
+					}
+				]
+			}
+		},
+		{
+			"jobID": "JOB_3",
+			"jobType": 1,
+			"taskGroup": {
+				"taskGroupType": 1,
+				"tasks": [
+					{
+						"taskID": "JOB_3_TASK_1"
+					}
+				]
+			}
+		},
+		{
+			"jobID": "JOB_4",
+			"jobType": 1,
+			"taskGroup": {
+				"taskGroupType": 2,
+				"tasks": [
+					{
+						"taskID": "JOB_4_TASK_1"
+					},
+					{
+						"taskID": "JOB_4_TASK_2"
+					}
+				],
+				"taskGroupInfoBytes": "eyJleHRyYSI6ImV5SkVURlJIWVc1blZIbHdaU0k2TVgwPSJ9"
+			}
+		}
+	]
+}

@@ -1,6 +1,7 @@
 package UNS
 
 import (
+	"UNS/events"
 	"UNS/pb_gen/configs"
 	"UNS/schedulers/interfaces"
 	"encoding/json"
@@ -8,6 +9,10 @@ import (
 
 type Scheduler struct {
 	Config *configs.UNSSchedulerConfiguration
+}
+
+func (s *Scheduler) HandleEvent(event *events.Event) {
+	panic("implement me")
 }
 
 func (s *Scheduler) GetSchedulerID() string {

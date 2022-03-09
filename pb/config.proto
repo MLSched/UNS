@@ -5,7 +5,7 @@ import "objects.proto";
 
 option go_package = "UNS/pb_gen/configs";
 
-message Configuration {
+message RMConfiguration {
   Cluster cluster = 1;
   SchedulersConfiguration schedulersConfiguration = 2;
 }
@@ -16,7 +16,7 @@ message SchedulersConfiguration {
 
 message SchedulerConfiguration {
   SchedulerType schedulerType = 1;
-  bytes configurationBytes = 2;
+  bytes configurationBytes = 5;
 }
 
 enum SchedulerType {
@@ -28,12 +28,14 @@ message NaiveSchedulerConfiguration {
   string SchedulerID = 1;
   string resourceManagerID = 2;
   string partitionID = 3;
+  int64 intervalNano = 4;
 }
 
 message UNSSchedulerConfiguration {
   string SchedulerID = 1;
   string resourceManagerID = 2;
   string partitionID = 3;
+  int64 intervalNano = 4;
 }
 
 enum PredictorType {
@@ -45,6 +47,10 @@ enum PredictorType {
 message PredictorConfiguration {
   PredictorType predictorType = 1;
   bytes configurationBytes = 2;
+}
+
+message DLTPredictorRandomConfiguration {
+  // intentionally empty.
 }
 
 message DLTPredictorDataOrientedConfiguration {
@@ -67,4 +73,13 @@ message DLTTaskData {
   }
   map<string, SpaceSharingMiniBatchDuration> spaceSharedTaskID2Data = 2;
   int64 maximumAcceleratorMemoryCostBytes = 3;
+}
+
+
+message SinglePartitionDLTSimulatorConfiguration {
+  string resourceManagerID = 1;
+  string partitionID = 2;
+  RMConfiguration rmConfiguration = 3;
+  PredictorConfiguration predictorConfiguration = 4;
+  repeated Job jobs = 5;
 }

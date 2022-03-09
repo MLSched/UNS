@@ -10,28 +10,28 @@ import "config.proto";
 
 message RMRegisterResourceManagerEvent {
   string resourceManagerID = 1;
-  Configuration configuration = 2;
+  RMConfiguration configuration = 2;
 }
 
 message RMUpdateAllocationsEvent {
   repeated JobAllocation jobAllocations = 1;
-  //  repeated JobAllocationRelease releasedJobAllocations = 2;
-}
 
-//message JobAllocationRelease {
-//  string jobID = 1;
-//  repeated string finishedTaskIDs = 2;
-//  repeated string taskAllocationIDs = 3;
-//}
+  int64 currentNanoTime = 255;
+}
 
 message RMUpdateJobsEvent {
   repeated Job newJobs = 1;
   repeated string removedJobIDs = 2;
+
+  int64 currentNanoTime = 255;
 }
 
-// SS prefix means an event initiated by Resource Manager
+message RMUpdateTimeEvent {
+  int64 currentNanoTime = 255;
+}
+
+// SS prefix means an event initiated by Scheduler
 
 message SSUpdateAllocationsEvent {
   repeated JobAllocation newJobAllocations = 1;
-  //  repeated JobAllocationRelease releasedJobAllocations = 2;
 }

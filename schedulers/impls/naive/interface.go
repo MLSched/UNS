@@ -6,24 +6,27 @@ import (
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
 	"UNS/schedulers/cluster"
+	"UNS/schedulers/impls/base"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
 	"encoding/json"
 	"log"
-	"strconv"
-	"sync/atomic"
-	"time"
 )
 
 type Scheduler struct {
+	*base.IntervalSchedulerTemplate
+
 	Config *configs.NaiveSchedulerConfiguration
 
-	taskAllocationID int64
-	pusher           interfaces.EventPusher
+	pusher interfaces.EventPusher
 }
 
 func (s *Scheduler) GetSchedulerID() string {
 	return s.Config.GetSchedulerID()
+}
+
+func (s *Scheduler) HandleEvent(event *events.Event) {
+	s.WaitSchedule()
 }
 
 func Build(configurationBytes []byte, pusher interfaces.EventPusher) (interfaces.Scheduler, error) {
@@ -33,19 +36,10 @@ func Build(configurationBytes []byte, pusher interfaces.EventPusher) (interfaces
 		return nil, err
 	}
 	return &Scheduler{
-		Config:           c,
-		pusher:           pusher,
-		taskAllocationID: 1,
+		IntervalSchedulerTemplate: base.NewIntervalSchedulerTemplate(1e9),
+		Config:                    c,
+		pusher:                    pusher,
 	}, nil
-}
-
-func (s *Scheduler) StartService() {
-	go func() {
-		for {
-			s.Schedule()
-			time.Sleep(time.Second)
-		}
-	}()
 }
 
 func (s *Scheduler) Schedule() {
@@ -78,6 +72,10 @@ func (s *Scheduler) Schedule() {
 		}
 	}
 
+	if len(unoccupiedAccelerators) == 0 {
+		return
+	}
+
 	newAllocations := make([]*objects.JobAllocation, 0)
 	for _, job := range unscheduledJobs {
 		taskGroup := job.GetTaskGroup()
@@ -106,7 +104,6 @@ func (s *Scheduler) Schedule() {
 					AcceleratorID: acc.GetAcceleratorID(),
 				}
 				taskAllocation := &objects.TaskAllocation{
-					TaskAllocationID:      s.getNextTaskAllocationID(),
 					NodeID:                node.GetNodeID(),
 					TaskID:                task.GetTaskID(),
 					AcceleratorAllocation: acceleratorAllocation,
@@ -130,9 +127,4 @@ func (s *Scheduler) Schedule() {
 
 func (s *Scheduler) GetPartitionContext() *partition.Context {
 	return cluster.GetManagerInstance().GetPartitionContext(s.Config.GetResourceManagerID(), s.Config.GetPartitionID())
-}
-
-func (s *Scheduler) getNextTaskAllocationID() string {
-	r := atomic.AddInt64(&s.taskAllocationID, 1)
-	return strconv.Itoa(int(r))
 }

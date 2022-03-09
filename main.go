@@ -1,13 +1,13 @@
 package main
 
 import (
-	"UNS/schedulers/service"
+	"UNS/schedulers"
 	"time"
 )
 
 func main() {
-	service.InitSchedulersService()
-	serviceInst := service.GetSchedulersServiceInstance()
+	schedulers.InitLocalSchedulersService()
+	serviceInst := schedulers.GetServiceInstance()
 	serviceInst.StartService()
 	time.Sleep(5 * time.Second)
 }

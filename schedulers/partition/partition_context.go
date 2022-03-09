@@ -21,7 +21,7 @@ type Context struct {
 
 	*Util
 
-	Time *time.Time
+	Time *int64
 }
 
 type View struct {
@@ -83,10 +83,10 @@ func (c *Context) HandleUpdateAllocationsEvent(eo *eventobjs.RMUpdateAllocations
 		if _, ok := c.UnfinishedJobs[jobID]; !ok {
 			reason := fmt.Sprintf("Partition Context ID = [%s] update allocations, encounter unkonwn job ID = [%s]", c.Meta.GetPartitionID(), jobID)
 			log.Println(reason)
-			resultChan <- &events.Result{
+			events.Reply(resultChan, &events.Result{
 				Succeeded: false,
 				Reason:    reason,
-			}
+			})
 		}
 	}
 	for _, updatedJobAllocation := range eo.JobAllocations {
@@ -133,9 +133,9 @@ func (c *Context) HandleUpdateJobsEvent(eo *eventobjs.RMUpdateJobsEvent, resultC
 	}
 }
 
-func (c *Context) Now() time.Time {
+func (c *Context) Now() int64 {
 	if c.Time == nil {
-		return time.Now()
+		return time.Now().UnixNano()
 	}
 	return *c.Time
 }
@@ -148,12 +148,12 @@ func (c *Context) Clone() *Context {
 		clonedTaskAllocations := make([]*objects.TaskAllocation, 0, len(allocation.GetTaskAllocations()))
 		for _, taskAllocation := range allocation.GetTaskAllocations() {
 			clonedTaskAllocations = append(clonedTaskAllocations, &objects.TaskAllocation{
-				TaskAllocationID:     taskAllocation.GetTaskAllocationID(),
-				NodeID:               taskAllocation.GetNodeID(),
-				TaskID:               taskAllocation.GetTaskID(),
-				HostMemoryAllocation: taskAllocation.GetHostMemoryAllocation(),
-				CPUSocketAllocations: taskAllocation.GetCPUSocketAllocations(),
-				Extra:                taskAllocation.GetExtra(),
+				NodeID:                taskAllocation.GetNodeID(),
+				TaskID:                taskAllocation.GetTaskID(),
+				HostMemoryAllocation:  taskAllocation.GetHostMemoryAllocation(),
+				CPUSocketAllocations:  taskAllocation.GetCPUSocketAllocations(),
+				AcceleratorAllocation: taskAllocation.GetAcceleratorAllocation(),
+				Extra:                 taskAllocation.GetExtra(),
 			})
 		}
 		cloned.PendingAllocations[jobID] = &objects.JobAllocation{
@@ -174,5 +174,17 @@ func (c *Context) Clone() *Context {
 }
 
 func (c *Context) GetUnfinishedJob(jobID string) *objects.Job {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.UnfinishedJobs[jobID]
+}
+
+func (c *Context) GetPendingAllocationsSlice() []*objects.JobAllocation {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	allocations := make([]*objects.JobAllocation, 0, len(c.PendingAllocations))
+	for _, allocation := range c.PendingAllocations {
+		allocations = append(allocations, allocation)
+	}
+	return allocations
 }
