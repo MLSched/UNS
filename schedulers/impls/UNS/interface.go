@@ -3,8 +3,8 @@ package UNS
 import (
 	"UNS/events"
 	"UNS/pb_gen/configs"
+	"UNS/schedulers/impls/base"
 	"UNS/schedulers/interfaces"
-	"encoding/json"
 )
 
 type Scheduler struct {
@@ -23,12 +23,8 @@ func (s *Scheduler) StartService() {
 
 }
 
-func Build(configurationBytes []byte, pusher interfaces.EventPusher) (interfaces.Scheduler, error) {
-	c := &configs.UNSSchedulerConfiguration{}
-	err := json.Unmarshal(configurationBytes, c)
-	if err != nil {
-		return nil, err
-	}
+func Build(configuration interface{}, pusher base.EventPusher, partitionContextAware base.PartitionContextAware) (interfaces.Scheduler, error) {
+	c := configuration.(*configs.UNSSchedulerConfiguration)
 	return &Scheduler{
 		Config: c,
 	}, nil

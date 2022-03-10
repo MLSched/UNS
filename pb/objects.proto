@@ -3,6 +3,8 @@ package pb_gen;
 
 option go_package = "UNS/pb_gen/objects";
 
+import "google/protobuf/wrappers.proto";
+
 message Job {
   string jobID = 1;
   JobType jobType = 2;
@@ -38,7 +40,10 @@ enum TaskGroupType {
 message TaskGroup {
   TaskGroupType taskGroupType = 1;
   repeated Task tasks = 2;
-  bytes taskGroupInfoBytes = 3;
+  oneof TaskGroupInfo {
+    SingleTaskGroup singleTaskGroupInfo = 3;
+    GangTaskGroup gangTaskGroupInfo = 4;
+  }
 }
 
 message SingleTaskGroup {
@@ -150,7 +155,7 @@ message JobAllocation {
   string resourceManagerID = 2;
   string partitionID = 3;
   repeated TaskAllocation taskAllocations = 4;
-  int64 startExecutionTimeNanoSecond = 5;
+  google.protobuf.Int64Value startExecutionTimeNanoSecond = 5;
   int64 durationNanoSecond = 6;
   bool placeholder = 7;
   bool finished = 8;

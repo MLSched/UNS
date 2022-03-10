@@ -9,6 +9,7 @@ import (
 	"UNS/utils"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 )
 
@@ -105,12 +106,14 @@ func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Pr
 	// firstly, predict jobs with TaskGroupType of 'single'
 	startExecutionTimeKnownAllocation := make([]*objects.JobAllocation, 0, len(allocations))
 	for _, allocation := range allocations {
-		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == 0 {
-			ctx.result.UpdateStartExecutionTime(allocation, allocation.GetStartExecutionTimeNanoSecond())
+		if allocation.GetStartExecutionTimeNanoSecond() == nil {
+			// skip allocations with unknown start execution time.
+			continue
 		}
-		if p.getStartExecutionNanoTimeInSession(ctx, allocation) != 0 {
-			startExecutionTimeKnownAllocation = append(startExecutionTimeKnownAllocation, allocation)
+		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil {
+			ctx.result.UpdateStartExecutionTime(allocation, allocation.GetStartExecutionTimeNanoSecond().GetValue())
 		}
+		startExecutionTimeKnownAllocation = append(startExecutionTimeKnownAllocation, allocation)
 	}
 	r, err := p.predictSpaceSharingAllocations(ctx, startExecutionTimeKnownAllocation)
 	if err != nil {
@@ -129,7 +132,7 @@ nextAlloc:
 		if p.isAllocationPredicted(ctx, allocation) {
 			continue
 		}
-		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == 0 && allocation.GetPlaceholder() {
+		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil && allocation.GetPlaceholder() {
 			placeholderAcceleratorIDs := make([]string, 0, len(allocation.GetTaskAllocations()))
 			for _, taskAllocation := range allocation.GetTaskAllocations() {
 				placeholderAcceleratorIDs = append(placeholderAcceleratorIDs, taskAllocation.GetAcceleratorAllocation().GetAcceleratorID())
@@ -142,7 +145,7 @@ nextAlloc:
 					if previousAllocation.GetJobID() == allocation.GetJobID() {
 						continue
 					}
-					if previousAllocation.GetPlaceholder() && previousAllocation.GetStartExecutionTimeNanoSecond() == 0 {
+					if previousAllocation.GetPlaceholder() && previousAllocation.GetStartExecutionTimeNanoSecond() == nil {
 						continue
 					}
 					if _, complete := ctx.result.GetResult(previousAllocation); !complete {
@@ -151,7 +154,7 @@ nextAlloc:
 						continue nextAlloc
 					}
 					r, _ := ctx.result.GetResult(previousAllocation)
-					startExecutionTime = math.Max(float64(r.GetFinishNanoTime()), startExecutionTime)
+					startExecutionTime = math.Max(float64(*r.GetFinishNanoTime()), startExecutionTime)
 				}
 			}
 			if startExecutionTime != 0. {
@@ -164,15 +167,10 @@ nextAlloc:
 }
 
 func (p *DLTBasePredictor) getGangTaskGroupDLTExtra(ctx *PredictSessionContext, jobID string) (*objects.GangTaskGroupDLTExtra, error) {
-	bs := ctx.partitionContext.GetUnfinishedJob(jobID).GetTaskGroup().GetTaskGroupInfoBytes()
-	info := &objects.GangTaskGroup{}
-	err := json.Unmarshal(bs, info)
-	if err != nil {
-		return nil, err
-	}
+	info := ctx.partitionContext.GetUnfinishedJob(jobID).GetTaskGroup().GetGangTaskGroupInfo()
 	extraBs := info.GetExtra()
 	extra := &objects.GangTaskGroupDLTExtra{}
-	err = json.Unmarshal(extraBs, extra)
+	err := json.Unmarshal(extraBs, extra)
 	if err != nil {
 		return nil, err
 	}
@@ -183,23 +181,29 @@ func (p *DLTBasePredictor) getGangTaskGroupDLTExtra(ctx *PredictSessionContext, 
 // 为什么不能直接用allocation.GetStartExecutionNanoTime？
 // 因为placeholder任务的存在，它们不知道自己什么时候开始，我们需要将其他全部任务的结束时间算出后，才能计算他们的开始执行时间。
 // 而allocation在Predict中是只读的，我们需要另外的数据结构存储它们临时的开始时间。
-func (p *DLTBasePredictor) getStartExecutionNanoTimeInSession(ctx *PredictSessionContext, allocation *objects.JobAllocation) int64 {
+func (p *DLTBasePredictor) getStartExecutionNanoTimeInSession(ctx *PredictSessionContext, allocation *objects.JobAllocation) *int64 {
 	r, _ := ctx.result.GetResult(allocation)
 	return r.GetStartExecutionNanoTime()
 }
 
 func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContext, allocations []*objects.JobAllocation) (map[*objects.JobAllocation]int64, error) {
+	if len(allocations) == 0 {
+		return map[*objects.JobAllocation]int64{}, nil
+	}
 	startNanoTime2Allocations := map[int64][]*objects.JobAllocation{}
 	sortedStartTime := make([]int64, 0, len(allocations))
 	jobID2RemainingMiniBatches := make(map[string]float64)
 	for _, allocation := range allocations {
-		startNanoTime := p.getStartExecutionNanoTimeInSession(ctx, allocation)
+		startNanoTimePtr := p.getStartExecutionNanoTimeInSession(ctx, allocation)
+		startNanoTime := *startNanoTimePtr
 		sortedStartTime = append(sortedStartTime, startNanoTime)
 		if _, ok := startNanoTime2Allocations[startNanoTime]; !ok {
 			startNanoTime2Allocations[startNanoTime] = make([]*objects.JobAllocation, 0, 1)
 		}
 		startNanoTime2Allocations[startNanoTime] = append(startNanoTime2Allocations[startNanoTime], allocation)
-		jobID2RemainingMiniBatches[allocation.GetJobID()] = float64(p.impl.getJobTotalMiniBatches(ctx, allocation.GetJobID()))
+		remainingMiniBatches := float64(p.impl.getJobTotalMiniBatches(ctx, allocation.GetJobID()))
+		log.Printf("allocation job ID = %s, remaining mini batches = %f\n", allocation.GetJobID(), remainingMiniBatches)
+		jobID2RemainingMiniBatches[allocation.GetJobID()] = remainingMiniBatches
 	}
 	utils.SortInt64(sortedStartTime)
 	runningAllocations := make(map[string]*objects.JobAllocation)
@@ -245,6 +249,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 				jobID2MiniBatchDuration[jobID] = miniBatchDuration
 			}
 		}
+		log.Printf("jobID2MiniBatchDuration %+v\n", jobID2MiniBatchDuration)
 		// calculate the closest event: any of jobs finished, or a new job comes in.
 		runningJobFinishTimes := make(map[string]int64)
 		closestFinishedJobTime := int64(math.MaxInt64)

@@ -58,9 +58,9 @@ nextAlloc:
 
 func (p *RandomPredictor) getMiniBatchDurationNanoSecond(ctx *PredictSessionContext, job *objects.Job, acceleratorType string) int64 {
 	parallelCount := int64(len(job.GetTaskGroup().GetTasks()))
-	acceleratorPenalty := int64(crc32.ChecksumIEEE([]byte(acceleratorType)) % 400 / 100)
+	acceleratorPenalty := float64(crc32.ChecksumIEEE([]byte(acceleratorType))%400) / 100
 	baseDuration := int64(((crc32.ChecksumIEEE([]byte(job.GetJobID())))%1000 + 100) * 10e6)
-	return acceleratorPenalty * baseDuration / parallelCount
+	return int64(acceleratorPenalty * float64(baseDuration) / float64(parallelCount))
 }
 
 func (p *RandomPredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *PredictSessionContext, accelerators []*objects.Accelerator, jobs []*objects.Job) map[string]int64 {

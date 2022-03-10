@@ -48,7 +48,7 @@ func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocation
 			log.Printf(reason)
 			return fmt.Errorf(reason)
 		}
-		if allocation.GetStartExecutionTimeNanoSecond() == 0 && !allocation.GetPlaceholder() {
+		if allocation.GetStartExecutionTimeNanoSecond() == nil && !allocation.GetPlaceholder() {
 			reason := fmt.Sprintf("Base prerequisiteCheck failed, a job allocation's start execution time is unset and it is not a placeholder. jobID = %s", job.GetJobID())
 			log.Printf(reason)
 			return fmt.Errorf(reason)
@@ -62,21 +62,18 @@ type EachPredictResult struct {
 	FinishNanoTime         *int64
 }
 
-func (r *EachPredictResult) GetStartExecutionNanoTime() int64 {
+func (r *EachPredictResult) GetStartExecutionNanoTime() *int64 {
 	if r == nil {
-		return 0
+		return nil
 	}
-	if r.StartExecutionNanoTime != nil {
-		return *r.StartExecutionNanoTime
-	}
-	return 0
+	return r.StartExecutionNanoTime
 }
 
-func (r *EachPredictResult) GetFinishNanoTime() int64 {
-	if r.FinishNanoTime != nil {
-		return *r.FinishNanoTime
+func (r *EachPredictResult) GetFinishNanoTime() *int64 {
+	if r == nil {
+		return nil
 	}
-	return 0
+	return r.FinishNanoTime
 }
 
 type PredictResult struct {

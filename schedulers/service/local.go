@@ -6,6 +6,7 @@ import (
 	"UNS/resourcemgr"
 	"UNS/schedulers/cluster"
 	"UNS/schedulers/impls"
+	"UNS/schedulers/impls/base"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 // 并且负责分发两侧之间的消息。
 type LocalSchedulersService struct {
 	mu                        *sync.RWMutex
+	clusterManager            *cluster.Manager
 	ResourceManagerID2Mapping map[string][]*Mapping
 	SchedulerID2Mapping       map[string]*Mapping
 
@@ -33,6 +35,7 @@ type Mapping struct {
 func NewLocalSchedulerService() *LocalSchedulersService {
 	return &LocalSchedulersService{
 		mu:                        &sync.RWMutex{},
+		clusterManager:            cluster.NewManager(),
 		ResourceManagerID2Mapping: make(map[string][]*Mapping),
 		SchedulerID2Mapping:       make(map[string]*Mapping),
 		PendingEvents:             make(chan eventWithSource, 1024*1024),
@@ -77,11 +80,26 @@ func (ss *LocalSchedulersService) RegisterRM(event *eventsobjs.RMRegisterResourc
 			Reason:    fmt.Sprintf("RegisterRM failed, cluster Build failed, err = [%s]", err),
 		}
 	}
+	clusterContext.Meta.GetResourceManagerID()
+	err = ss.clusterManager.AddClusterContext(clusterContext)
+	if err != nil {
+		return &events.Result{
+			Succeeded: false,
+			Reason:    fmt.Sprintf("RegisterRM failed, add cluster context failed, err = [%s]", err),
+		}
+	}
+
 	partitionContexts := clusterContext.GetPartitionContexts()
 	partitionID2schedulerConfigurations := event.GetConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()
 	partitionID2Scheduler := make(map[string]interfaces.Scheduler)
 	for partitionID, c := range partitionID2schedulerConfigurations {
-		s, err := impls.Build(c, ss.pushFromScheduler)
+		s, err := impls.Build(&base.SchedulerBuildParams{
+			SchedulerConfiguration: c,
+			EventPusher:            ss.pushFromScheduler,
+			PartitionContextAware: func() *partition.Context {
+				return ss.clusterManager.GetPartitionContext(resourceMgr.GetResourceManagerID(), partitionID)
+			},
+		})
 		if err != nil {
 			return &events.Result{
 				Succeeded: false,
@@ -90,6 +108,7 @@ func (ss *LocalSchedulersService) RegisterRM(event *eventsobjs.RMRegisterResourc
 		}
 		partitionID2Scheduler[partitionID] = s
 	}
+	// build mappings
 	mappings := make([]*Mapping, 0, len(partitionContexts))
 	for _, partitionContext := range partitionContexts {
 		mapping := &Mapping{
@@ -100,6 +119,11 @@ func (ss *LocalSchedulersService) RegisterRM(event *eventsobjs.RMRegisterResourc
 		}
 		mappings = append(mappings, mapping)
 		mapping.Scheduler.StartService()
+	}
+	// register mappings
+	ss.ResourceManagerID2Mapping[resourceMgr.GetResourceManagerID()] = mappings
+	for _, mapping := range mappings {
+		ss.SchedulerID2Mapping[mapping.Scheduler.GetSchedulerID()] = mapping
 	}
 	return &events.Result{
 		Succeeded: true,

@@ -3,19 +3,14 @@ package pb_gen
 import (
 	"UNS/pb_gen/configs"
 	"UNS/pb_gen/objects"
-	"encoding/json"
 )
 
-var extractSchedulerConfigurationMap = map[configs.SchedulerType]func(bytes []byte) (interface{}, error){
-	configs.SchedulerType_schedulerTypeNaive: func(bytes []byte) (interface{}, error) {
-		c := &configs.NaiveSchedulerConfiguration{}
-		err := json.Unmarshal(bytes, c)
-		return c, err
+var extractSchedulerConfigurationMap = map[configs.SchedulerType]func(configuration *configs.SchedulerConfiguration) interface{}{
+	configs.SchedulerType_schedulerTypeNaive: func(configuration *configs.SchedulerConfiguration) interface{} {
+		return configuration.GetNaiveSchedulerConfiguration()
 	},
-	configs.SchedulerType_schedulerTypeUNS: func(bytes []byte) (interface{}, error) {
-		c := &configs.UNSSchedulerConfiguration{}
-		err := json.Unmarshal(bytes, c)
-		return c, err
+	configs.SchedulerType_schedulerTypeUNS: func(configuration *configs.SchedulerConfiguration) interface{} {
+		return configuration.GetUnsSchedulerConfiguration()
 	},
 }
 
@@ -28,23 +23,16 @@ func GetUNSSchedulerConfiguration(configuration *configs.SchedulerConfiguration)
 }
 
 func ExtractSchedulerConfiguration(configuration *configs.SchedulerConfiguration) interface{} {
-	c, err := extractSchedulerConfigurationMap[configuration.GetSchedulerType()](configuration.GetConfigurationBytes())
-	if err != nil {
-		panic(err)
-	}
+	c := extractSchedulerConfigurationMap[configuration.GetSchedulerType()](configuration)
 	return c
 }
 
-var extractPredictorConfigurationMap = map[configs.PredictorType]func(bytes []byte) (interface{}, error){
-	configs.PredictorType_predictorTypeDLTRandom: func(bytes []byte) (interface{}, error) {
-		c := &configs.DLTPredictorRandomConfiguration{}
-		err := json.Unmarshal(bytes, c)
-		return c, err
+var extractPredictorConfigurationMap = map[configs.PredictorType]func(configuration *configs.PredictorConfiguration) interface{}{
+	configs.PredictorType_predictorTypeDLTRandom: func(configuration *configs.PredictorConfiguration) interface{} {
+		return configuration.GetDLTPredictorRandomConfiguration()
 	},
-	configs.PredictorType_predictorTypeDLTDataOriented: func(bytes []byte) (interface{}, error) {
-		c := &configs.DLTPredictorDataOrientedConfiguration{}
-		err := json.Unmarshal(bytes, c)
-		return c, err
+	configs.PredictorType_predictorTypeDLTDataOriented: func(configuration *configs.PredictorConfiguration) interface{} {
+		return configuration.GetDLTPredictorDataOrientedDataFormat()
 	},
 }
 
@@ -57,10 +45,7 @@ func GetDataOrientedPredictorConfiguration(configuration *configs.PredictorConfi
 }
 
 func ExtractPredictorConfiguration(configuration *configs.PredictorConfiguration) interface{} {
-	c, err := extractPredictorConfigurationMap[configuration.GetPredictorType()](configuration.GetConfigurationBytes())
-	if err != nil {
-		panic(err)
-	}
+	c := extractPredictorConfigurationMap[configuration.GetPredictorType()](configuration)
 	return c
 }
 

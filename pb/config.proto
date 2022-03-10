@@ -16,7 +16,10 @@ message SchedulersConfiguration {
 
 message SchedulerConfiguration {
   SchedulerType schedulerType = 1;
-  bytes configurationBytes = 5;
+  oneof Configuration {
+    NaiveSchedulerConfiguration naiveSchedulerConfiguration = 2;
+    UNSSchedulerConfiguration unsSchedulerConfiguration = 3;
+  }
 }
 
 enum SchedulerType {
@@ -46,7 +49,10 @@ enum PredictorType {
 
 message PredictorConfiguration {
   PredictorType predictorType = 1;
-  bytes configurationBytes = 2;
+  oneof Configuration {
+      DLTPredictorRandomConfiguration DLTPredictorRandomConfiguration = 2;
+      DLTPredictorDataOrientedDataFormat DLTPredictorDataOrientedDataFormat = 3;
+  }
 }
 
 message DLTPredictorRandomConfiguration {

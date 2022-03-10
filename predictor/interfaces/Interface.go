@@ -16,6 +16,6 @@ type PredictResult interface {
 }
 
 type EachPredictResult interface {
-	GetStartExecutionNanoTime() int64
-	GetFinishNanoTime() int64
+	GetStartExecutionNanoTime() *int64
+	GetFinishNanoTime() *int64
 }

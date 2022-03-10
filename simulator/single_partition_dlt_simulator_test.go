@@ -3,8 +3,8 @@ package simulator
 import (
 	"UNS/pb_gen/configs"
 	"UNS/pb_gen/objects"
+	"UNS/utils"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"testing"
 )
@@ -13,18 +13,21 @@ var configPath = "/Users/purchaser/go/src/UNS/simulator/configs/single_partition
 
 func TestSinglePartitionDLTSimulator(t *testing.T) {
 	simulator := NewSinglePartitionDLTSimulator(configPath)
-	schedulerConfigurationBytes := simulator.config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID"].GetConfigurationBytes()
-	schedulerConfiguration := &configs.NaiveSchedulerConfiguration{}
-	err := json.Unmarshal(schedulerConfigurationBytes, schedulerConfiguration)
+	// schedulerConfigurationBytes := simulator.config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID"].GetConfigurationBytes()
+	simulator.StartSimulation()
+}
+
+func TestUnmarshalConfiguration(t *testing.T) {
+	config := &configs.SinglePartitionDLTSimulatorConfiguration{}
+	bytes, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%+v\n", schedulerConfiguration)
-	bytes, err := json.MarshalIndent(simulator.config, "", "\t")
+	err = utils.Unmarshal(string(bytes), config)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(bytes))
+	t.Log(config)
 }
 
 func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
@@ -102,19 +105,21 @@ func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
 			},
 		},
 	}
-	schedulerConfiguration := &configs.NaiveSchedulerConfiguration{
-		IntervalNano:      10 * 1e9,
-		SchedulerID:       "SINGLE_PARTITION_DLT_SIMULATOR_SCHEDULER",
-		ResourceManagerID: rmID,
-		PartitionID:       partitionID,
+	naiveSchedulerConfiguration := &configs.SchedulerConfiguration_NaiveSchedulerConfiguration{
+		NaiveSchedulerConfiguration: &configs.NaiveSchedulerConfiguration{
+			IntervalNano:      1e16,
+			SchedulerID:       "SINGLE_PARTITION_DLT_SIMULATOR_SCHEDULER",
+			ResourceManagerID: rmID,
+			PartitionID:       partitionID,
+		},
 	}
-	schedulerConfigurationBytes := mustMarshal(schedulerConfiguration)
+	schedulerConfiguration := &configs.SchedulerConfiguration{
+		SchedulerType: configs.SchedulerType_schedulerTypeNaive,
+		Configuration: naiveSchedulerConfiguration,
+	}
 
 	schedulersConfiguration := &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
-		partitionID: {
-			SchedulerType:      configs.SchedulerType_schedulerTypeNaive,
-			ConfigurationBytes: schedulerConfigurationBytes,
-		},
+		partitionID: schedulerConfiguration,
 	}}
 	rmConfig := &configs.RMConfiguration{
 		Cluster: &objects.Cluster{
@@ -124,22 +129,23 @@ func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
 		},
 		SchedulersConfiguration: schedulersConfiguration,
 	}
-	predictorConfiguration := &configs.DLTPredictorRandomConfiguration{}
-	predictorConfigurationBytes := mustMarshal(predictorConfiguration)
 
 	job1TaskGroupDLTExtra := &objects.GangTaskGroupDLTExtra{DLTGangType: objects.DLTGangType_DLTGangTypeDataParallel}
-	job1TaskGroupDLTExtraBytes, _ := json.Marshal(job1TaskGroupDLTExtra)
-	job1TaskGroupInfo := &objects.GangTaskGroup{
-		TaskGroupType: 0,
-		Extra:         job1TaskGroupDLTExtraBytes,
+	s, err := json.Marshal(job1TaskGroupDLTExtra)
+	if err != nil {
+		panic(err)
 	}
-	job1TaskGroupInfoBytes, _ := json.Marshal(job1TaskGroupInfo)
-	job4TaskGroupInfoBytes, _ := json.Marshal(job1TaskGroupInfo)
+	job1TaskGroupDLTExtraBytes := s
+	//job1TaskGroupDLTExtraBytes, _ := json.Marshal(job1TaskGroupDLTExtra)
+	job1and4TaskGroupInfo := &objects.TaskGroup_GangTaskGroupInfo{GangTaskGroupInfo: &objects.GangTaskGroup{
+		TaskGroupType: objects.TaskGroupType_taskGroupTypeGang,
+		Extra:         job1TaskGroupDLTExtraBytes,
+	}}
 
 	job1 := &objects.Job{
 		JobID:                "JOB_1",
 		JobType:              objects.JobType_jobTypeDLT,
-		SubmitTimeNanoSecond: 0,
+		SubmitTimeNanoSecond: 1e9,
 		TaskGroup: &objects.TaskGroup{
 			TaskGroupType: objects.TaskGroupType_taskGroupTypeGang,
 			Tasks: []*objects.Task{
@@ -150,13 +156,13 @@ func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
 					TaskID: "JOB_1_TASK_2",
 				},
 			},
-			TaskGroupInfoBytes: job1TaskGroupInfoBytes,
+			TaskGroupInfo: job1and4TaskGroupInfo,
 		},
 	}
 	job2 := &objects.Job{
 		JobID:                "JOB_2",
 		JobType:              objects.JobType_jobTypeDLT,
-		SubmitTimeNanoSecond: 0,
+		SubmitTimeNanoSecond: 1e9,
 		TaskGroup: &objects.TaskGroup{
 			TaskGroupType: objects.TaskGroupType_taskGroupTypeSingle,
 			Tasks: []*objects.Task{
@@ -164,13 +170,13 @@ func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
 					TaskID: "JOB_2_TASK_1",
 				},
 			},
-			TaskGroupInfoBytes: nil,
+			TaskGroupInfo: &objects.TaskGroup_SingleTaskGroupInfo{SingleTaskGroupInfo: &objects.SingleTaskGroup{}},
 		},
 	}
 	job3 := &objects.Job{
 		JobID:                "JOB_3",
 		JobType:              objects.JobType_jobTypeDLT,
-		SubmitTimeNanoSecond: 0,
+		SubmitTimeNanoSecond: 1e9,
 		TaskGroup: &objects.TaskGroup{
 			TaskGroupType: objects.TaskGroupType_taskGroupTypeSingle,
 			Tasks: []*objects.Task{
@@ -178,13 +184,13 @@ func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
 					TaskID: "JOB_3_TASK_1",
 				},
 			},
-			TaskGroupInfoBytes: nil,
+			TaskGroupInfo: &objects.TaskGroup_SingleTaskGroupInfo{SingleTaskGroupInfo: &objects.SingleTaskGroup{}},
 		},
 	}
 	job4 := &objects.Job{
 		JobID:                "JOB_4",
 		JobType:              objects.JobType_jobTypeDLT,
-		SubmitTimeNanoSecond: 0,
+		SubmitTimeNanoSecond: 3 * 1e9,
 		TaskGroup: &objects.TaskGroup{
 			TaskGroupType: objects.TaskGroupType_taskGroupTypeGang,
 			Tasks: []*objects.Task{
@@ -195,7 +201,7 @@ func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
 					TaskID: "JOB_4_TASK_2",
 				},
 			},
-			TaskGroupInfoBytes: job4TaskGroupInfoBytes,
+			TaskGroupInfo: job1and4TaskGroupInfo,
 		},
 	}
 	simulatorConfig := &configs.SinglePartitionDLTSimulatorConfiguration{
@@ -203,27 +209,20 @@ func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
 		PartitionID:       "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
 		RmConfiguration:   rmConfig,
 		PredictorConfiguration: &configs.PredictorConfiguration{
-			PredictorType:      configs.PredictorType_predictorTypeDLTRandom,
-			ConfigurationBytes: predictorConfigurationBytes,
+			PredictorType: configs.PredictorType_predictorTypeDLTRandom,
+			Configuration: &configs.PredictorConfiguration_DLTPredictorRandomConfiguration{DLTPredictorRandomConfiguration: &configs.DLTPredictorRandomConfiguration{}},
 		},
 		Jobs: []*objects.Job{
 			job1, job2, job3, job4,
+			//job1, job4,
 		},
 	}
-	bytes, err := json.MarshalIndent(simulatorConfig, "", "\t")
+	str, err := utils.MarshalJsonPB(simulatorConfig)
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile(configPath, bytes, 0666)
+	err = ioutil.WriteFile(configPath, []byte(str), 0666)
 	if err != nil {
 		panic(err)
 	}
-}
-
-func mustMarshal(i interface{}) []byte {
-	bytes, err := json.Marshal(i)
-	if err != nil {
-		panic(err)
-	}
-	return bytes
 }

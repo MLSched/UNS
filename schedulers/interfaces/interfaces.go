@@ -12,8 +12,6 @@ type Scheduler interface {
 	events.EventHandler
 }
 
-type EventPusher func(SchedulerID string, event *events.Event)
-
 type Service interface {
 	StartService()
 	RegisterRM(event *eventsobjs.RMRegisterResourceManagerEvent, resourceMgr resourcemgr.Interface) *events.Result

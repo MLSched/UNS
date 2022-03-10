@@ -83,21 +83,28 @@
 		"schedulersConfiguration": {
 			"partitionID2SchedulerConfiguration": {
 				"SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID": {
-					"configurationBytes": "eyJTY2hlZHVsZXJJRCI6IlNJTkdMRV9QQVJUSVRJT05fRExUX1NJTVVMQVRPUl9TQ0hFRFVMRVIiLCJyZXNvdXJjZU1hbmFnZXJJRCI6IlNJTkdMRV9QQVJUSVRJT05fRExUX1NJTVVMQVRPUl9SRVNPVVJDRV9NQU5BR0VSX0lEIiwicGFydGl0aW9uSUQiOiJTSU5HTEVfUEFSVElUSU9OX0RMVF9TSU1VTEFUT1JfUEFSVElUSU9OX0lEIiwiaW50ZXJ2YWxOYW5vIjoxMDAwMDAwMDAwMH0="
+					"naiveSchedulerConfiguration": {
+						"SchedulerID": "SINGLE_PARTITION_DLT_SIMULATOR_SCHEDULER",
+						"resourceManagerID": "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID",
+						"partitionID": "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
+						"intervalNano": "10000000000000000"
+					}
 				}
 			}
 		}
 	},
 	"predictorConfiguration": {
-		"predictorType": 1,
-		"configurationBytes": "e30="
+		"predictorType": "predictorTypeDLTRandom",
+		"DLTPredictorRandomConfiguration": {
+
+		}
 	},
 	"jobs": [
 		{
 			"jobID": "JOB_1",
-			"jobType": 1,
+			"jobType": "jobTypeDLT",
 			"taskGroup": {
-				"taskGroupType": 2,
+				"taskGroupType": "taskGroupTypeGang",
 				"tasks": [
 					{
 						"taskID": "JOB_1_TASK_1"
@@ -106,38 +113,50 @@
 						"taskID": "JOB_1_TASK_2"
 					}
 				],
-				"taskGroupInfoBytes": "eyJleHRyYSI6ImV5SkVURlJIWVc1blZIbHdaU0k2TVgwPSJ9"
-			}
+				"gangTaskGroupInfo": {
+					"taskGroupType": "taskGroupTypeGang",
+					"extra": "eyJETFRHYW5nVHlwZSI6MX0="
+				}
+			},
+			"submitTimeNanoSecond": "1000000000"
 		},
 		{
 			"jobID": "JOB_2",
-			"jobType": 1,
+			"jobType": "jobTypeDLT",
 			"taskGroup": {
-				"taskGroupType": 1,
+				"taskGroupType": "taskGroupTypeSingle",
 				"tasks": [
 					{
 						"taskID": "JOB_2_TASK_1"
 					}
-				]
-			}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "1000000000"
 		},
 		{
 			"jobID": "JOB_3",
-			"jobType": 1,
+			"jobType": "jobTypeDLT",
 			"taskGroup": {
-				"taskGroupType": 1,
+				"taskGroupType": "taskGroupTypeSingle",
 				"tasks": [
 					{
 						"taskID": "JOB_3_TASK_1"
 					}
-				]
-			}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "1000000000"
 		},
 		{
 			"jobID": "JOB_4",
-			"jobType": 1,
+			"jobType": "jobTypeDLT",
 			"taskGroup": {
-				"taskGroupType": 2,
+				"taskGroupType": "taskGroupTypeGang",
 				"tasks": [
 					{
 						"taskID": "JOB_4_TASK_1"
@@ -146,8 +165,12 @@
 						"taskID": "JOB_4_TASK_2"
 					}
 				],
-				"taskGroupInfoBytes": "eyJleHRyYSI6ImV5SkVURlJIWVc1blZIbHdaU0k2TVgwPSJ9"
-			}
+				"gangTaskGroupInfo": {
+					"taskGroupType": "taskGroupTypeGang",
+					"extra": "eyJETFRHYW5nVHlwZSI6MX0="
+				}
+			},
+			"submitTimeNanoSecond": "3000000000"
 		}
 	]
 }
