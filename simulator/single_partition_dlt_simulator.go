@@ -95,7 +95,7 @@ func (s *SinglePartitionDLTSimulator) simulateInternal() {
 		callback  func()
 		necessity bool
 	}
-	simulateClosest2FinishAllocation := func() *timeAndCallback {
+	simulateClosestFinishAllocation := func() *timeAndCallback {
 		allocations := s.partitionContext.GetPendingAllocationsSlice()
 		//s.printAllocations(allocations)
 		predictResult, err := s.predictor.Predict(s.partitionContext, allocations)
@@ -143,7 +143,7 @@ func (s *SinglePartitionDLTSimulator) simulateInternal() {
 					JobAllocations:  append(closest2FinishAllocations, newStartedPlaceholderAllocations...),
 					CurrentNanoTime: finishTime,
 				}, nil)
-				log.Printf("simulateClosest2FinishAllocation callback called, closest to finish allocations = %+v, current nano time = %d", closest2FinishAllocations, finishTime)
+				log.Printf("simulateClosestFinishAllocation callback called, closest to finish allocations = %+v, current nano time = %d", closest2FinishAllocations, finishTime)
 				s.pushAllocations(finishTime, closest2FinishAllocations)
 			},
 		}
@@ -194,10 +194,10 @@ func (s *SinglePartitionDLTSimulator) simulateInternal() {
 		return &timeAndCallback{nanoTime: math.MaxInt64, necessity: true, callback: nil}
 	}
 	simulations := []func() *timeAndCallback{
-		simulateClosest2FinishAllocation,
+		simulateUpdateAllocations,
+		simulateClosestFinishAllocation,
 		simulateClosestSubmitJobs,
 		simulateNextIntervalScheduleTime,
-		simulateUpdateAllocations,
 	}
 	for {
 		closestTime := int64(math.MaxInt64)
@@ -317,21 +317,23 @@ func (s *SinglePartitionDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSU
 	}
 	allocations := eo.NewJobAllocations
 	filteredAllocations := make([]*objects.JobAllocation, 0, len(allocations))
-	//nextAlloc:
+nextAlloc:
 	for _, allocation := range allocations {
 		if allocation.GetPlaceholder() {
 			filteredAllocations = append(filteredAllocations, allocation)
 			continue
 		}
 		if s.partitionContext.PendingAllocations[allocation.GetJobID()] != nil {
-			panic(fmt.Sprintf("simulator ignores allocation of jobID = %s since it is already allocated", allocation.GetJobID()))
-			//continue nextAlloc
+			reason := fmt.Sprintf("simulator ignores allocation of jobID = %s since it is already allocated", allocation.GetJobID())
+			log.Println(reason)
+			//panic(fmt.Sprintf("simulator ignores allocation of jobID = %s since it is already allocated", allocation.GetJobID()))
+			continue nextAlloc
 		}
 		for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(allocation) {
 			if occupiedAcceleratorIDs[acceleratorID] == true {
-				panic(fmt.Sprintf("simulator ignores allocation of jobID = %s, acceleratorID = %s is already occupied", allocation.GetJobID(), acceleratorID))
-				//log.Printf("simulator ignores allocation of jobID = %s, acceleratorID = %s is already occupied", allocation.GetJobID(), acceleratorID)
-				//continue nextAlloc
+				//panic(fmt.Sprintf("simulator ignores allocation of jobID = %s, acceleratorID = %s is already occupied", allocation.GetJobID(), acceleratorID))
+				log.Printf("simulator ignores allocation of jobID = %s, acceleratorID = %s is already occupied", allocation.GetJobID(), acceleratorID)
+				continue nextAlloc
 			}
 		}
 		for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(allocation) {
