@@ -137,12 +137,12 @@ import (
 //		},
 //	}
 //
-//	partitionContext.HandleUpdateJobsEvent(&events.RMUpdateJobsEvent{
+//	partitionContext.UpdateJobs(&events.RMUpdateJobsEvent{
 //		NewJobs: []*objects.Job{
 //			job1, job2, job3,
 //		},
 //	}, nil)
-//	partitionContext.HandleUpdateAllocationsEvent(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
+//	partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
 //		{
 //			JobID:                        job1.GetJobID(),
 //			StartExecutionTimeNanoSecond: 1e9,
@@ -365,12 +365,12 @@ import (
 //		},
 //	}
 //
-//	partitionContext.HandleUpdateJobsEvent(&events.RMUpdateJobsEvent{
+//	partitionContext.UpdateJobs(&events.RMUpdateJobsEvent{
 //		NewJobs: []*objects.Job{
 //			job1, job2, job3, job4,
 //		},
 //	}, nil)
-//	partitionContext.HandleUpdateAllocationsEvent(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
+//	partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
 //		{
 //			JobID:                        job1.GetJobID(),
 //			StartExecutionTimeNanoSecond: 0,
@@ -624,12 +624,12 @@ import (
 //		},
 //	}
 //
-//	partitionContext.HandleUpdateJobsEvent(&events.RMUpdateJobsEvent{
+//	partitionContext.UpdateJobs(&events.RMUpdateJobsEvent{
 //		NewJobs: []*objects.Job{
 //			job1, job2, job3, job4,
 //		},
 //	}, nil)
-//	partitionContext.HandleUpdateAllocationsEvent(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
+//	partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
 //		{
 //			JobID:                        job1.GetJobID(),
 //			StartExecutionTimeNanoSecond: 0,
@@ -883,12 +883,12 @@ import (
 //		},
 //	}
 //
-//	partitionContext.HandleUpdateJobsEvent(&events.RMUpdateJobsEvent{
+//	partitionContext.UpdateJobs(&events.RMUpdateJobsEvent{
 //		NewJobs: []*objects.Job{
 //			job1, job2, job3, job4,
 //		},
 //	}, nil)
-//	partitionContext.HandleUpdateAllocationsEvent(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
+//	partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
 //		{
 //			JobID:                        job1.GetJobID(),
 //			StartExecutionTimeNanoSecond: 70000 * 1e9,
@@ -1151,12 +1151,12 @@ func TestCase5(t *testing.T) {
 		},
 	}
 
-	partitionContext.HandleUpdateJobsEvent(&events.RMUpdateJobsEvent{
+	partitionContext.UpdateJobs(&events.RMUpdateJobsEvent{
 		NewJobs: []*objects.Job{
 			job1, job2, job3, job4,
 		},
 	}, nil)
-	partitionContext.HandleUpdateAllocationsEvent(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
+	partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
 		{
 			JobID:                        job1.GetJobID(),
 			StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},

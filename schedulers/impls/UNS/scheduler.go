@@ -11,6 +11,10 @@ type Scheduler struct {
 	Config *configs.UNSSchedulerConfiguration
 }
 
+func (s *Scheduler) DoSchedule() int64 {
+	panic("implement me")
+}
+
 func (s *Scheduler) HandleEvent(event *events.Event) {
 	panic("implement me")
 }

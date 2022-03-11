@@ -8,30 +8,40 @@ import "config.proto";
 
 // RM prefix means an event initiated by Resource Manager
 
+// 同步事件：RM -> Service
+// 资源管理器将自己注册到调度服务上的事件。
 message RMRegisterResourceManagerEvent {
-  string resourceManagerID = 1;
-  RMConfiguration configuration = 2;
+  RMConfiguration configuration = 1;
 }
 
+// 异步事件：RM -> Partition -> Scheduler
+// 资源管理器更新allocation的事件。
 message RMUpdateAllocationsEvent {
   repeated JobAllocation jobAllocations = 1;
 
+  // 模拟器专用：更新时间
   int64 currentNanoTime = 255;
 }
 
+// 异步事件：RM -> Partition -> Scheduler
 message RMUpdateJobsEvent {
   repeated Job newJobs = 1;
   repeated string removedJobIDs = 2;
 
+  // 模拟器专用：更新时间
   int64 currentNanoTime = 255;
 }
 
+// 异步事件：RM -> Partition -> Scheduler
+// 模拟器专用：更新时间
 message RMUpdateTimeEvent {
   int64 currentNanoTime = 255;
 }
 
 // SS prefix means an event initiated by Scheduler
 
+// 异步事件：Scheduler -> RM
+// 调度器向资源管理器提议新的任务分配
 message SSUpdateAllocationsEvent {
   repeated JobAllocation newJobAllocations = 1;
 }

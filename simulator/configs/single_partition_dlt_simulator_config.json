@@ -87,7 +87,8 @@
 						"SchedulerID": "SINGLE_PARTITION_DLT_SIMULATOR_SCHEDULER",
 						"resourceManagerID": "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID",
 						"partitionID": "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
-						"intervalNano": "10000000000000000"
+						"intervalNano": "1000000000000000000",
+						"syncMode": true
 					}
 				}
 			}

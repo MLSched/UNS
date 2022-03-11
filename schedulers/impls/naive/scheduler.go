@@ -1,7 +1,6 @@
 package naive
 
 import (
-	"UNS/events"
 	"UNS/pb_gen/configs"
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
@@ -22,26 +21,17 @@ func (s *Scheduler) GetSchedulerID() string {
 	return s.Config.GetSchedulerID()
 }
 
-func (s *Scheduler) HandleEvent(event *events.Event) {
-	switch event.Data.(type) {
-	case *eventsobjs.RMUpdateJobsEvent, *eventsobjs.RMUpdateAllocationsEvent:
-		s.WaitSchedule()
-	}
-}
-
 func Build(configuration interface{}, pusher base.EventPusher, partitionContextAware base.PartitionContextAware) (interfaces.Scheduler, error) {
 	c := configuration.(*configs.NaiveSchedulerConfiguration)
 	sche := &Scheduler{
 		Config: c,
-		pusher: pusher,
 	}
-	sche.IntervalSchedulerTemplate = base.NewIntervalSchedulerTemplate(sche, 1e16, partitionContextAware)
+	sche.IntervalSchedulerTemplate = base.NewIntervalSchedulerTemplate(sche, c.GetIntervalNano(), partitionContextAware, c.GetSyncMode(), pusher)
 	return sche, nil
 }
 
-func (s *Scheduler) Schedule() (scheduleTime int64) {
+func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 	partitionContext := s.GetPartitionContext().Clone()
-	scheduleTime = partitionContext.Now()
 	unscheduledJobs := make([]*objects.Job, 0)
 	for _, job := range partitionContext.UnfinishedJobs {
 		if _, ok := partitionContext.PendingAllocations[job.GetJobID()]; !ok {
@@ -49,7 +39,7 @@ func (s *Scheduler) Schedule() (scheduleTime int64) {
 		}
 	}
 	if len(unscheduledJobs) == 0 {
-		return
+		return nil
 	}
 	nodesMap := make(map[string]*objects.Node)
 	for _, node := range partitionContext.Meta.GetNodes() {
@@ -74,7 +64,7 @@ func (s *Scheduler) Schedule() (scheduleTime int64) {
 	}
 
 	if len(unoccupiedAcceleratorIDsMap) == 0 {
-		return
+		return nil
 	}
 
 	newAllocations := make([]*objects.JobAllocation, 0)
@@ -121,11 +111,5 @@ func (s *Scheduler) Schedule() (scheduleTime int64) {
 		}
 		newAllocations = append(newAllocations, newAllocation)
 	}
-	resultChan := make(chan *events.Result)
-	s.pusher(s.GetSchedulerID(), &events.Event{
-		Data:       &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: newAllocations},
-		ResultChan: resultChan,
-	})
-	<-resultChan
-	return
+	return &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: newAllocations}
 }

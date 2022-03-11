@@ -142,7 +142,7 @@ func (ss *LocalSchedulersService) handleEventFromRM(e *eventFromRM) {
 	defer ss.mu.RUnlock()
 	mappings, ok := ss.ResourceManagerID2Mapping[e.RMID]
 	if !ok {
-		events.Reply(e.Event.ResultChan, &events.Result{
+		events.Reply(e.Event, &events.Result{
 			Succeeded: false,
 			Reason:    fmt.Sprintf("Non-registered RMID, RMID = [%s]", e.RMID),
 		})
@@ -150,14 +150,12 @@ func (ss *LocalSchedulersService) handleEventFromRM(e *eventFromRM) {
 	for _, mapping := range mappings {
 		if mapping.PartitionContext.Meta.GetPartitionID() == e.PartitionID {
 			go func() {
-				mapping.PartitionContext.HandleEvent(e.Event)
 				mapping.Scheduler.HandleEvent(e.Event)
-				events.ReplySucceeded(e.Event.ResultChan)
 			}()
 			return
 		}
 	}
-	events.Reply(e.Event.ResultChan, &events.Result{
+	events.Reply(e.Event, &events.Result{
 		Succeeded: false,
 		Reason:    fmt.Sprintf("Non-existed Partition ID, RMID = [%s], Partition ID = [%s]", e.RMID, e.PartitionID),
 	})
@@ -168,13 +166,12 @@ func (ss *LocalSchedulersService) handleEventFromScheduler(e *eventFromScheduler
 	defer ss.mu.RUnlock()
 	mapping, ok := ss.SchedulerID2Mapping[e.SchedulerID]
 	if !ok {
-		events.Reply(e.Event.ResultChan, &events.Result{
+		events.Reply(e.Event, &events.Result{
 			Succeeded: false,
 			Reason:    fmt.Sprintf("Non-existed Scheduler ID, Scheduler ID = [%s]", e.SchedulerID),
 		})
 	}
 	go func() {
 		mapping.ResourceManager.HandleEvent(e.Event)
-		events.ReplySucceeded(e.Event.ResultChan)
 	}()
 }

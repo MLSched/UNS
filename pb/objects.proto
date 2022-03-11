@@ -5,18 +5,18 @@ option go_package = "UNS/pb_gen/objects";
 
 import "google/protobuf/wrappers.proto";
 
+// Job
+// 表示一个用户提交的一个任务。
+// 使用JobType表示任务类型，如：DLT
 message Job {
   string jobID = 1;
   JobType jobType = 2;
   string description = 3;
   TaskGroup taskGroup = 4;
   int64 submitTimeNanoSecond = 5;
+  UserGroup userGroup = 6;
 
   bytes extra = 255;
-}
-
-message DLTJobExtra {
-  int64 totalMiniBatches = 1;
 }
 
 enum JobType {
@@ -24,6 +24,31 @@ enum JobType {
   jobTypeDLT = 1;
 }
 
+message UserGroup {
+  string user = 1;
+  string group = 2;
+}
+
+message DLTJobExtra {
+  int64 totalMiniBatches = 1;
+}
+
+// TaskGroup
+// 表示这个任务包含的Task组，每个Task可理解为一个可执行程序（如容器）。
+// 若一个TaskGroup若只包含一个Task，则是一个单机任务。
+// 若一个TaskGroup包含多个Task，则是一个分布式任务。
+// 一个TaskGroup内的所有Task必须同时占有资源时才能启动，并且它们一定会同时结束（gang scheduling)
+message TaskGroup {
+  TaskGroupType taskGroupType = 1;
+  repeated Task tasks = 2;
+  oneof TaskGroupInfo {
+    SingleTaskGroup singleTaskGroupInfo = 3;
+    GangTaskGroup gangTaskGroupInfo = 4;
+  }
+}
+
+// Task
+// 表示一个可执行程序（如容器）
 message Task {
   string taskID = 1;
   string description = 2;
@@ -35,15 +60,6 @@ enum TaskGroupType {
   taskGroupTypeUnknown = 0;
   taskGroupTypeSingle = 1;
   taskGroupTypeGang = 2;
-}
-
-message TaskGroup {
-  TaskGroupType taskGroupType = 1;
-  repeated Task tasks = 2;
-  oneof TaskGroupInfo {
-    SingleTaskGroup singleTaskGroupInfo = 3;
-    GangTaskGroup gangTaskGroupInfo = 4;
-  }
 }
 
 message SingleTaskGroup {
@@ -66,6 +82,8 @@ enum DLTGangType {
   DLTGangTypePipelineParallel = 2;
 }
 
+// Cluster
+// 集群的资源视图，每个集群对应一个资源管理器，所以包含一个resourceManagerID
 message Cluster {
   string resourceManagerID = 1;
   string description = 2;
@@ -74,6 +92,11 @@ message Cluster {
   bytes extra = 255;
 }
 
+// Partition
+// 一个资源管理器管理的全部资源可能被分为多个集群分区，
+// 它们分别使用不同的调度器进行调度。
+// 如100个节点组成的集群，前50个和后50个节点分别组成两个Partition。
+// 则他们可以互不影响的使用两个调度器进行调度。
 message Partition {
   string partitionID = 1;
   string description = 2;
@@ -82,6 +105,8 @@ message Partition {
   bytes extra = 255;
 }
 
+// Node
+// 描述一个节点的资源视图。
 message Node {
   string nodeID = 1;
   string description = 2;
@@ -90,6 +115,9 @@ message Node {
   bytes extra = 255;
 }
 
+// CPUSocket
+// 描述一个CPU插槽，以及对应该CPU插槽的资源。
+// 包含CPU描述信息，主机内存，加速器（多个）
 message CPUSocket {
   string CPUSocketID = 1;
   string description = 2;
@@ -150,19 +178,28 @@ message AcceleratorMemory {
   bytes extra = 255;
 }
 
+// JobAllocation
+// 表示一个Job的全部Task分配得到的资源。
+// 并且包含一个Job的开始执行时间与执行总时间。
 message JobAllocation {
   string jobID = 1;
   string resourceManagerID = 2;
   string partitionID = 3;
   repeated TaskAllocation taskAllocations = 4;
+  // Nullable 表示一个任务的开始执行时间。
+  // 仅当RM向调度器发送该JobAllocation时，开始时间和duration才有意义。
+  // 如果开始执行时间是Null，则它必须是一个placeholder，否则将会被认为是非法的JobAllocation
   google.protobuf.Int64Value startExecutionTimeNanoSecond = 5;
   int64 durationNanoSecond = 6;
+  // placeholder表示该任务分配是具有占位符功能的，即等待所有需要的资源释放后，再让该任务占用它需要的资源。
   bool placeholder = 7;
   bool finished = 8;
 
   bytes extra = 255;
 }
 
+// TaskAllocation
+// 表示Task所占用的内存，CPU，加速器等信息。
 message TaskAllocation {
   string nodeID = 1;
   string taskID = 2;

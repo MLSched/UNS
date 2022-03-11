@@ -5,15 +5,20 @@ import "objects.proto";
 
 option go_package = "UNS/pb_gen/configs";
 
+// 资源管理器配置
 message RMConfiguration {
+  // 指定集群物理视图
   Cluster cluster = 1;
+  // 指定多个调度器的配置
   SchedulersConfiguration schedulersConfiguration = 2;
 }
 
+// 全部调度器的配置。目前包括针对每个partition的调度器配置
 message SchedulersConfiguration {
   map<string, SchedulerConfiguration> partitionID2SchedulerConfiguration = 1;
 }
 
+// 针对单个调度器的配置。
 message SchedulerConfiguration {
   SchedulerType schedulerType = 1;
   oneof Configuration {
@@ -22,6 +27,7 @@ message SchedulerConfiguration {
   }
 }
 
+// 调度器类型
 enum SchedulerType {
   schedulerTypeNaive = 0;
   schedulerTypeUNS = 1;
@@ -32,6 +38,7 @@ message NaiveSchedulerConfiguration {
   string resourceManagerID = 2;
   string partitionID = 3;
   int64 intervalNano = 4;
+  bool syncMode = 5;
 }
 
 message UNSSchedulerConfiguration {
@@ -39,6 +46,16 @@ message UNSSchedulerConfiguration {
   string resourceManagerID = 2;
   string partitionID = 3;
   int64 intervalNano = 4;
+  bool syncMode = 5;
+}
+
+// 任务执行时间预测器的配置
+message PredictorConfiguration {
+  PredictorType predictorType = 1;
+  oneof Configuration {
+    DLTPredictorRandomConfiguration DLTPredictorRandomConfiguration = 2;
+    DLTPredictorDataOrientedDataFormat DLTPredictorDataOrientedDataFormat = 3;
+  }
 }
 
 enum PredictorType {
@@ -47,18 +64,12 @@ enum PredictorType {
   predictorTypeDLTDataOriented = 2;
 }
 
-message PredictorConfiguration {
-  PredictorType predictorType = 1;
-  oneof Configuration {
-      DLTPredictorRandomConfiguration DLTPredictorRandomConfiguration = 2;
-      DLTPredictorDataOrientedDataFormat DLTPredictorDataOrientedDataFormat = 3;
-  }
-}
-
+// 随机产生任务执行时间（仅测试用）
 message DLTPredictorRandomConfiguration {
   // intentionally empty.
 }
 
+// 面向利用现有数据，预测任务执行时间
 message DLTPredictorDataOrientedConfiguration {
   string dataSourcePath = 1;
 }
@@ -82,6 +93,7 @@ message DLTTaskData {
 }
 
 
+// 模拟器配置
 message SinglePartitionDLTSimulatorConfiguration {
   string resourceManagerID = 1;
   string partitionID = 2;

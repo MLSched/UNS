@@ -107,10 +107,11 @@ func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
 	}
 	naiveSchedulerConfiguration := &configs.SchedulerConfiguration_NaiveSchedulerConfiguration{
 		NaiveSchedulerConfiguration: &configs.NaiveSchedulerConfiguration{
-			IntervalNano:      1e16,
+			IntervalNano:      1e18,
 			SchedulerID:       "SINGLE_PARTITION_DLT_SIMULATOR_SCHEDULER",
 			ResourceManagerID: rmID,
 			PartitionID:       partitionID,
+			SyncMode:          true,
 		},
 	}
 	schedulerConfiguration := &configs.SchedulerConfiguration{

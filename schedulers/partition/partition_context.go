@@ -1,9 +1,9 @@
 package partition
 
 import (
-	"UNS/events"
 	eventobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -64,20 +64,7 @@ func (c *Context) refreshView() {
 	}
 }
 
-func (c *Context) HandleEvent(event *events.Event) {
-	switch eo := event.Data.(type) {
-	case *eventobjs.RMUpdateAllocationsEvent:
-		c.HandleUpdateAllocationsEvent(eo, event.ResultChan)
-	case *eventobjs.RMUpdateJobsEvent:
-		c.HandleUpdateJobsEvent(eo, event.ResultChan)
-	case *eventobjs.RMUpdateTimeEvent:
-		c.HandleUpdateTimeEvent(eo, event.ResultChan)
-	default:
-		log.Printf("Partition Context ID = [%s] received unknown event = [%v]", c.Meta.GetPartitionID(), event.Data)
-	}
-}
-
-func (c *Context) HandleUpdateAllocationsEvent(eo *eventobjs.RMUpdateAllocationsEvent, resultChan chan *events.Result) {
+func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if eo.GetCurrentNanoTime() != 0 {
@@ -88,10 +75,7 @@ func (c *Context) HandleUpdateAllocationsEvent(eo *eventobjs.RMUpdateAllocations
 		if _, ok := c.UnfinishedJobs[jobID]; !ok {
 			reason := fmt.Sprintf("Partition Context ID = [%s] update allocations, encounter unkonwn job ID = [%s]", c.Meta.GetPartitionID(), jobID)
 			log.Println(reason)
-			events.Reply(resultChan, &events.Result{
-				Succeeded: false,
-				Reason:    reason,
-			})
+			return errors.New(reason)
 		}
 	}
 	for _, updatedJobAllocation := range eo.JobAllocations {
@@ -104,9 +88,10 @@ func (c *Context) HandleUpdateAllocationsEvent(eo *eventobjs.RMUpdateAllocations
 			c.PendingAllocations[jobID] = updatedJobAllocation
 		}
 	}
+	return nil
 }
 
-func (c *Context) HandleUpdateJobsEvent(eo *eventobjs.RMUpdateJobsEvent, resultChan chan *events.Result) {
+func (c *Context) UpdateJobs(eo *eventobjs.RMUpdateJobsEvent) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if eo.GetCurrentNanoTime() != 0 {
@@ -116,20 +101,14 @@ func (c *Context) HandleUpdateJobsEvent(eo *eventobjs.RMUpdateJobsEvent, resultC
 		if _, duplicated := c.UnfinishedJobs[job.GetJobID()]; duplicated {
 			reason := fmt.Sprintf("Partition Context ID = [%s] update jobs, add new jobs, encounter duplicated job ID = [%s]", c.Meta.GetPartitionID(), job.GetJobID())
 			log.Println(reason)
-			events.Reply(resultChan, &events.Result{
-				Succeeded: false,
-				Reason:    reason,
-			})
+			return errors.New(reason)
 		}
 	}
 	for _, jobID := range eo.GetRemovedJobIDs() {
 		if _, exists := c.UnfinishedJobs[jobID]; !exists {
 			reason := fmt.Sprintf("Partition Context ID = [%s] update jobs, remove jobs, encounter unkown job ID = [%s]", c.Meta.GetPartitionID(), jobID)
 			log.Println(reason)
-			events.Reply(resultChan, &events.Result{
-				Succeeded: false,
-				Reason:    reason,
-			})
+			return errors.New(reason)
 		}
 	}
 	for _, job := range eo.GetNewJobs() {
@@ -139,11 +118,12 @@ func (c *Context) HandleUpdateJobsEvent(eo *eventobjs.RMUpdateJobsEvent, resultC
 		delete(c.UnfinishedJobs, jobID)
 		delete(c.PendingAllocations, jobID)
 	}
+	return nil
 }
 
-func (c *Context) HandleUpdateTimeEvent(eo *eventobjs.RMUpdateTimeEvent, resultChan chan *events.Result) {
+func (c *Context) UpdateTime(eo *eventobjs.RMUpdateTimeEvent) error {
 	c.updateCurrentTime(eo.GetCurrentNanoTime())
-	events.ReplySucceeded(resultChan)
+	return nil
 }
 
 func (c *Context) updateCurrentTime(currentNanoTime int64) {
