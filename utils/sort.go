@@ -1,6 +1,8 @@
 package utils
 
-import "sort"
+import (
+	"sort"
+)
 
 func SortFloat64(data []float64) {
 	sorter := &Float64Sorter{Data: data}
@@ -11,6 +13,32 @@ func SortInt64(data []int64) {
 	sorter := &Int64Sorter{Data: data}
 	sort.Sort(sorter)
 }
+
+//func SortExecutionRanges(data []*objects.ExecutionRange) {
+//	sorter := &Sorter{
+//		LenFunc: func() int {
+//			return len(data)
+//		},
+//		LessFunc: func(i, j int) bool {
+//			if data[i].GetStartExecutionTimeNanoSecond() != nil && data[j].GetStartExecutionTimeNanoSecond() != nil {
+//				return data[i].GetStartExecutionTimeNanoSecond().GetValue() < data[j].GetStartExecutionTimeNanoSecond().GetValue()
+//			}
+//			if data[i].GetStartExecutionTimeNanoSecond() == nil {
+//				return false
+//			}
+//			return true
+//		},
+//		SwapFunc: func(i, j int) {
+//			t := data[i]
+//			data[i] = data[j]
+//			data[j] = t
+//		},
+//	}
+//	if sort.IsSorted(sorter) {
+//		return
+//	}
+//	sort.Sort(sorter)
+//}
 
 type Sorter struct {
 	LenFunc  func() int

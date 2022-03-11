@@ -13,6 +13,9 @@ import (
 	"math"
 )
 
+// DLTBasePredictor
+// 支持DLT任务，包含Single和Gang类型的TaskGroup的执行时间预测。
+// 仅支持非抢占的task
 type DLTBasePredictor struct {
 	*base.Base
 	impl DLTPredictorTemplate
@@ -47,9 +50,27 @@ func (p *DLTBasePredictor) PrerequisiteCheck(partitionContext *partition.Context
 	if err := p.Base.PrerequisiteCheck(partitionContext, allocations); err != nil {
 		return err
 	}
+	//for _, allocation := range allocations {
+	//	job := partitionContext.GetUnfinishedJob(allocation.GetJobID())
+	//	for _, taskAllocation := range allocation.GetTaskAllocations() {
+	//		if len(taskAllocation.GetExecutionRanges()) > 1 {
+	//			reason := "DLTBasePredictor PrerequisiteCheck failed, do not only support preemptive task allocation prediction, but execution ranges len > 1"
+	//			log.Println(reason)
+	//			return errors.New(reason)
+	//		}
+	//	}
+	//	for _, task := range job.GetTaskGroup().GetTasks() {
+	//		if task.GetPreemptive() {
+	//			reason := "DLTBasePredictor PrerequisiteCheck failed, do not only support preemptive task allocation prediction"
+	//			log.Println(reason)
+	//			return errors.New(reason)
+	//		}
+	//	}
+	//}
 	return nil
 }
 
+// Predict 预测全部allocations的开始时间和结束时间。由于只支持Single和Gang类型的时间预测，所以预测结果仅包含单一数字。
 func (p *DLTBasePredictor) Predict(partitionContext *partition.Context, allocations []*objects.JobAllocation) (interfaces.PredictResult, error) {
 	return p.PredictByEndTime(partitionContext, allocations, math.MaxInt64)
 }
@@ -99,19 +120,33 @@ func (p *DLTBasePredictor) buildPredictSessionContext(partitionContext *partitio
 }
 
 func (p *DLTBasePredictor) isAllocationPredicted(ctx *PredictSessionContext, allocation *objects.JobAllocation) bool {
-	return ctx.result.IsResultComplete(allocation)
+	return ctx.result.IsResultComplete(allocation.GetTaskAllocations()[0])
+}
+
+func (p *DLTBasePredictor) extractStartTime(allocation *objects.JobAllocation) *int64 {
+	t := p.extractRepresentTaskAllocation(allocation).GetStartExecutionTimeNanoSecond()
+	if t != nil {
+		v := t.GetValue()
+		return &v
+	}
+	return nil
+}
+
+func (p *DLTBasePredictor) extractRepresentTaskAllocation(allocation *objects.JobAllocation) *objects.TaskAllocation {
+	return allocation.GetTaskAllocations()[0]
 }
 
 func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *PredictSessionContext, allocations []*objects.JobAllocation) error {
 	// firstly, predict jobs with TaskGroupType of 'single'
 	startExecutionTimeKnownAllocation := make([]*objects.JobAllocation, 0, len(allocations))
 	for _, allocation := range allocations {
-		if allocation.GetStartExecutionTimeNanoSecond() == nil {
+		taskAllocation := p.extractRepresentTaskAllocation(allocation)
+		if taskAllocation.GetStartExecutionTimeNanoSecond() == nil {
 			// skip allocations with unknown start execution time.
 			continue
 		}
 		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil {
-			ctx.result.UpdateStartExecutionTime(allocation, allocation.GetStartExecutionTimeNanoSecond().GetValue())
+			ctx.result.UpdateStartExecutionTime(taskAllocation, taskAllocation.GetStartExecutionTimeNanoSecond().GetValue())
 		}
 		startExecutionTimeKnownAllocation = append(startExecutionTimeKnownAllocation, allocation)
 	}
@@ -120,7 +155,7 @@ func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Pr
 		return err
 	}
 	for allocation, finishTime := range r {
-		ctx.result.UpdateFinishTime(allocation, finishTime)
+		ctx.result.UpdateFinishTime(p.extractRepresentTaskAllocation(allocation), finishTime)
 	}
 	return nil
 }
@@ -132,7 +167,7 @@ nextAlloc:
 		if p.isAllocationPredicted(ctx, allocation) {
 			continue
 		}
-		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil && allocation.GetPlaceholder() {
+		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil && p.extractRepresentTaskAllocation(allocation).GetPlaceholder() {
 			placeholderAcceleratorIDs := make([]string, 0, len(allocation.GetTaskAllocations()))
 			for _, taskAllocation := range allocation.GetTaskAllocations() {
 				placeholderAcceleratorIDs = append(placeholderAcceleratorIDs, taskAllocation.GetAcceleratorAllocation().GetAcceleratorID())
@@ -145,22 +180,23 @@ nextAlloc:
 					if previousAllocation.GetJobID() == allocation.GetJobID() {
 						continue
 					}
-					if previousAllocation.GetPlaceholder() && previousAllocation.GetStartExecutionTimeNanoSecond() == nil {
+					taskAllocation := p.extractRepresentTaskAllocation(previousAllocation)
+					if taskAllocation.GetPlaceholder() && taskAllocation.GetStartExecutionTimeNanoSecond() == nil {
 						continue
 					}
-					if _, complete := ctx.result.GetResult(previousAllocation); !complete {
-						ctx.result.UpdateStartExecutionTime(allocation, 0)
-						ctx.result.UpdateFinishTime(allocation, 0)
+					if _, complete := ctx.result.GetResult(taskAllocation); !complete {
+						ctx.result.UpdateStartExecutionTime(taskAllocation, 0)
+						ctx.result.UpdateFinishTime(taskAllocation, 0)
 						continue nextAlloc
 					}
-					r, _ := ctx.result.GetResult(previousAllocation)
+					r, _ := ctx.result.GetResult(taskAllocation)
 					startExecutionTime = math.Max(float64(*r.GetFinishNanoTime()), startExecutionTime)
 				}
 			}
 			if startExecutionTime != 0. {
 				marked = true
 			}
-			ctx.result.UpdateStartExecutionTime(allocation, int64(startExecutionTime))
+			ctx.result.UpdateStartExecutionTime(p.extractRepresentTaskAllocation(allocation), int64(startExecutionTime))
 		}
 	}
 	return marked
@@ -182,7 +218,7 @@ func (p *DLTBasePredictor) getGangTaskGroupDLTExtra(ctx *PredictSessionContext, 
 // 因为placeholder任务的存在，它们不知道自己什么时候开始，我们需要将其他全部任务的结束时间算出后，才能计算他们的开始执行时间。
 // 而allocation在Predict中是只读的，我们需要另外的数据结构存储它们临时的开始时间。
 func (p *DLTBasePredictor) getStartExecutionNanoTimeInSession(ctx *PredictSessionContext, allocation *objects.JobAllocation) *int64 {
-	r, _ := ctx.result.GetResult(allocation)
+	r, _ := ctx.result.GetResult(p.extractRepresentTaskAllocation(allocation))
 	return r.GetStartExecutionNanoTime()
 }
 

@@ -145,24 +145,24 @@ func (c *Context) Clone() *Context {
 		clonedTaskAllocations := make([]*objects.TaskAllocation, 0, len(allocation.GetTaskAllocations()))
 		for _, taskAllocation := range allocation.GetTaskAllocations() {
 			clonedTaskAllocations = append(clonedTaskAllocations, &objects.TaskAllocation{
-				NodeID:                taskAllocation.GetNodeID(),
-				TaskID:                taskAllocation.GetTaskID(),
-				HostMemoryAllocation:  taskAllocation.GetHostMemoryAllocation(),
-				CPUSocketAllocations:  taskAllocation.GetCPUSocketAllocations(),
-				AcceleratorAllocation: taskAllocation.GetAcceleratorAllocation(),
-				Extra:                 taskAllocation.GetExtra(),
+				NodeID:                       taskAllocation.GetNodeID(),
+				TaskID:                       taskAllocation.GetTaskID(),
+				HostMemoryAllocation:         taskAllocation.GetHostMemoryAllocation(),
+				CPUSocketAllocations:         taskAllocation.GetCPUSocketAllocations(),
+				AcceleratorAllocation:        taskAllocation.GetAcceleratorAllocation(),
+				Extra:                        taskAllocation.GetExtra(),
+				StartExecutionTimeNanoSecond: taskAllocation.GetStartExecutionTimeNanoSecond(),
+				DurationNanoSecond:           taskAllocation.GetDurationNanoSecond(),
+				Placeholder:                  taskAllocation.GetPlaceholder(),
 			})
 		}
 		cloned.PendingAllocations[jobID] = &objects.JobAllocation{
-			JobID:                        allocation.GetJobID(),
-			ResourceManagerID:            allocation.GetResourceManagerID(),
-			PartitionID:                  allocation.GetPartitionID(),
-			TaskAllocations:              allocation.GetTaskAllocations(),
-			StartExecutionTimeNanoSecond: allocation.GetStartExecutionTimeNanoSecond(),
-			DurationNanoSecond:           allocation.GetDurationNanoSecond(),
-			Placeholder:                  allocation.GetPlaceholder(),
-			Finished:                     allocation.GetFinished(),
-			Extra:                        allocation.GetExtra(),
+			JobID:             allocation.GetJobID(),
+			ResourceManagerID: allocation.GetResourceManagerID(),
+			PartitionID:       allocation.GetPartitionID(),
+			TaskAllocations:   allocation.GetTaskAllocations(),
+			Finished:          allocation.GetFinished(),
+			Extra:             allocation.GetExtra(),
 		}
 	}
 	cloned.UnfinishedJobs = c.UnfinishedJobs

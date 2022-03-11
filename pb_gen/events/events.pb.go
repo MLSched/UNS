@@ -71,7 +71,7 @@ func (x *RMRegisterResourceManagerEvent) GetConfiguration() *configs.RMConfigura
 	return nil
 }
 
-// 异步事件：RM -> Partition -> Scheduler
+// 异步事件：RM -> Scheduler
 // 资源管理器更新allocation的事件。
 type RMUpdateAllocationsEvent struct {
 	state         protoimpl.MessageState
@@ -129,7 +129,7 @@ func (x *RMUpdateAllocationsEvent) GetCurrentNanoTime() int64 {
 	return 0
 }
 
-// 异步事件：RM -> Partition -> Scheduler
+// 异步事件：RM -> Scheduler
 type RMUpdateJobsEvent struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -194,7 +194,7 @@ func (x *RMUpdateJobsEvent) GetCurrentNanoTime() int64 {
 	return 0
 }
 
-// 异步事件：RM -> Partition -> Scheduler
+// 异步事件：RM -> Scheduler
 // 模拟器专用：更新时间
 type RMUpdateTimeEvent struct {
 	state         protoimpl.MessageState

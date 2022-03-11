@@ -3,7 +3,7 @@ package UNS
 import (
 	"UNS/events"
 	"UNS/pb_gen/configs"
-	"UNS/schedulers/impls/base"
+	"UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
 )
 

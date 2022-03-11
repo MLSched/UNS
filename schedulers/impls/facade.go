@@ -3,9 +3,9 @@ package impls
 import (
 	"UNS/pb_gen"
 	"UNS/pb_gen/configs"
-	"UNS/schedulers/impls/UNS"
-	"UNS/schedulers/impls/base"
-	"UNS/schedulers/impls/naive"
+	"UNS/schedulers/impls/DLT/UNS"
+	"UNS/schedulers/impls/DLT/base"
+	"UNS/schedulers/impls/DLT/naive"
 	"UNS/schedulers/interfaces"
 	"fmt"
 )

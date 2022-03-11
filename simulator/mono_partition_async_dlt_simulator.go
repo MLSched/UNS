@@ -19,7 +19,7 @@ import (
 	"sort"
 )
 
-type SinglePartitionDLTSimulator struct {
+type MonoPartitionAsyncDLTSimulator struct {
 	config                  *configs.SinglePartitionDLTSimulatorConfiguration
 	partitionContext        *partition.Context
 	predictor               interfaces.Predictor
@@ -27,7 +27,7 @@ type SinglePartitionDLTSimulator struct {
 	updateAllocationsEvents []*eventobjs.RMUpdateAllocationsEvent
 }
 
-func NewSinglePartitionDLTSimulator(configurationPath string) *SinglePartitionDLTSimulator {
+func NewSinglePartitionDLTSimulator(configurationPath string) *MonoPartitionAsyncDLTSimulator {
 	config := &configs.SinglePartitionDLTSimulatorConfiguration{}
 	bytes, err := ioutil.ReadFile(configurationPath)
 	if err != nil {
@@ -37,17 +37,17 @@ func NewSinglePartitionDLTSimulator(configurationPath string) *SinglePartitionDL
 	if err != nil {
 		panic(err)
 	}
-	return &SinglePartitionDLTSimulator{
+	return &MonoPartitionAsyncDLTSimulator{
 		config: config,
 	}
 }
 
-func (s *SinglePartitionDLTSimulator) StartSimulation() {
+func (s *MonoPartitionAsyncDLTSimulator) StartSimulation() {
 	s.simulatePrerequisite()
 	s.simulateInternal()
 }
 
-func (s *SinglePartitionDLTSimulator) simulatePrerequisite() {
+func (s *MonoPartitionAsyncDLTSimulator) simulatePrerequisite() {
 	// 1. init service
 	schedulers.InitLocalSchedulersService()
 	serviceInst := schedulers.GetServiceInstance()
@@ -61,7 +61,7 @@ func (s *SinglePartitionDLTSimulator) simulatePrerequisite() {
 		panic(result.Reason)
 	}
 	if size := len(rmConfiguration.GetCluster().GetPartitions()); size == 0 || size > 1 {
-		panic("SinglePartitionDLTSimulator partition count is not 1.")
+		panic("MonoPartitionAsyncDLTSimulator partition count is not 1.")
 	}
 	var err error
 	// 3. build partition
@@ -88,7 +88,7 @@ func (s *SinglePartitionDLTSimulator) simulatePrerequisite() {
 	}()
 }
 
-func (s *SinglePartitionDLTSimulator) simulateInternal() {
+func (s *MonoPartitionAsyncDLTSimulator) simulateInternal() {
 	type timeAndCallback struct {
 		nanoTime  int64
 		callback  func()
@@ -99,10 +99,10 @@ func (s *SinglePartitionDLTSimulator) simulateInternal() {
 		//s.printAllocations(allocations)
 		predictResult, err := s.predictor.Predict(s.partitionContext, allocations)
 		if err != nil {
-			panic(fmt.Sprintf("SinglePartitionDLTSimulator Predict err = %s", err))
+			panic(fmt.Sprintf("MonoPartitionAsyncDLTSimulator Predict err = %s", err))
 		}
 		for _, allocation := range allocations {
-			r, _ := predictResult.GetResult(allocation)
+			r, _ := predictResult.GetResult(allocation.GetTaskAllocations()[0])
 			if *r.GetFinishNanoTime() == *r.GetStartExecutionNanoTime() {
 				panic(fmt.Sprintf("predictResult Finish = %d, Start = %d， allocation jobID = %s", *r.GetFinishNanoTime(), *r.GetStartExecutionNanoTime(), allocation.GetJobID()))
 			}
@@ -110,7 +110,7 @@ func (s *SinglePartitionDLTSimulator) simulateInternal() {
 		finishTime := int64(math.MaxInt64)
 		closest2FinishAllocations := make([]*objects.JobAllocation, 0)
 		for _, allocation := range allocations {
-			r, _ := predictResult.GetResult(allocation)
+			r, _ := predictResult.GetResult(allocation.GetTaskAllocations()[0])
 			jobFinishNanoTime := *r.GetFinishNanoTime()
 			if jobFinishNanoTime < finishTime {
 				finishTime = jobFinishNanoTime
@@ -122,8 +122,8 @@ func (s *SinglePartitionDLTSimulator) simulateInternal() {
 		}
 		newStartedPlaceholderAllocations := make([]*objects.JobAllocation, 0)
 		for _, allocation := range allocations {
-			r, _ := predictResult.GetResult(allocation)
-			if allocation.GetPlaceholder() && allocation.GetStartExecutionTimeNanoSecond() == nil && r.GetStartExecutionNanoTime() != nil {
+			r, _ := predictResult.GetResult(allocation.GetTaskAllocations()[0])
+			if allocation.GetTaskAllocations()[0].GetPlaceholder() && allocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond() == nil && r.GetStartExecutionNanoTime() != nil {
 				newStartedPlaceholderAllocations = append(newStartedPlaceholderAllocations, allocation)
 			}
 		}
@@ -133,10 +133,16 @@ func (s *SinglePartitionDLTSimulator) simulateInternal() {
 			callback: func() {
 				for _, allocation := range closest2FinishAllocations {
 					allocation.Finished = true
-					allocation.DurationNanoSecond = finishTime - allocation.GetStartExecutionTimeNanoSecond().GetValue()
+					ftaskAllocation := allocation.GetTaskAllocations()[0]
+					for _, taskAllocation := range allocation.GetTaskAllocations() {
+						taskAllocation.DurationNanoSecond = finishTime - ftaskAllocation.GetStartExecutionTimeNanoSecond().GetValue()
+					}
+					//allocation.DurationNanoSecond = finishTime - allocation.GetStartExecutionTimeNanoSecond().GetValue()
 				}
 				for _, allocation := range newStartedPlaceholderAllocations {
-					allocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: finishTime}
+					for _, taskAllocation := range allocation.GetTaskAllocations() {
+						taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: finishTime}
+					}
 				}
 				err := s.partitionContext.UpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
 					JobAllocations:  append(closest2FinishAllocations, newStartedPlaceholderAllocations...),
@@ -244,7 +250,7 @@ func (s *SinglePartitionDLTSimulator) simulateInternal() {
 	}
 }
 
-func (s *SinglePartitionDLTSimulator) pushAllocations(currentNanoTime int64, allocations []*objects.JobAllocation) {
+func (s *MonoPartitionAsyncDLTSimulator) pushAllocations(currentNanoTime int64, allocations []*objects.JobAllocation) {
 	resultChan := make(chan *events.Result)
 	s.push(&events.Event{
 		Data: &eventobjs.RMUpdateAllocationsEvent{
@@ -262,7 +268,7 @@ func (s *SinglePartitionDLTSimulator) pushAllocations(currentNanoTime int64, all
 	log.Printf("simulator pushAllocations jobIDs = %+v, result %+v\n", jobIDs, r)
 }
 
-func (s *SinglePartitionDLTSimulator) pushNewJobs(submitTime int64, newJobs []*objects.Job) {
+func (s *MonoPartitionAsyncDLTSimulator) pushNewJobs(submitTime int64, newJobs []*objects.Job) {
 	resultChan := make(chan *events.Result)
 	s.push(&events.Event{
 		Data: &eventobjs.RMUpdateJobsEvent{
@@ -280,7 +286,7 @@ func (s *SinglePartitionDLTSimulator) pushNewJobs(submitTime int64, newJobs []*o
 	log.Printf("simulator pushNewJobs finished, newJobs = %+v, result %+v\n", jobIDs, r)
 }
 
-func (s *SinglePartitionDLTSimulator) pushUpdateTime(currentNanoTime int64) {
+func (s *MonoPartitionAsyncDLTSimulator) pushUpdateTime(currentNanoTime int64) {
 	resultChan := make(chan *events.Result)
 	s.push(&events.Event{
 		Data: &eventobjs.RMUpdateTimeEvent{
@@ -293,30 +299,30 @@ func (s *SinglePartitionDLTSimulator) pushUpdateTime(currentNanoTime int64) {
 	log.Printf("simulator pushUpdateTime %d, result %+v\n", currentNanoTime, r)
 }
 
-func (s *SinglePartitionDLTSimulator) push(event *events.Event) {
+func (s *MonoPartitionAsyncDLTSimulator) push(event *events.Event) {
 	inst := schedulers.GetServiceInstance()
 	inst.Push(s.GetResourceManagerID(), s.GetPartitionID(), event)
 }
 
-func (s *SinglePartitionDLTSimulator) getRegisterConfiguration() *configs.RMConfiguration {
+func (s *MonoPartitionAsyncDLTSimulator) getRegisterConfiguration() *configs.RMConfiguration {
 	return s.config.GetRmConfiguration()
 }
 
-func (s *SinglePartitionDLTSimulator) GetResourceManagerID() string {
+func (s *MonoPartitionAsyncDLTSimulator) GetResourceManagerID() string {
 	return s.config.GetResourceManagerID()
 }
 
-func (s *SinglePartitionDLTSimulator) GetPartitionID() string {
+func (s *MonoPartitionAsyncDLTSimulator) GetPartitionID() string {
 	return s.config.GetPartitionID()
 }
 
-func (s *SinglePartitionDLTSimulator) HandleEvent(event *events.Event) {
+func (s *MonoPartitionAsyncDLTSimulator) HandleEvent(event *events.Event) {
 	err := func() error {
 		switch eo := event.Data.(type) {
 		case *eventobjs.SSUpdateAllocationsEvent:
 			return s.handleSSUpdateAllocation(eo)
 		default:
-			panic(fmt.Sprintf("SinglePartitionDLTSimulator handle unknown event %+v", event))
+			panic(fmt.Sprintf("MonoPartitionAsyncDLTSimulator handle unknown event %+v", event))
 		}
 	}()
 	if err != nil {
@@ -329,7 +335,7 @@ func (s *SinglePartitionDLTSimulator) HandleEvent(event *events.Event) {
 	}
 }
 
-func (s *SinglePartitionDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSUpdateAllocationsEvent) error {
+func (s *MonoPartitionAsyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSUpdateAllocationsEvent) error {
 	occupiedAcceleratorIDs := make(map[string]bool)
 	for _, pendingAllocation := range s.partitionContext.PendingAllocations {
 		for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(pendingAllocation) {
@@ -340,7 +346,7 @@ func (s *SinglePartitionDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSU
 	filteredAllocations := make([]*objects.JobAllocation, 0, len(allocations))
 nextAlloc:
 	for _, allocation := range allocations {
-		if allocation.GetPlaceholder() {
+		if allocation.GetTaskAllocations()[0].GetPlaceholder() {
 			filteredAllocations = append(filteredAllocations, allocation)
 			continue
 		}
@@ -360,7 +366,10 @@ nextAlloc:
 		for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(allocation) {
 			occupiedAcceleratorIDs[acceleratorID] = true
 		}
-		allocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: s.partitionContext.Now()}
+		for _, taskAllocation := range allocation.GetTaskAllocations() {
+			taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: s.partitionContext.Now()}
+		}
+		//allocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: s.partitionContext.Now()}
 		filteredAllocations = append(filteredAllocations, allocation)
 	}
 	filteredJobIDs := make([]string, 0, len(filteredAllocations))
@@ -383,7 +392,7 @@ nextAlloc:
 }
 
 // iterJobsBySubmitTime 获取根据submitTime排序的下一波任务。(submitTime int64, jobs []*objects.Job, next func())
-func (s *SinglePartitionDLTSimulator) iteratorJobsBySubmitTime() func() (int64, []*objects.Job, func() bool) {
+func (s *MonoPartitionAsyncDLTSimulator) iteratorJobsBySubmitTime() func() (int64, []*objects.Job, func() bool) {
 	jobs := s.getJobs()
 	sorter := &utils.Sorter{
 		LenFunc: func() int {
@@ -426,11 +435,11 @@ func (s *SinglePartitionDLTSimulator) iteratorJobsBySubmitTime() func() (int64, 
 	}
 }
 
-func (s *SinglePartitionDLTSimulator) getJobs() []*objects.Job {
+func (s *MonoPartitionAsyncDLTSimulator) getJobs() []*objects.Job {
 	return s.config.GetJobs()
 }
 
-func (s *SinglePartitionDLTSimulator) printAllocations(allocations []*objects.JobAllocation) {
+func (s *MonoPartitionAsyncDLTSimulator) printAllocations(allocations []*objects.JobAllocation) {
 	for _, a := range allocations {
 		s, _ := utils.MarshalJsonPB(a)
 		log.Println(s)

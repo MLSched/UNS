@@ -9,11 +9,10 @@ import (
 	"testing"
 )
 
-var configPath = "/Users/purchaser/go/src/UNS/simulator/configs/single_partition_dlt_simulator_config.json"
+var configPath = "/Users/purchaser/go/src/UNS/simulator/configs/mono_partition_async_dlt_simulator.json"
 
-func TestSinglePartitionDLTSimulator(t *testing.T) {
+func TestSimulator(t *testing.T) {
 	simulator := NewSinglePartitionDLTSimulator(configPath)
-	// schedulerConfigurationBytes := simulator.config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID"].GetConfigurationBytes()
 	simulator.StartSimulation()
 }
 
@@ -30,7 +29,7 @@ func TestUnmarshalConfiguration(t *testing.T) {
 	t.Log(config)
 }
 
-func TestSinglePartitionDLTSimulatorConfiguration(t *testing.T) {
+func TestSimulatorConfiguration(t *testing.T) {
 	rmID := "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID"
 	partitionID := "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID"
 	partition := &objects.Partition{

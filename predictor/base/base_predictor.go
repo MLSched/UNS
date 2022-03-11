@@ -8,6 +8,7 @@ import (
 	"log"
 )
 
+// Base 支持
 type Base struct {
 	SupportJobTypes       map[objects.JobType]bool
 	SupportTaskGroupTypes map[objects.TaskGroupType]bool
@@ -48,14 +49,58 @@ func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocation
 			log.Printf(reason)
 			return fmt.Errorf(reason)
 		}
-		if allocation.GetStartExecutionTimeNanoSecond() == nil && !allocation.GetPlaceholder() {
-			reason := fmt.Sprintf("Base prerequisiteCheck failed, a job allocation's start execution time is unset and it is not a placeholder. jobID = %s", job.GetJobID())
-			log.Printf(reason)
-			return fmt.Errorf(reason)
+		for _, taskAllocation := range allocation.GetTaskAllocations() {
+			if taskAllocation.GetStartExecutionTimeNanoSecond() == nil && !taskAllocation.GetPlaceholder() {
+				reason := fmt.Sprintf("a task execution range's start execution time is unset and it is not a placeholder")
+				log.Printf(reason)
+				return fmt.Errorf(reason)
+			}
+			//if err := p.ValidateExecutionRanges(taskAllocation.GetExecutionRanges()); err != nil {
+			//	reason := fmt.Sprintf("Base prerequisiteCheck failed, validate execution ranges failed. jobID = %s, jobType = %s, taskGroupType = %s, taskID = %s, err = %s",
+			//		job.GetJobID(), job.GetJobType(), job.GetTaskGroup().GetTaskGroupType(), taskAllocation.GetTaskID(), err.Error())
+			//	log.Printf(reason)
+			//	return fmt.Errorf(reason)
+			//}
 		}
 	}
 	return nil
 }
+
+//func (p *Base) ValidateExecutionRanges(ers []*objects.ExecutionRange) error {
+//	utils.SortExecutionRanges(ers)
+//	// ExecutionRanges最多包含一个右开放的区间
+//	containsDurationUnset := false
+//	for _, er := range ers {
+//		if er.GetDurationNanoSecond() == nil && containsDurationUnset {
+//			return errors.New("a task execution ranges cannot have two or more duration unset")
+//		}
+//		if er.GetDurationNanoSecond() == nil {
+//			containsDurationUnset = true
+//		}
+//		if er.GetStartExecutionTimeNanoSecond() == nil && !er.GetPlaceholder() {
+//			reason := fmt.Sprintf("a task execution range's start execution time is unset and it is not a placeholder")
+//			log.Printf(reason)
+//			return fmt.Errorf(reason)
+//		}
+//	}
+//	return nil
+//}
+//
+//func (p *Base) GetLastExecutionRange(ers []*objects.ExecutionRange) *objects.ExecutionRange {
+//	utils.SortExecutionRanges(ers)
+//	m := int64(-1)
+//	var last *objects.ExecutionRange = nil
+//	for _, er := range ers {
+//		if er.GetDurationNanoSecond() == nil {
+//			return er
+//		}
+//		if s := er.GetStartExecutionTimeNanoSecond().GetValue(); s > m {
+//			m = s
+//			last = er
+//		}
+//	}
+//	return last
+//}
 
 type EachPredictResult struct {
 	StartExecutionNanoTime *int64
@@ -77,29 +122,29 @@ func (r *EachPredictResult) GetFinishNanoTime() *int64 {
 }
 
 type PredictResult struct {
-	Results map[*objects.JobAllocation]*EachPredictResult
+	Results map[*objects.TaskAllocation]*EachPredictResult
 }
 
 func NewPredictResult() *PredictResult {
-	return &PredictResult{Results: make(map[*objects.JobAllocation]*EachPredictResult)}
+	return &PredictResult{Results: make(map[*objects.TaskAllocation]*EachPredictResult)}
 }
 
-func (r *PredictResult) UpdateStartExecutionTime(allocation *objects.JobAllocation, startExecutionNanoTime int64) {
+func (r *PredictResult) UpdateStartExecutionTime(allocation *objects.TaskAllocation, startExecutionNanoTime int64) {
 	if _, ok := r.Results[allocation]; !ok {
 		r.Results[allocation] = &EachPredictResult{}
 	}
 	r.Results[allocation].StartExecutionNanoTime = &startExecutionNanoTime
 }
 
-func (r *PredictResult) UpdateFinishTime(allocation *objects.JobAllocation, finishNanoTime int64) {
+func (r *PredictResult) UpdateFinishTime(allocation *objects.TaskAllocation, finishNanoTime int64) {
 	if _, ok := r.Results[allocation]; !ok {
 		r.Results[allocation] = &EachPredictResult{}
 	}
 	r.Results[allocation].FinishNanoTime = &finishNanoTime
 }
 
-func (r *PredictResult) IsResultComplete(allocation *objects.JobAllocation) bool {
-	result := r.Results[allocation]
+func (r *PredictResult) IsResultComplete(taskAllocation *objects.TaskAllocation) bool {
+	result := r.Results[taskAllocation]
 	if result == nil {
 		return false
 	}
@@ -109,6 +154,6 @@ func (r *PredictResult) IsResultComplete(allocation *objects.JobAllocation) bool
 	return false
 }
 
-func (r *PredictResult) GetResult(allocation *objects.JobAllocation) (interfaces.EachPredictResult, bool) {
-	return r.Results[allocation], r.IsResultComplete(allocation)
+func (r *PredictResult) GetResult(taskAllocation *objects.TaskAllocation) (interfaces.EachPredictResult, bool) {
+	return r.Results[taskAllocation], r.IsResultComplete(taskAllocation)
 }

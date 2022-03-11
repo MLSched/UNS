@@ -1151,20 +1151,20 @@ func TestCase5(t *testing.T) {
 		},
 	}
 
-	partitionContext.UpdateJobs(&events.RMUpdateJobsEvent{
+	_ = partitionContext.UpdateJobs(&events.RMUpdateJobsEvent{
 		NewJobs: []*objects.Job{
 			job1, job2, job3, job4,
 		},
-	}, nil)
-	partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
+	})
+	_ = partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
 		{
-			JobID:                        job1.GetJobID(),
-			StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
-			Placeholder:                  true,
+			JobID: job1.GetJobID(),
 			TaskAllocations: []*objects.TaskAllocation{
 				{
-					NodeID: "NODE_2",
-					TaskID: "JOB_1_TASK_1",
+					NodeID:                       "NODE_2",
+					TaskID:                       "JOB_1_TASK_1",
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
+					Placeholder:                  true,
 					AcceleratorAllocation: &objects.AcceleratorAllocation{
 						AcceleratorID: "ACCELERATOR_2_1_1",
 					},
@@ -1181,13 +1181,13 @@ func TestCase5(t *testing.T) {
 			Finished: false,
 		},
 		{
-			JobID:                        job2.GetJobID(),
-			StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
-			Placeholder:                  false,
+			JobID: job2.GetJobID(),
 			TaskAllocations: []*objects.TaskAllocation{
 				{
-					NodeID: "NODE_1",
-					TaskID: "JOB_2_TASK_1",
+					NodeID:                       "NODE_1",
+					TaskID:                       "JOB_2_TASK_1",
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
+					Placeholder:                  false,
 					AcceleratorAllocation: &objects.AcceleratorAllocation{
 						AcceleratorID: "ACCELERATOR_1_1_1",
 					},
@@ -1196,13 +1196,13 @@ func TestCase5(t *testing.T) {
 			Finished: false,
 		},
 		{
-			JobID:                        job3.GetJobID(),
-			StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
-			Placeholder:                  false,
+			JobID: job3.GetJobID(),
 			TaskAllocations: []*objects.TaskAllocation{
 				{
-					NodeID: "NODE_1",
-					TaskID: "JOB_3_TASK_1",
+					NodeID:                       "NODE_1",
+					TaskID:                       "JOB_3_TASK_1",
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
+					Placeholder:                  false,
 					AcceleratorAllocation: &objects.AcceleratorAllocation{
 						AcceleratorID: "ACCELERATOR_1_2_2",
 					},
@@ -1233,7 +1233,7 @@ func TestCase5(t *testing.T) {
 		//	},
 		//	Finished: false,
 		//},
-	}}, nil)
+	}})
 	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.PendingAllocations))
 	for _, allocation := range partitionContext.PendingAllocations {
 		allocations = append(allocations, allocation)
@@ -1262,7 +1262,7 @@ func TestCase5(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, allocation := range allocations {
-		each, complete := result.GetResult(allocation)
+		each, complete := result.GetResult(p.extractRepresentTaskAllocation(allocation))
 		t.Logf("allocation job ID = %s, startExecutionTime = %f, finishTime = %f, complete = %v", allocation.GetJobID(), float64(*each.GetStartExecutionNanoTime())/1e9, float64(*each.GetFinishNanoTime())/1e9, complete)
 	}
 

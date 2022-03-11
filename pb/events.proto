@@ -14,7 +14,7 @@ message RMRegisterResourceManagerEvent {
   RMConfiguration configuration = 1;
 }
 
-// 异步事件：RM -> Partition -> Scheduler
+// 异步事件：RM -> Scheduler
 // 资源管理器更新allocation的事件。
 message RMUpdateAllocationsEvent {
   repeated JobAllocation jobAllocations = 1;
@@ -23,7 +23,7 @@ message RMUpdateAllocationsEvent {
   int64 currentNanoTime = 255;
 }
 
-// 异步事件：RM -> Partition -> Scheduler
+// 异步事件：RM -> Scheduler
 message RMUpdateJobsEvent {
   repeated Job newJobs = 1;
   repeated string removedJobIDs = 2;
@@ -32,7 +32,7 @@ message RMUpdateJobsEvent {
   int64 currentNanoTime = 255;
 }
 
-// 异步事件：RM -> Partition -> Scheduler
+// 异步事件：RM -> Scheduler
 // 模拟器专用：更新时间
 message RMUpdateTimeEvent {
   int64 currentNanoTime = 255;

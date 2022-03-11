@@ -12,7 +12,7 @@ type Predictor interface {
 }
 
 type PredictResult interface {
-	GetResult(allocation *objects.JobAllocation) (EachPredictResult, bool)
+	GetResult(taskAllocation *objects.TaskAllocation) (EachPredictResult, bool)
 }
 
 type EachPredictResult interface {

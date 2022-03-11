@@ -4,29 +4,29 @@ import (
 	"UNS/pb_gen/configs"
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
-	"UNS/schedulers/impls/base"
+	base2 "UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
 	"log"
 )
 
 type Scheduler struct {
-	*base.IntervalSchedulerTemplate
+	*base2.IntervalSchedulerTemplate
 
 	Config *configs.NaiveSchedulerConfiguration
 
-	pusher base.EventPusher
+	pusher base2.EventPusher
 }
 
 func (s *Scheduler) GetSchedulerID() string {
 	return s.Config.GetSchedulerID()
 }
 
-func Build(configuration interface{}, pusher base.EventPusher, partitionContextAware base.PartitionContextAware) (interfaces.Scheduler, error) {
+func Build(configuration interface{}, pusher base2.EventPusher, partitionContextAware base2.PartitionContextAware) (interfaces.Scheduler, error) {
 	c := configuration.(*configs.NaiveSchedulerConfiguration)
 	sche := &Scheduler{
 		Config: c,
 	}
-	sche.IntervalSchedulerTemplate = base.NewIntervalSchedulerTemplate(sche, c.GetIntervalNano(), partitionContextAware, c.GetSyncMode(), pusher)
+	sche.IntervalSchedulerTemplate = base2.NewIntervalSchedulerTemplate(sche, c.GetIntervalNano(), partitionContextAware, c.GetSyncMode(), pusher)
 	return sche, nil
 }
 
