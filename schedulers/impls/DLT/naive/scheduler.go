@@ -34,7 +34,7 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 	partitionContext := s.GetPartitionContext().Clone()
 	unscheduledJobs := make([]*objects.Job, 0)
 	for _, job := range partitionContext.UnfinishedJobs {
-		if _, ok := partitionContext.PendingAllocations[job.GetJobID()]; !ok {
+		if _, ok := partitionContext.Allocations[job.GetJobID()]; !ok {
 			unscheduledJobs = append(unscheduledJobs, job)
 		}
 	}
@@ -56,7 +56,7 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 	for acceleratorID := range acceleratorID2NodeID {
 		unoccupiedAcceleratorIDsMap[acceleratorID] = true
 	}
-	for _, pendingAllocation := range partitionContext.PendingAllocations {
+	for _, pendingAllocation := range partitionContext.Allocations {
 		for _, taskAllocation := range pendingAllocation.GetTaskAllocations() {
 			acceleratorAllocation := taskAllocation.GetAcceleratorAllocation()
 			delete(unoccupiedAcceleratorIDsMap, acceleratorAllocation.GetAcceleratorID())

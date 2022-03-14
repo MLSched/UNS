@@ -33,11 +33,6 @@ func New(SupportJobTypes []objects.JobType, SupportTaskGroupTypes []objects.Task
 func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocations []*objects.JobAllocation) error {
 	for _, allocation := range allocations {
 		job := partitionContext.GetUnfinishedJob(allocation.GetJobID())
-		if allocation.GetFinished() {
-			reason := fmt.Sprintf("Base prerequisiteCheck failed, encounter finished allocation. jobID = %s", job.GetJobID())
-			log.Printf(reason)
-			return fmt.Errorf(reason)
-		}
 		if !p.SupportJobTypes[job.GetJobType()] {
 			reason := fmt.Sprintf("Base prerequisiteCheck failed, encounter unsupported job type. jobID = %s, jobType = %s", job.GetJobID(), job.GetJobType())
 			log.Printf(reason)

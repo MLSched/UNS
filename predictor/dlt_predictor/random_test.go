@@ -197,8 +197,8 @@ import (
 //			Finished: false,
 //		},
 //	}}, nil)
-//	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.PendingAllocations))
-//	for _, allocation := range partitionContext.PendingAllocations {
+//	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.Allocations))
+//	for _, allocation := range partitionContext.Allocations {
 //		allocations = append(allocations, allocation)
 //	}
 //
@@ -448,8 +448,8 @@ import (
 //			Finished: false,
 //		},
 //	}}, nil)
-//	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.PendingAllocations))
-//	for _, allocation := range partitionContext.PendingAllocations {
+//	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.Allocations))
+//	for _, allocation := range partitionContext.Allocations {
 //		allocations = append(allocations, allocation)
 //	}
 //
@@ -707,8 +707,8 @@ import (
 //			Finished: false,
 //		},
 //	}}, nil)
-//	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.PendingAllocations))
-//	for _, allocation := range partitionContext.PendingAllocations {
+//	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.Allocations))
+//	for _, allocation := range partitionContext.Allocations {
 //		allocations = append(allocations, allocation)
 //	}
 //
@@ -966,8 +966,8 @@ import (
 //			Finished: false,
 //		},
 //	}}, nil)
-//	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.PendingAllocations))
-//	for _, allocation := range partitionContext.PendingAllocations {
+//	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.Allocations))
+//	for _, allocation := range partitionContext.Allocations {
 //		allocations = append(allocations, allocation)
 //	}
 //
@@ -1156,7 +1156,7 @@ func TestCase5(t *testing.T) {
 			job1, job2, job3, job4,
 		},
 	})
-	_ = partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{JobAllocations: []*objects.JobAllocation{
+	_ = partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{UpdatedJobAllocations: []*objects.JobAllocation{
 		{
 			JobID: job1.GetJobID(),
 			TaskAllocations: []*objects.TaskAllocation{
@@ -1178,7 +1178,6 @@ func TestCase5(t *testing.T) {
 					Extra: nil,
 				},
 			},
-			Finished: false,
 		},
 		{
 			JobID: job2.GetJobID(),
@@ -1193,7 +1192,6 @@ func TestCase5(t *testing.T) {
 					},
 				},
 			},
-			Finished: false,
 		},
 		{
 			JobID: job3.GetJobID(),
@@ -1208,7 +1206,6 @@ func TestCase5(t *testing.T) {
 					},
 				},
 			},
-			Finished: false,
 		},
 		//{
 		//	JobID:                        job4.GetJobID(),
@@ -1234,8 +1231,8 @@ func TestCase5(t *testing.T) {
 		//	Finished: false,
 		//},
 	}})
-	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.PendingAllocations))
-	for _, allocation := range partitionContext.PendingAllocations {
+	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.Allocations))
+	for _, allocation := range partitionContext.Allocations {
 		allocations = append(allocations, allocation)
 	}
 

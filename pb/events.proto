@@ -17,7 +17,9 @@ message RMRegisterResourceManagerEvent {
 // 异步事件：RM -> Scheduler
 // 资源管理器更新allocation的事件。
 message RMUpdateAllocationsEvent {
-  repeated JobAllocation jobAllocations = 1;
+  repeated JobAllocation updatedJobAllocations = 1;
+  repeated string finishedJobIDs = 2;
+  repeated JobExecutionHistory jobExecutionHistories = 3;
 
   // 模拟器专用：更新时间
   int64 currentNanoTime = 255;

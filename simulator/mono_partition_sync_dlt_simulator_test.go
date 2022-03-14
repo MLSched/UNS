@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var configPath = "/Users/purchaser/go/src/UNS/simulator/configs/mono_partition_async_dlt_simulator.json"
+var configPath = "/Users/purchaser/go/src/UNS/simulator/configs/mono_partition_sync_dlt_simulator.json"
 
 func TestSimulator(t *testing.T) {
 	simulator := NewSinglePartitionDLTSimulator(configPath)

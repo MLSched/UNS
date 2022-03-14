@@ -15,9 +15,11 @@ type Context struct {
 	View *View
 	mu   *sync.RWMutex
 
-	PendingAllocations  map[string]*objects.JobAllocation
-	UnfinishedJobs      map[string]*objects.Job
-	FinishedAllocations map[string]*objects.JobAllocation
+	Allocations    map[string]*objects.JobAllocation
+	UnfinishedJobs map[string]*objects.Job
+	FinishedJobs   map[string]*objects.Job
+
+	ExecutionHistoryManager *ExecutionHistoryManager
 
 	*Util
 
@@ -32,12 +34,13 @@ type View struct {
 
 func Build(partition *objects.Partition) (*Context, error) {
 	ctx := &Context{
-		Meta:                partition,
-		mu:                  &sync.RWMutex{},
-		Util:                &Util{},
-		PendingAllocations:  make(map[string]*objects.JobAllocation),
-		UnfinishedJobs:      make(map[string]*objects.Job),
-		FinishedAllocations: make(map[string]*objects.JobAllocation),
+		Meta:                    partition,
+		mu:                      &sync.RWMutex{},
+		Util:                    &Util{},
+		Allocations:             make(map[string]*objects.JobAllocation),
+		UnfinishedJobs:          make(map[string]*objects.Job),
+		FinishedJobs:            make(map[string]*objects.Job),
+		ExecutionHistoryManager: NewExecutionHistoryManager(),
 	}
 	ctx.refreshView()
 	return ctx, nil
@@ -70,7 +73,7 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 	if eo.GetCurrentNanoTime() != 0 {
 		c.updateCurrentTime(eo.GetCurrentNanoTime())
 	}
-	for _, updatedJobAllocation := range eo.JobAllocations {
+	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {
 		jobID := updatedJobAllocation.GetJobID()
 		if _, ok := c.UnfinishedJobs[jobID]; !ok {
 			reason := fmt.Sprintf("Partition Context ID = [%s] update allocations, encounter unkonwn job ID = [%s]", c.Meta.GetPartitionID(), jobID)
@@ -78,16 +81,16 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 			return errors.New(reason)
 		}
 	}
-	for _, updatedJobAllocation := range eo.JobAllocations {
-		jobID := updatedJobAllocation.GetJobID()
-		if updatedJobAllocation.GetFinished() {
-			delete(c.PendingAllocations, jobID)
-			c.FinishedAllocations[jobID] = updatedJobAllocation
-			delete(c.UnfinishedJobs, jobID)
-		} else {
-			c.PendingAllocations[jobID] = updatedJobAllocation
-		}
+	for _, finishedJobID := range eo.FinishedJobIDs {
+		delete(c.Allocations, finishedJobID)
+		j := c.UnfinishedJobs[finishedJobID]
+		c.FinishedJobs[finishedJobID] = j
 	}
+	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {
+		jobID := updatedJobAllocation.GetJobID()
+		c.Allocations[jobID] = updatedJobAllocation
+	}
+	c.ExecutionHistoryManager.Add(eo.GetJobExecutionHistories()...)
 	return nil
 }
 
@@ -116,7 +119,7 @@ func (c *Context) UpdateJobs(eo *eventobjs.RMUpdateJobsEvent) error {
 	}
 	for _, jobID := range eo.GetRemovedJobIDs() {
 		delete(c.UnfinishedJobs, jobID)
-		delete(c.PendingAllocations, jobID)
+		delete(c.Allocations, jobID)
 	}
 	return nil
 }
@@ -141,7 +144,7 @@ func (c *Context) Clone() *Context {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	cloned, _ := Build(c.Meta)
-	for jobID, allocation := range c.PendingAllocations {
+	for jobID, allocation := range c.Allocations {
 		clonedTaskAllocations := make([]*objects.TaskAllocation, 0, len(allocation.GetTaskAllocations()))
 		for _, taskAllocation := range allocation.GetTaskAllocations() {
 			clonedTaskAllocations = append(clonedTaskAllocations, &objects.TaskAllocation{
@@ -152,21 +155,20 @@ func (c *Context) Clone() *Context {
 				AcceleratorAllocation:        taskAllocation.GetAcceleratorAllocation(),
 				Extra:                        taskAllocation.GetExtra(),
 				StartExecutionTimeNanoSecond: taskAllocation.GetStartExecutionTimeNanoSecond(),
-				DurationNanoSecond:           taskAllocation.GetDurationNanoSecond(),
 				Placeholder:                  taskAllocation.GetPlaceholder(),
 			})
 		}
-		cloned.PendingAllocations[jobID] = &objects.JobAllocation{
+		cloned.Allocations[jobID] = &objects.JobAllocation{
 			JobID:             allocation.GetJobID(),
 			ResourceManagerID: allocation.GetResourceManagerID(),
 			PartitionID:       allocation.GetPartitionID(),
 			TaskAllocations:   allocation.GetTaskAllocations(),
-			Finished:          allocation.GetFinished(),
 			Extra:             allocation.GetExtra(),
 		}
 	}
 	cloned.UnfinishedJobs = c.UnfinishedJobs
-	cloned.FinishedAllocations = c.FinishedAllocations
+	cloned.FinishedJobs = c.FinishedJobs
+	cloned.ExecutionHistoryManager = c.ExecutionHistoryManager.Clone()
 	return cloned
 }
 
@@ -179,8 +181,8 @@ func (c *Context) GetUnfinishedJob(jobID string) *objects.Job {
 func (c *Context) GetPendingAllocationsSlice() []*objects.JobAllocation {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	allocations := make([]*objects.JobAllocation, 0, len(c.PendingAllocations))
-	for _, allocation := range c.PendingAllocations {
+	allocations := make([]*objects.JobAllocation, 0, len(c.Allocations))
+	for _, allocation := range c.Allocations {
 		allocations = append(allocations, allocation)
 	}
 	return allocations
