@@ -10,14 +10,23 @@ import (
 )
 
 var configPath = "/Users/purchaser/go/src/UNS/simulator/configs/mono_partition_sync_dlt_simulator.json"
+var GiB = int64(1024 * 1024)
+
+func init() {
+	//f, err := os.OpenFile("/Users/purchaser/go/src/UNS/logs/simulator_test.log", os.O_CREATE, 0666)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//log.SetOutput(f)
+}
 
 func TestSimulator(t *testing.T) {
-	simulator := NewSinglePartitionDLTSimulator(configPath)
+	simulator := NewMonoPartitionSyncDLTSimulator(configPath)
 	simulator.StartSimulation()
 }
 
 func TestUnmarshalConfiguration(t *testing.T) {
-	config := &configs.SinglePartitionDLTSimulatorConfiguration{}
+	config := &configs.MonoPartitionSyncDLTSimulatorConfiguration{}
 	bytes, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		panic(err)
@@ -46,12 +55,18 @@ func TestSimulatorConfiguration(t *testing.T) {
 								AcceleratorID: "ACCELERATOR_1_1_1",
 								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
 									BriefType: "A100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
 								},
 							},
 							{
 								AcceleratorID: "ACCELERATOR_1_1_2",
 								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
 									BriefType: "A100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
 								},
 							},
 						},
@@ -63,12 +78,18 @@ func TestSimulatorConfiguration(t *testing.T) {
 								AcceleratorID: "ACCELERATOR_1_2_1",
 								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
 									BriefType: "V100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
 								},
 							},
 							{
 								AcceleratorID: "ACCELERATOR_1_2_2",
 								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
 									BriefType: "V100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
 								},
 							},
 						},
@@ -84,7 +105,10 @@ func TestSimulatorConfiguration(t *testing.T) {
 							{
 								AcceleratorID: "ACCELERATOR_2_1_1",
 								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
-									BriefType: "GTX 2080",
+									BriefType: "GTX 2080Ti",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
 								},
 							},
 						},
@@ -96,6 +120,9 @@ func TestSimulatorConfiguration(t *testing.T) {
 								AcceleratorID: "ACCELERATOR_2_2_1",
 								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
 									BriefType: "V100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
 								},
 							},
 						},
@@ -204,7 +231,7 @@ func TestSimulatorConfiguration(t *testing.T) {
 			TaskGroupInfo: job1and4TaskGroupInfo,
 		},
 	}
-	simulatorConfig := &configs.SinglePartitionDLTSimulatorConfiguration{
+	simulatorConfig := &configs.MonoPartitionSyncDLTSimulatorConfiguration{
 		ResourceManagerID: "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID",
 		PartitionID:       "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
 		RmConfiguration:   rmConfig,
@@ -216,6 +243,160 @@ func TestSimulatorConfiguration(t *testing.T) {
 			job1, job2, job3, job4,
 			//job1, job4,
 		},
+	}
+	str, err := utils.MarshalJsonPB(simulatorConfig)
+	if err != nil {
+		panic(err)
+	}
+	err = ioutil.WriteFile(configPath, []byte(str), 0666)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestDataOrientedPredictorSimulator(t *testing.T) {
+	rmID := "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID"
+	partitionID := "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID"
+	partition := &objects.Partition{
+		PartitionID: partitionID,
+		Description: "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION",
+		Nodes: []*objects.Node{
+			{
+				NodeID: "NODE_1",
+				CPUSockets: []*objects.CPUSocket{
+					{
+						CPUSocketID: "CPUSOCKET_1_1",
+						Accelerators: []*objects.Accelerator{
+							{
+								AcceleratorID: "ACCELERATOR_1_1_1",
+								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
+									BriefType: "A100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
+								},
+							},
+							{
+								AcceleratorID: "ACCELERATOR_1_1_2",
+								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
+									BriefType: "A100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
+								},
+							},
+						},
+					},
+					{
+						CPUSocketID: "CPUSOCKET_1_2",
+						Accelerators: []*objects.Accelerator{
+							{
+								AcceleratorID: "ACCELERATOR_1_2_1",
+								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
+									BriefType: "V100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
+								},
+							},
+							{
+								AcceleratorID: "ACCELERATOR_1_2_2",
+								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
+									BriefType: "V100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				NodeID: "NODE_2",
+				CPUSockets: []*objects.CPUSocket{
+					{
+						CPUSocketID: "CPUSOCKET_2_1",
+						Accelerators: []*objects.Accelerator{
+							{
+								AcceleratorID: "ACCELERATOR_2_1_1",
+								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
+									BriefType: "GTX 2080Ti",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
+								},
+							},
+						},
+					},
+					{
+						CPUSocketID: "CPUSOCKET_2_2",
+						Accelerators: []*objects.Accelerator{
+							{
+								AcceleratorID: "ACCELERATOR_2_2_1",
+								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
+									BriefType: "V100",
+									AcceleratorMemory: &objects.AcceleratorMemory{
+										BytesCapacity: 16 * GiB,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	naiveSchedulerConfiguration := &configs.SchedulerConfiguration_NaiveSchedulerConfiguration{
+		NaiveSchedulerConfiguration: &configs.NaiveSchedulerConfiguration{
+			IntervalNano:      1e18,
+			SchedulerID:       "SINGLE_PARTITION_DLT_SIMULATOR_SCHEDULER",
+			ResourceManagerID: rmID,
+			PartitionID:       partitionID,
+			SyncMode:          true,
+		},
+	}
+	schedulerConfiguration := &configs.SchedulerConfiguration{
+		SchedulerType: configs.SchedulerType_schedulerTypeNaive,
+		Configuration: naiveSchedulerConfiguration,
+	}
+
+	schedulersConfiguration := &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+		partitionID: schedulerConfiguration,
+	}}
+	rmConfig := &configs.RMConfiguration{
+		Cluster: &objects.Cluster{
+			ResourceManagerID: rmID,
+			Description:       "SINGLE_PARTITION_DLT_SIMULATOR_CLUSTER",
+			Partitions:        []*objects.Partition{partition},
+		},
+		SchedulersConfiguration: schedulersConfiguration,
+	}
+
+	casePath := "/Users/purchaser/go/src/UNS/cases/case_test.json"
+	bytes, err := ioutil.ReadFile(casePath)
+	if err != nil {
+		panic(err)
+	}
+	df := &configs.DLTPredictorDataOrientedDataFormat{}
+	err = utils.Unmarshal(string(bytes), df)
+	if err != nil {
+		panic(err)
+	}
+	jobs := make([]*objects.Job, 0, len(df.GetJobID2DLTJobData()))
+	for _, jobDLTData := range df.GetJobID2DLTJobData() {
+		jobs = append(jobs, jobDLTData.GetJob())
+	}
+
+	simulatorConfig := &configs.MonoPartitionSyncDLTSimulatorConfiguration{
+		ResourceManagerID: "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID",
+		PartitionID:       "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
+		RmConfiguration:   rmConfig,
+		PredictorConfiguration: &configs.PredictorConfiguration{
+			PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+			Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{DataSourcePath: casePath}},
+		},
+		Jobs: jobs,
 	}
 	str, err := utils.MarshalJsonPB(simulatorConfig)
 	if err != nil {

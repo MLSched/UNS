@@ -46,7 +46,7 @@ func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocation
 		}
 		for _, taskAllocation := range allocation.GetTaskAllocations() {
 			if taskAllocation.GetStartExecutionTimeNanoSecond() == nil && !taskAllocation.GetPlaceholder() {
-				reason := fmt.Sprintf("a task execution range's start execution time is unset and it is not a placeholder")
+				reason := fmt.Sprintf("a task's start execution time is unset and it is not a placeholder")
 				log.Printf(reason)
 				return fmt.Errorf(reason)
 			}

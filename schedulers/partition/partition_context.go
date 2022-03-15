@@ -84,6 +84,7 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 	for _, finishedJobID := range eo.FinishedJobIDs {
 		delete(c.Allocations, finishedJobID)
 		j := c.UnfinishedJobs[finishedJobID]
+		delete(c.UnfinishedJobs, finishedJobID)
 		c.FinishedJobs[finishedJobID] = j
 	}
 	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {

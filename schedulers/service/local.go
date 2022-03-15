@@ -97,7 +97,11 @@ func (ss *LocalSchedulersService) RegisterRM(event *eventsobjs.RMRegisterResourc
 			SchedulerConfiguration: c,
 			EventPusher:            ss.pushFromScheduler,
 			PartitionContextAware: func() *partition.Context {
-				return ss.clusterManager.GetPartitionContext(resourceMgr.GetResourceManagerID(), partitionID)
+				pc, err := ss.clusterManager.GetPartitionContext(resourceMgr.GetResourceManagerID(), partitionID)
+				if err != nil {
+					panic(err)
+				}
+				return pc
 			},
 		})
 		if err != nil {

@@ -31,10 +31,10 @@ func (m *Manager) RemoveClusterContext(resourceManagerID string) {
 	delete(m.resourceManagerID2ClusterContext, resourceManagerID)
 }
 
-func (m *Manager) GetPartitionContext(resourceManagerID string, partitionID string) *partition.Context {
+func (m *Manager) GetPartitionContext(resourceManagerID string, partitionID string) (*partition.Context, error) {
 	clusterContext := m.GetClusterContext(resourceManagerID)
 	if clusterContext == nil {
-		return nil
+		return nil, fmt.Errorf("non-exist resource manager ID %s", resourceManagerID)
 	}
 	return clusterContext.GetPartitionContext(partitionID)
 }

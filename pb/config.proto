@@ -54,7 +54,7 @@ message PredictorConfiguration {
   PredictorType predictorType = 1;
   oneof Configuration {
     DLTPredictorRandomConfiguration DLTPredictorRandomConfiguration = 2;
-    DLTPredictorDataOrientedDataFormat DLTPredictorDataOrientedDataFormat = 3;
+    DLTPredictorDataOrientedConfiguration DLTPredictorDataOrientedConfiguration = 3;
   }
 }
 
@@ -69,32 +69,44 @@ message DLTPredictorRandomConfiguration {
   // intentionally empty.
 }
 
-// 面向利用现有数据，预测任务执行时间
+// 面向现有数据，预测任务执行时间
 message DLTPredictorDataOrientedConfiguration {
   string dataSourcePath = 1;
 }
 
 message DLTPredictorDataOrientedDataFormat {
-  repeated Job jobs = 1;
-  map<string, DLTTaskData> taskID2Data = 2;
+  map<string, DLTJobData> jobID2DLTJobData = 1;
 }
 
-message DLTTaskData {
-  map<string, int64> acceleratorType2MiniBatchDurationNanoSecond = 1;
-  message SpaceSharingMiniBatchDuration {
-    message MiniBatchDurationPair {
-      int64 self = 1;
-      int64 shared = 2;
-    }
-    map<string, MiniBatchDurationPair> acceleratorType2SpaceSharingData = 2;
-  }
-  map<string, SpaceSharingMiniBatchDuration> spaceSharedTaskID2Data = 2;
-  int64 maximumAcceleratorMemoryCostBytes = 3;
+message DLTJobData {
+  Job job = 1;
+  int64 totalMiniBatches = 2;
+  map<string, int64> acceleratorType2MiniBatchDurationNanoSecond = 3;
+  float minSpaceSharingPenalty = 4;
+  float maxSpaceSharingPenalty = 5;
+  map<int64, float> consolidationLevel2Penalties = 6;
+  int64 maximumAcceleratorMemoryCostBytes = 7;
+}
+
+enum ConsolidationLevel {
+  Unknown = 0;
+  NVLink = 1;
+  SameCPUSocket = 2;
+  DiffCPUSocket = 3;
+  DiffNode = 4;
 }
 
 
 // 模拟器配置
-message SinglePartitionDLTSimulatorConfiguration {
+message MonoPartitionSyncDLTSimulatorConfiguration {
+  string resourceManagerID = 1;
+  string partitionID = 2;
+  RMConfiguration rmConfiguration = 3;
+  PredictorConfiguration predictorConfiguration = 4;
+  repeated Job jobs = 5;
+}
+
+message MonoPartitionAsyncDLTSimulatorConfiguration {
   string resourceManagerID = 1;
   string partitionID = 2;
   RMConfiguration rmConfiguration = 3;

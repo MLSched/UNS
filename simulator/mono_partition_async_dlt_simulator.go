@@ -18,19 +18,18 @@ import (
 	"math"
 	"sort"
 	"strconv"
-	"time"
 )
 
-type MonoPartitionSyncDLTSimulator struct {
-	config                  *configs.MonoPartitionSyncDLTSimulatorConfiguration
+type MonoPartitionAsyncDLTSimulator struct {
+	config                  *configs.MonoPartitionAsyncDLTSimulatorConfiguration
 	partitionContext        *partition.Context
 	predictor               interfaces.Predictor
 	scheduleIntervalNano    int64
 	updateAllocationsEvents []*eventobjs.RMUpdateAllocationsEvent
 }
 
-func NewMonoPartitionSyncDLTSimulator(configurationPath string) *MonoPartitionSyncDLTSimulator {
-	config := &configs.MonoPartitionSyncDLTSimulatorConfiguration{}
+func NewMonoPartitionAsyncDLTSimulator(configurationPath string) *MonoPartitionAsyncDLTSimulator {
+	config := &configs.MonoPartitionAsyncDLTSimulatorConfiguration{}
 	bytes, err := ioutil.ReadFile(configurationPath)
 	if err != nil {
 		panic(err)
@@ -39,17 +38,17 @@ func NewMonoPartitionSyncDLTSimulator(configurationPath string) *MonoPartitionSy
 	if err != nil {
 		panic(err)
 	}
-	return &MonoPartitionSyncDLTSimulator{
+	return &MonoPartitionAsyncDLTSimulator{
 		config: config,
 	}
 }
 
-func (s *MonoPartitionSyncDLTSimulator) StartSimulation() {
+func (s *MonoPartitionAsyncDLTSimulator) StartSimulation() {
 	s.simulatePrerequisite()
 	s.simulateInternal()
 }
 
-func (s *MonoPartitionSyncDLTSimulator) simulatePrerequisite() {
+func (s *MonoPartitionAsyncDLTSimulator) simulatePrerequisite() {
 	// 1. init service
 	schedulers.InitLocalSchedulersService()
 	serviceInst := schedulers.GetServiceInstance()
@@ -63,7 +62,7 @@ func (s *MonoPartitionSyncDLTSimulator) simulatePrerequisite() {
 		panic(result.Reason)
 	}
 	if size := len(rmConfiguration.GetCluster().GetPartitions()); size == 0 || size > 1 {
-		panic("MonoPartitionSyncDLTSimulator partition count is not 1.")
+		panic("MonoPartitionAsyncDLTSimulator partition count is not 1.")
 	}
 	var err error
 	// 3. build partition
@@ -90,7 +89,7 @@ func (s *MonoPartitionSyncDLTSimulator) simulatePrerequisite() {
 	}()
 }
 
-func (s *MonoPartitionSyncDLTSimulator) simulateInternal() {
+func (s *MonoPartitionAsyncDLTSimulator) simulateInternal() {
 	type timeAndCallback struct {
 		nanoTime  int64
 		callback  func()
@@ -101,7 +100,7 @@ func (s *MonoPartitionSyncDLTSimulator) simulateInternal() {
 		//s.printAllocations(allocations)
 		predictResult, err := s.predictor.Predict(s.partitionContext, allocations)
 		if err != nil {
-			panic(fmt.Sprintf("MonoPartitionSyncDLTSimulator Predict err = %s", err))
+			panic(fmt.Sprintf("MonoPartitionAsyncDLTSimulator Predict err = %s", err))
 		}
 		for _, allocation := range allocations {
 			r, _ := predictResult.GetResult(allocation.GetTaskAllocations()[0])
@@ -174,12 +173,7 @@ func (s *MonoPartitionSyncDLTSimulator) simulateInternal() {
 					panic(err)
 				}
 				log.Printf("simulateClosestFinishAllocation callback called, closest to finish allocations = %+v, current nano time = %d", closest2FinishAllocations, finishTime)
-				s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-					UpdatedJobAllocations: newStartedPlaceholderAllocations,
-					FinishedJobIDs:        finishedJobIDs,
-					JobExecutionHistories: jobExecutionHistories,
-					CurrentNanoTime:       finishTime,
-				})
+				s.pushAllocations(finishTime, closest2FinishAllocations)
 			},
 		}
 	}
@@ -229,10 +223,7 @@ func (s *MonoPartitionSyncDLTSimulator) simulateInternal() {
 			t := e.GetCurrentNanoTime()
 			return &timeAndCallback{nanoTime: t, necessity: true, callback: func() {
 				log.Printf("simulateUpdateAllocations callback called, current nano time = %d", t)
-				s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-					UpdatedJobAllocations: e.GetUpdatedJobAllocations(),
-					CurrentNanoTime:       t,
-				})
+				s.pushAllocations(t, e.GetUpdatedJobAllocations())
 			}}
 		}
 		return &timeAndCallback{nanoTime: math.MaxInt64, necessity: true, callback: nil}
@@ -277,17 +268,18 @@ func (s *MonoPartitionSyncDLTSimulator) simulateInternal() {
 			})
 			return
 		}
-		time.Sleep(10 * time.Millisecond)
 	}
 }
 
-func (s *MonoPartitionSyncDLTSimulator) pushUpdateAllocations(event *eventobjs.RMUpdateAllocationsEvent) {
+func (s *MonoPartitionAsyncDLTSimulator) pushAllocations(currentNanoTime int64, allocations []*objects.JobAllocation) {
 	resultChan := make(chan *events.Result)
 	s.push(&events.Event{
-		Data:       event,
+		Data: &eventobjs.RMUpdateAllocationsEvent{
+			UpdatedJobAllocations: allocations,
+			CurrentNanoTime:       currentNanoTime,
+		},
 		ResultChan: resultChan,
 	})
-	allocations := event.GetUpdatedJobAllocations()
 	jobIDs := make([]string, 0, len(allocations))
 	for _, allocation := range allocations {
 		jobIDs = append(jobIDs, allocation.GetJobID())
@@ -297,7 +289,7 @@ func (s *MonoPartitionSyncDLTSimulator) pushUpdateAllocations(event *eventobjs.R
 	log.Printf("simulator pushUpdateAllocations jobIDs = %+v, result %+v\n", jobIDs, r)
 }
 
-func (s *MonoPartitionSyncDLTSimulator) pushNewJobs(submitTime int64, newJobs []*objects.Job) {
+func (s *MonoPartitionAsyncDLTSimulator) pushNewJobs(submitTime int64, newJobs []*objects.Job) {
 	resultChan := make(chan *events.Result)
 	s.push(&events.Event{
 		Data: &eventobjs.RMUpdateJobsEvent{
@@ -315,7 +307,7 @@ func (s *MonoPartitionSyncDLTSimulator) pushNewJobs(submitTime int64, newJobs []
 	log.Printf("simulator pushNewJobs finished, newJobs = %+v, result %+v\n", jobIDs, r)
 }
 
-func (s *MonoPartitionSyncDLTSimulator) pushUpdateTime(currentNanoTime int64) {
+func (s *MonoPartitionAsyncDLTSimulator) pushUpdateTime(currentNanoTime int64) {
 	resultChan := make(chan *events.Result)
 	s.push(&events.Event{
 		Data: &eventobjs.RMUpdateTimeEvent{
@@ -328,30 +320,30 @@ func (s *MonoPartitionSyncDLTSimulator) pushUpdateTime(currentNanoTime int64) {
 	log.Printf("simulator pushUpdateTime %d, result %+v\n", currentNanoTime, r)
 }
 
-func (s *MonoPartitionSyncDLTSimulator) push(event *events.Event) {
+func (s *MonoPartitionAsyncDLTSimulator) push(event *events.Event) {
 	inst := schedulers.GetServiceInstance()
 	inst.Push(s.GetResourceManagerID(), s.GetPartitionID(), event)
 }
 
-func (s *MonoPartitionSyncDLTSimulator) getRegisterConfiguration() *configs.RMConfiguration {
+func (s *MonoPartitionAsyncDLTSimulator) getRegisterConfiguration() *configs.RMConfiguration {
 	return s.config.GetRmConfiguration()
 }
 
-func (s *MonoPartitionSyncDLTSimulator) GetResourceManagerID() string {
+func (s *MonoPartitionAsyncDLTSimulator) GetResourceManagerID() string {
 	return s.config.GetResourceManagerID()
 }
 
-func (s *MonoPartitionSyncDLTSimulator) GetPartitionID() string {
+func (s *MonoPartitionAsyncDLTSimulator) GetPartitionID() string {
 	return s.config.GetPartitionID()
 }
 
-func (s *MonoPartitionSyncDLTSimulator) HandleEvent(event *events.Event) {
+func (s *MonoPartitionAsyncDLTSimulator) HandleEvent(event *events.Event) {
 	err := func() error {
 		switch eo := event.Data.(type) {
 		case *eventobjs.SSUpdateAllocationsEvent:
 			return s.handleSSUpdateAllocation(eo)
 		default:
-			panic(fmt.Sprintf("MonoPartitionSyncDLTSimulator handle unknown event %+v", event))
+			panic(fmt.Sprintf("MonoPartitionAsyncDLTSimulator handle unknown event %+v", event))
 		}
 	}()
 	if err != nil {
@@ -364,7 +356,7 @@ func (s *MonoPartitionSyncDLTSimulator) HandleEvent(event *events.Event) {
 	}
 }
 
-func (s *MonoPartitionSyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSUpdateAllocationsEvent) error {
+func (s *MonoPartitionAsyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSUpdateAllocationsEvent) error {
 	occupiedAcceleratorIDs := make(map[string]bool)
 	for _, pendingAllocation := range s.partitionContext.Allocations {
 		for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(pendingAllocation) {
@@ -406,24 +398,22 @@ nextAlloc:
 		filteredJobIDs = append(filteredJobIDs, a.GetJobID())
 	}
 	log.Printf("simulator update SS allocations, job IDs = %+v\n", filteredJobIDs)
-	if len(filteredAllocations) > 0 {
-		err := s.partitionContext.UpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-			UpdatedJobAllocations: filteredAllocations,
-			CurrentNanoTime:       s.partitionContext.Now(),
-		})
-		if err != nil {
-			panic(err)
-		}
-		s.updateAllocationsEvents = append(s.updateAllocationsEvents, &eventobjs.RMUpdateAllocationsEvent{
-			UpdatedJobAllocations: filteredAllocations,
-			CurrentNanoTime:       s.partitionContext.Now(),
-		})
+	err := s.partitionContext.UpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
+		UpdatedJobAllocations: filteredAllocations,
+		CurrentNanoTime:       s.partitionContext.Now(),
+	})
+	if err != nil {
+		panic(err)
 	}
+	s.updateAllocationsEvents = append(s.updateAllocationsEvents, &eventobjs.RMUpdateAllocationsEvent{
+		UpdatedJobAllocations: filteredAllocations,
+		CurrentNanoTime:       s.partitionContext.Now(),
+	})
 	return nil
 }
 
 // iterJobsBySubmitTime 获取根据submitTime排序的下一波任务。(submitTime int64, jobs []*objects.Job, next func())
-func (s *MonoPartitionSyncDLTSimulator) iteratorJobsBySubmitTime() func() (int64, []*objects.Job, func() bool) {
+func (s *MonoPartitionAsyncDLTSimulator) iteratorJobsBySubmitTime() func() (int64, []*objects.Job, func() bool) {
 	jobs := s.getJobs()
 	sorter := &utils.Sorter{
 		LenFunc: func() int {
@@ -466,11 +456,11 @@ func (s *MonoPartitionSyncDLTSimulator) iteratorJobsBySubmitTime() func() (int64
 	}
 }
 
-func (s *MonoPartitionSyncDLTSimulator) getJobs() []*objects.Job {
+func (s *MonoPartitionAsyncDLTSimulator) getJobs() []*objects.Job {
 	return s.config.GetJobs()
 }
 
-func (s *MonoPartitionSyncDLTSimulator) printAllocations(allocations []*objects.JobAllocation) {
+func (s *MonoPartitionAsyncDLTSimulator) printAllocations(allocations []*objects.JobAllocation) {
 	for _, a := range allocations {
 		s, _ := utils.MarshalJsonPB(a)
 		log.Println(s)

@@ -2,6 +2,7 @@ package dlt_predictor
 
 import (
 	"UNS/pb_gen"
+	"UNS/pb_gen/configs"
 	"UNS/pb_gen/objects"
 	"UNS/predictor/base"
 	"UNS/predictor/interfaces"
@@ -9,7 +10,6 @@ import (
 	"UNS/utils"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 )
 
@@ -24,6 +24,7 @@ type DLTBasePredictor struct {
 type DLTPredictorTemplate interface {
 	getSingleTaskSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorID string, jobIDs []string) map[string]int64
 	getDataParallelTasksSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorIDs []string, jobIDs []string) map[string]int64
+	getMaximumAcceleratorMemoryCostBytes(ctx *PredictSessionContext, jobID string) int64
 	getJobTotalMiniBatches(ctx *PredictSessionContext, jobID string) int64
 }
 
@@ -238,7 +239,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 		}
 		startNanoTime2Allocations[startNanoTime] = append(startNanoTime2Allocations[startNanoTime], allocation)
 		remainingMiniBatches := float64(p.impl.getJobTotalMiniBatches(ctx, allocation.GetJobID()))
-		log.Printf("allocation job ID = %s, remaining mini batches = %f\n", allocation.GetJobID(), remainingMiniBatches)
+		//log.Printf("allocation job ID = %s, remaining mini batches = %f\n", allocation.GetJobID(), remainingMiniBatches)
 		jobID2RemainingMiniBatches[allocation.GetJobID()] = remainingMiniBatches
 	}
 	utils.SortInt64(sortedStartTime)
@@ -282,10 +283,13 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 				return nil, err
 			}
 			for jobID, miniBatchDuration := range r {
+				//if jobID == "c0cb989683049a1f41b8d6d2" {
+				//	fmt.Println("jobID c0cb989683049a1f41b8d6d2\n")
+				//}
 				jobID2MiniBatchDuration[jobID] = miniBatchDuration
 			}
 		}
-		log.Printf("jobID2MiniBatchDuration %+v\n", jobID2MiniBatchDuration)
+		//log.Printf("jobID2MiniBatchDuration %+v\n", jobID2MiniBatchDuration)
 		// calculate the closest event: any of jobs finished, or a new job comes in.
 		runningJobFinishTimes := make(map[string]int64)
 		closestFinishedJobTime := int64(math.MaxInt64)
@@ -374,6 +378,9 @@ func (p *DLTBasePredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *Predi
 			return nil, fmt.Errorf("only supports same acceleratorIDs space sharing")
 		}
 	}
+	if err := p.checkAcceleratorMemoryCapacity(ctx, acceleratorIDs, getJobIDs(allocations)); err != nil {
+		return nil, err
+	}
 	if taskGroupType == objects.TaskGroupType_taskGroupTypeSingle {
 		return p.impl.getSingleTaskSpaceSharingMiniBatchDuration(ctx, acceleratorIDs[0], getJobIDs(allocations)), nil
 	} else if taskGroupType == objects.TaskGroupType_taskGroupTypeGang {
@@ -415,4 +422,81 @@ func (p *DLTBasePredictor) getTaskGroup(ctx *PredictSessionContext, jobID string
 
 func (p *DLTBasePredictor) getAllocatedAcceleratorIDs(ctx *PredictSessionContext, allocation *objects.JobAllocation) []string {
 	return pb_gen.GetAllocatedAcceleratorIDs(allocation)
+}
+
+func (p *DLTBasePredictor) getJob(ctx *PredictSessionContext, jobID string) *objects.Job {
+	return ctx.partitionContext.GetUnfinishedJob(jobID)
+}
+
+func (p *DLTBasePredictor) getJobs(ctx *PredictSessionContext, jobIDs []string) []*objects.Job {
+	jobs := make([]*objects.Job, 0, len(jobIDs))
+	for _, jobID := range jobIDs {
+		jobs = append(jobs, p.getJob(ctx, jobID))
+	}
+	return jobs
+}
+
+func (p *DLTBasePredictor) getAccelerator(ctx *PredictSessionContext, acceleratorID string) *objects.Accelerator {
+	return ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorID]
+}
+
+func (p *DLTBasePredictor) getAccelerators(ctx *PredictSessionContext, acceleratorIDs []string) []*objects.Accelerator {
+	accelerators := make([]*objects.Accelerator, 0, len(acceleratorIDs))
+	for _, acceleratorID := range acceleratorIDs {
+		accelerators = append(accelerators, p.getAccelerator(ctx, acceleratorID))
+	}
+	return accelerators
+}
+
+func (p *DLTBasePredictor) getDataParallelConsolidationLevel(ctx *PredictSessionContext, allocation *objects.JobAllocation) configs.ConsolidationLevel {
+	nodeIDs := make(map[string]bool)
+	CPUSocketIDs := make(map[string]bool)
+
+nextAlloc:
+	for _, taskAllocation := range allocation.GetTaskAllocations() {
+		nodeID := taskAllocation.GetNodeID()
+		nodeIDs[nodeID] = true
+		acceleratorAllocation := taskAllocation.GetAcceleratorAllocation()
+		accID := acceleratorAllocation.GetAcceleratorID()
+		node := ctx.partitionContext.View.NodeID2Node[nodeID]
+		for _, CPUSocket := range node.GetCPUSockets() {
+			for _, nodeAccelerator := range CPUSocket.GetAccelerators() {
+				if nodeAccelerator.GetAcceleratorID() == accID {
+					CPUSocketIDs[CPUSocket.GetCPUSocketID()] = true
+					continue nextAlloc
+				}
+			}
+		}
+	}
+	if len(nodeIDs) > 1 {
+		return configs.ConsolidationLevel_DiffNode
+	}
+	if len(CPUSocketIDs) > 1 {
+		return configs.ConsolidationLevel_DiffCPUSocket
+	}
+	return configs.ConsolidationLevel_SameCPUSocket
+}
+
+func (p *DLTBasePredictor) getMaximumAcceleratorMemoryCostBytes(ctx *PredictSessionContext, jobID string) int64 {
+	panic("template method.")
+}
+
+func (p *DLTBasePredictor) checkAcceleratorMemoryCapacity(ctx *PredictSessionContext, acceleratorIDs []string, jobIDs []string) error {
+	acceleratorTypes := make(map[string]bool)
+	for _, acceleratorID := range acceleratorIDs {
+		acc := p.getAccelerator(ctx, acceleratorID)
+		t := acc.GetAcceleratorMetaInfo().GetBriefType()
+		if acceleratorTypes[t] {
+			continue
+		}
+		remainingBytes := acc.GetAcceleratorMetaInfo().GetAcceleratorMemory().GetBytesCapacity()
+		for _, jobID := range jobIDs {
+			bytes := p.impl.getMaximumAcceleratorMemoryCostBytes(ctx, jobID)
+			if bytes > remainingBytes {
+				return fmt.Errorf("DLTBasePredictor checkAcceleratorMemoryCapacity accelerator memory not enough, accelerator type is %s", t)
+			}
+			remainingBytes -= bytes
+		}
+	}
+	return nil
 }

@@ -100,26 +100,9 @@ func (p *RandomPredictor) getDataParallelTasksSpaceSharingMiniBatchDuration(ctx 
 	return p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, p.getAccelerators(ctx, acceleratorIDs), p.getJobs(ctx, jobIDs))
 }
 
-func (p *RandomPredictor) getJob(ctx *PredictSessionContext, jobID string) *objects.Job {
-	return ctx.partitionContext.GetUnfinishedJob(jobID)
-}
-
-func (p *RandomPredictor) getJobs(ctx *PredictSessionContext, jobIDs []string) []*objects.Job {
-	jobs := make([]*objects.Job, 0, len(jobIDs))
-	for _, jobID := range jobIDs {
-		jobs = append(jobs, p.getJob(ctx, jobID))
-	}
-	return jobs
-}
-
-func (p *RandomPredictor) getAccelerator(ctx *PredictSessionContext, acceleratorID string) *objects.Accelerator {
-	return ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorID]
-}
-
-func (p *RandomPredictor) getAccelerators(ctx *PredictSessionContext, acceleratorIDs []string) []*objects.Accelerator {
-	accelerators := make([]*objects.Accelerator, 0, len(acceleratorIDs))
-	for _, acceleratorID := range acceleratorIDs {
-		accelerators = append(accelerators, p.getAccelerator(ctx, acceleratorID))
-	}
-	return accelerators
+func (p *RandomPredictor) getMaximumAcceleratorMemoryCostBytes(ctx *PredictSessionContext, jobID string) int64 {
+	cs := int64(crc32.ChecksumIEEE([]byte(jobID)))
+	GiB := 1024 * 1024                                                              // 1024 * 1024 bytes = 1 GiB
+	result := int64(7.5*float64(GiB)*(float64(cs%100)/100)) + int64(float64(GiB)/2) // min: 512MB max: 8 GiB
+	return result
 }

@@ -17,3 +17,12 @@ func StringSliceEquals(a []string, b []string) bool {
 	}
 	return true
 }
+
+func IndexOf(s []string, target string) int {
+	for i, str := range s {
+		if str == target {
+			return i
+		}
+	}
+	return -1
+}

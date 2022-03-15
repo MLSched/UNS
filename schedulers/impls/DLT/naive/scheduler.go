@@ -7,6 +7,7 @@ import (
 	base2 "UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
 	"log"
+	"sort"
 )
 
 type Scheduler struct {
@@ -52,6 +53,12 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 		}
 	}
 
+	acceleratorIDs := make([]string, 0, len(acceleratorID2NodeID))
+	for acceleratorID := range partitionContext.View.AcceleratorID2Accelerator {
+		acceleratorIDs = append(acceleratorIDs, acceleratorID)
+	}
+	sort.Strings(acceleratorIDs)
+
 	unoccupiedAcceleratorIDsMap := make(map[string]bool)
 	for acceleratorID := range acceleratorID2NodeID {
 		unoccupiedAcceleratorIDsMap[acceleratorID] = true
@@ -81,10 +88,12 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 			break
 		}
 		chosenAcceleratorIDs := make([]string, 0, taskGroupLen)
-		for acceleratorID := range unoccupiedAcceleratorIDsMap {
-			chosenAcceleratorIDs = append(chosenAcceleratorIDs, acceleratorID)
-			if len(chosenAcceleratorIDs) == taskGroupLen {
-				break
+		for _, acceleratorID := range acceleratorIDs {
+			if unoccupiedAcceleratorIDsMap[acceleratorID] {
+				chosenAcceleratorIDs = append(chosenAcceleratorIDs, acceleratorID)
+				if len(chosenAcceleratorIDs) == taskGroupLen {
+					break
+				}
 			}
 		}
 		for _, acceleratorID := range chosenAcceleratorIDs {

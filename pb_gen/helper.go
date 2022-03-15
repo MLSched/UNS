@@ -32,7 +32,7 @@ var extractPredictorConfigurationMap = map[configs.PredictorType]func(configurat
 		return configuration.GetDLTPredictorRandomConfiguration()
 	},
 	configs.PredictorType_predictorTypeDLTDataOriented: func(configuration *configs.PredictorConfiguration) interface{} {
-		return configuration.GetDLTPredictorDataOrientedDataFormat()
+		return configuration.GetDLTPredictorDataOrientedConfiguration()
 	},
 }
 

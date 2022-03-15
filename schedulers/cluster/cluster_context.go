@@ -33,6 +33,10 @@ func (c *Context) GetPartitionContexts() map[string]*partition.Context {
 	return c.partitionContexts
 }
 
-func (c *Context) GetPartitionContext(partitionID string) *partition.Context {
-	return c.partitionContexts[partitionID]
+func (c *Context) GetPartitionContext(partitionID string) (*partition.Context, error) {
+	pc, ok := c.partitionContexts[partitionID]
+	if !ok {
+		return nil, fmt.Errorf("not-exist partitionID %s", partitionID)
+	}
+	return pc, nil
 }
