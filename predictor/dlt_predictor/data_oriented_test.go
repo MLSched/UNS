@@ -194,7 +194,7 @@ func getJobs(t *testing.T) []*objects.Job {
 }
 
 func getPartitionContext(t *testing.T) *partition.Context {
-	GiB := int64(1024 * 1024)
+	GiB := int64(1024 * 1024 * 1024)
 	partitionContext, err := partition.Build(&objects.Partition{
 		PartitionID: "PARTITION_ID",
 		Nodes: []*objects.Node{

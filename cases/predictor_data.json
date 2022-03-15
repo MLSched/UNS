@@ -20,21 +20,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "34356",
+			"totalMiniBatches": "471443",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "797989981",
-				"GTX 2080Ti": "2253000203",
-				"V100": "1635780366"
+				"A100": "87927065",
+				"GTX 2080Ti": "227316287",
+				"V100": "164189200"
 			},
-			"minSpaceSharingPenalty": 1.3286766,
-			"maxSpaceSharingPenalty": 3.285629,
+			"minSpaceSharingPenalty": 1.3634714,
+			"maxSpaceSharingPenalty": 2.8276374,
 			"consolidationLevel2Penalties": {
-				"1": 1.0469416,
-				"2": 1.0351639,
-				"3": 1.2140146,
-				"4": 1.6304681
+				"1": 1.0087287,
+				"2": 1.1780628,
+				"3": 1.4852659,
+				"4": 1.3822384
 			},
-			"maximumAcceleratorMemoryCostBytes": "4652878"
+			"maximumAcceleratorMemoryCostBytes": "3291312548"
 		},
 		"0763f5964484b5acffb99e89": {
 			"job": {
@@ -56,21 +56,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "36232",
+			"totalMiniBatches": "43800",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "922384037",
-				"GTX 2080Ti": "2524468540",
-				"V100": "1855131298"
+				"A100": "825945633",
+				"GTX 2080Ti": "2088317808",
+				"V100": "1481614157"
 			},
-			"minSpaceSharingPenalty": 1.2399347,
-			"maxSpaceSharingPenalty": 2.490021,
+			"minSpaceSharingPenalty": 1.310609,
+			"maxSpaceSharingPenalty": 2.287127,
 			"consolidationLevel2Penalties": {
-				"1": 1.0436904,
-				"2": 1.0400931,
-				"3": 1.2771816,
-				"4": 1.7478436
+				"1": 1.0344493,
+				"2": 1.1486331,
+				"3": 1.3563507,
+				"4": 1.5893378
 			},
-			"maximumAcceleratorMemoryCostBytes": "2978392"
+			"maximumAcceleratorMemoryCostBytes": "7054873454"
 		},
 		"08a810cdd7e103f5a30f72ab": {
 			"job": {
@@ -92,21 +92,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "98553",
+			"totalMiniBatches": "50189",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "399979718",
-				"GTX 2080Ti": "1041930534",
-				"V100": "816504331"
+				"A100": "1603314325",
+				"GTX 2080Ti": "4686803103",
+				"V100": "2924870789"
 			},
-			"minSpaceSharingPenalty": 1.122082,
-			"maxSpaceSharingPenalty": 2.1567936,
+			"minSpaceSharingPenalty": 1.2626858,
+			"maxSpaceSharingPenalty": 2.0296414,
 			"consolidationLevel2Penalties": {
-				"1": 1.0222716,
-				"2": 1.1718866,
-				"3": 1.2573992,
-				"4": 1.6953969
+				"1": 1.0420454,
+				"2": 1.0422662,
+				"3": 1.447896,
+				"4": 1.7480657
 			},
-			"maximumAcceleratorMemoryCostBytes": "1502273"
+			"maximumAcceleratorMemoryCostBytes": "5711223456"
 		},
 		"10ff84e15b2c42a736f4e3e5": {
 			"job": {
@@ -128,21 +128,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "210573",
+			"totalMiniBatches": "50102",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "190559449",
-				"GTX 2080Ti": "476561774",
-				"V100": "387323766"
+				"A100": "622514566",
+				"GTX 2080Ti": "1627861093",
+				"V100": "1188427692"
 			},
-			"minSpaceSharingPenalty": 1.1586075,
-			"maxSpaceSharingPenalty": 3.5741084,
+			"minSpaceSharingPenalty": 1.3188355,
+			"maxSpaceSharingPenalty": 2.0573287,
 			"consolidationLevel2Penalties": {
-				"1": 1.0115242,
-				"2": 1.1402992,
-				"3": 1.2604395,
-				"4": 1.5694457
+				"1": 1.0310621,
+				"2": 1.0093445,
+				"3": 1.3185965,
+				"4": 1.5115612
 			},
-			"maximumAcceleratorMemoryCostBytes": "7065335"
+			"maximumAcceleratorMemoryCostBytes": "6515577029"
 		},
 		"2131fba31b03af535c25107b": {
 			"job": {
@@ -168,21 +168,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "96617",
+			"totalMiniBatches": "23625",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "712388385",
-				"GTX 2080Ti": "2288564018",
-				"V100": "1712599074"
+				"A100": "1226426089",
+				"GTX 2080Ti": "3368190095",
+				"V100": "2913329333"
 			},
-			"minSpaceSharingPenalty": 1.1075227,
-			"maxSpaceSharingPenalty": 3.9430387,
+			"minSpaceSharingPenalty": 1.4160515,
+			"maxSpaceSharingPenalty": 3.1021569,
 			"consolidationLevel2Penalties": {
-				"1": 1.0055159,
-				"2": 1.0659206,
-				"3": 1.3986096,
-				"4": 1.3717487
+				"1": 1.0154698,
+				"2": 1.1703428,
+				"3": 1.3184481,
+				"4": 1.3427489
 			},
-			"maximumAcceleratorMemoryCostBytes": "4032485"
+			"maximumAcceleratorMemoryCostBytes": "1557338432"
 		},
 		"250d4489b2b142c27cd9f723": {
 			"job": {
@@ -204,21 +204,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "44176",
+			"totalMiniBatches": "641538",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "740670779",
-				"GTX 2080Ti": "2359674054",
-				"V100": "1602543048"
+				"A100": "58065461",
+				"GTX 2080Ti": "162489200",
+				"V100": "117347018"
 			},
-			"minSpaceSharingPenalty": 1.4016052,
-			"maxSpaceSharingPenalty": 4.312659,
+			"minSpaceSharingPenalty": 1.1322329,
+			"maxSpaceSharingPenalty": 2.763314,
 			"consolidationLevel2Penalties": {
-				"1": 1.0317022,
-				"2": 1.1845219,
-				"3": 1.2351177,
-				"4": 1.4989139
+				"1": 1.0364008,
+				"2": 1.1359776,
+				"3": 1.2785518,
+				"4": 1.4876533
 			},
-			"maximumAcceleratorMemoryCostBytes": "1409941"
+			"maximumAcceleratorMemoryCostBytes": "1391602420"
 		},
 		"25eb24bd12fadeccd1880d68": {
 			"job": {
@@ -240,21 +240,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "116580",
+			"totalMiniBatches": "401404",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1155363301",
-				"GTX 2080Ti": "2689513267",
-				"V100": "2398719194"
+				"A100": "696665736",
+				"GTX 2080Ti": "1971484517",
+				"V100": "1450787864"
 			},
-			"minSpaceSharingPenalty": 1.2924098,
-			"maxSpaceSharingPenalty": 3.221435,
+			"minSpaceSharingPenalty": 1.4833648,
+			"maxSpaceSharingPenalty": 4.1840954,
 			"consolidationLevel2Penalties": {
-				"1": 1.038615,
-				"2": 1.1682384,
-				"3": 1.1047994,
-				"4": 1.3846936
+				"1": 1.0476447,
+				"2": 1.0740888,
+				"3": 1.2154765,
+				"4": 1.6933355
 			},
-			"maximumAcceleratorMemoryCostBytes": "7672122"
+			"maximumAcceleratorMemoryCostBytes": "8318655384"
 		},
 		"273447ce5444db25dadb3e46": {
 			"job": {
@@ -276,21 +276,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "37023",
+			"totalMiniBatches": "37547",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "913602946",
-				"GTX 2080Ti": "2865514668",
-				"V100": "2064308610"
+				"A100": "850491297",
+				"GTX 2080Ti": "2825471891",
+				"V100": "2245311802"
 			},
-			"minSpaceSharingPenalty": 1.2381061,
-			"maxSpaceSharingPenalty": 4.6049438,
+			"minSpaceSharingPenalty": 1.0932531,
+			"maxSpaceSharingPenalty": 2.2869987,
 			"consolidationLevel2Penalties": {
-				"1": 1.0451281,
-				"2": 1.122904,
-				"3": 1.3740708,
-				"4": 1.7636802
+				"1": 1.0105349,
+				"2": 1.1864922,
+				"3": 1.281495,
+				"4": 1.7133749
 			},
-			"maximumAcceleratorMemoryCostBytes": "1000656"
+			"maximumAcceleratorMemoryCostBytes": "4717063616"
 		},
 		"27d29764ca70365e92cb1ccb": {
 			"job": {
@@ -312,21 +312,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "32663",
+			"totalMiniBatches": "34133",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "2811955267",
-				"GTX 2080Ti": "8181510461",
-				"V100": "5480476730"
+				"A100": "1386612214",
+				"GTX 2080Ti": "3099521927",
+				"V100": "2690896948"
 			},
-			"minSpaceSharingPenalty": 1.1989546,
-			"maxSpaceSharingPenalty": 3.910543,
+			"minSpaceSharingPenalty": 1.1969057,
+			"maxSpaceSharingPenalty": 4.267133,
 			"consolidationLevel2Penalties": {
-				"1": 1.0188415,
-				"2": 1.0732917,
-				"3": 1.1939145,
-				"4": 1.6301088
+				"1": 1.0156575,
+				"2": 1.148118,
+				"3": 1.3821086,
+				"4": 1.7675226
 			},
-			"maximumAcceleratorMemoryCostBytes": "5663442"
+			"maximumAcceleratorMemoryCostBytes": "5324130045"
 		},
 		"2d91199618980980723f3d89": {
 			"job": {
@@ -348,21 +348,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "77895",
+			"totalMiniBatches": "29882",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "293935400",
-				"GTX 2080Ti": "967569329",
-				"V100": "722209714"
+				"A100": "1396974176",
+				"GTX 2080Ti": "3638159018",
+				"V100": "2522148169"
 			},
-			"minSpaceSharingPenalty": 1.2899554,
-			"maxSpaceSharingPenalty": 2.8272984,
+			"minSpaceSharingPenalty": 1.0226995,
+			"maxSpaceSharingPenalty": 2.307437,
 			"consolidationLevel2Penalties": {
-				"1": 1.0015469,
-				"2": 1.0446211,
-				"3": 1.343399,
-				"4": 1.7322989
+				"1": 1.0333416,
+				"2": 1.186868,
+				"3": 1.114197,
+				"4": 1.5281762
 			},
-			"maximumAcceleratorMemoryCostBytes": "1340952"
+			"maximumAcceleratorMemoryCostBytes": "5447744985"
 		},
 		"32a3571ab783865e2c0fe33c": {
 			"job": {
@@ -384,21 +384,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "90163",
+			"totalMiniBatches": "24261",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "752122747",
-				"GTX 2080Ti": "1830151192",
-				"V100": "1588307184"
+				"A100": "829198251",
+				"GTX 2080Ti": "2795097364",
+				"V100": "1812208125"
 			},
-			"minSpaceSharingPenalty": 1.0049403,
-			"maxSpaceSharingPenalty": 3.593953,
+			"minSpaceSharingPenalty": 1.4341573,
+			"maxSpaceSharingPenalty": 3.0437675,
 			"consolidationLevel2Penalties": {
-				"1": 1.0262686,
-				"2": 1.1681814,
-				"3": 1.1845326,
-				"4": 1.73487
+				"1": 1.030726,
+				"2": 1.1370354,
+				"3": 1.4709442,
+				"4": 1.5381061
 			},
-			"maximumAcceleratorMemoryCostBytes": "7571751"
+			"maximumAcceleratorMemoryCostBytes": "7805262749"
 		},
 		"3e6cdf99157dd45eacb23445": {
 			"job": {
@@ -424,21 +424,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "220918",
+			"totalMiniBatches": "210170",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "329092548",
-				"GTX 2080Ti": "836247964",
-				"V100": "576136146"
+				"A100": "313178779",
+				"GTX 2080Ti": "879013612",
+				"V100": "598697607"
 			},
-			"minSpaceSharingPenalty": 1.180845,
-			"maxSpaceSharingPenalty": 3.7715254,
+			"minSpaceSharingPenalty": 1.2736406,
+			"maxSpaceSharingPenalty": 4.5854406,
 			"consolidationLevel2Penalties": {
-				"1": 1.03558,
-				"2": 1.0062255,
-				"3": 1.1686136,
-				"4": 1.4138231
+				"1": 1.0364623,
+				"2": 1.0744976,
+				"3": 1.4410707,
+				"4": 1.5763174
 			},
-			"maximumAcceleratorMemoryCostBytes": "1860882"
+			"maximumAcceleratorMemoryCostBytes": "3257335316"
 		},
 		"3ed06aae456a3ddadf87ffdb": {
 			"job": {
@@ -460,21 +460,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "38507",
+			"totalMiniBatches": "71193",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1024698292",
-				"GTX 2080Ti": "2690896948",
-				"V100": "1616394376"
+				"A100": "545596647",
+				"GTX 2080Ti": "1455463550",
+				"V100": "1292667544"
 			},
-			"minSpaceSharingPenalty": 1.1969057,
-			"maxSpaceSharingPenalty": 4.267133,
+			"minSpaceSharingPenalty": 1.0032804,
+			"maxSpaceSharingPenalty": 2.8750787,
 			"consolidationLevel2Penalties": {
-				"1": 1.0370295,
-				"2": 1.1410543,
-				"3": 1.474018,
-				"4": 1.4565753
+				"1": 1.0122812,
+				"2": 1.1510756,
+				"3": 1.377293,
+				"4": 1.4794012
 			},
-			"maximumAcceleratorMemoryCostBytes": "5199345"
+			"maximumAcceleratorMemoryCostBytes": "2946040242"
 		},
 		"42005e84987617a523683f4c": {
 			"job": {
@@ -496,21 +496,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "45966",
+			"totalMiniBatches": "64625",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1006392916",
-				"GTX 2080Ti": "2617636712",
-				"V100": "2033244164"
+				"A100": "1861835841",
+				"GTX 2080Ti": "4607326987",
+				"V100": "3442645078"
 			},
-			"minSpaceSharingPenalty": 1.2797339,
-			"maxSpaceSharingPenalty": 3.7549727,
+			"minSpaceSharingPenalty": 1.4500933,
+			"maxSpaceSharingPenalty": 3.8749096,
 			"consolidationLevel2Penalties": {
-				"1": 1.0113847,
-				"2": 1.1660957,
-				"3": 1.3415257,
-				"4": 1.673405
+				"1": 1.0289528,
+				"2": 1.0653437,
+				"3": 1.3858014,
+				"4": 1.4167448
 			},
-			"maximumAcceleratorMemoryCostBytes": "3070984"
+			"maximumAcceleratorMemoryCostBytes": "2289939301"
 		},
 		"51afe47a8177fd7add97156f": {
 			"job": {
@@ -532,21 +532,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "36509",
+			"totalMiniBatches": "179515",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1159318114",
-				"GTX 2080Ti": "2833810367",
-				"V100": "2045250612"
+				"A100": "174602811",
+				"GTX 2080Ti": "576341276",
+				"V100": "488891945"
 			},
-			"minSpaceSharingPenalty": 1.0593119,
-			"maxSpaceSharingPenalty": 4.6719055,
+			"minSpaceSharingPenalty": 1.4141251,
+			"maxSpaceSharingPenalty": 2.0206378,
 			"consolidationLevel2Penalties": {
-				"1": 1.0031022,
-				"2": 1.0650612,
-				"3": 1.1798263,
-				"4": 1.5220408
+				"1": 1.0452951,
+				"2": 1.1475301,
+				"3": 1.4689238,
+				"4": 1.7340753
 			},
-			"maximumAcceleratorMemoryCostBytes": "4370929"
+			"maximumAcceleratorMemoryCostBytes": "2367869270"
 		},
 		"51d01202d231f9fae85bceab": {
 			"job": {
@@ -568,21 +568,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "78126",
+			"totalMiniBatches": "66301",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1972543352",
-				"GTX 2080Ti": "5689473910",
-				"V100": "3536395321"
+				"A100": "2324349096",
+				"GTX 2080Ti": "7643051796",
+				"V100": "4504075581"
 			},
-			"minSpaceSharingPenalty": 1.219559,
-			"maxSpaceSharingPenalty": 4.5599914,
+			"minSpaceSharingPenalty": 1.3269066,
+			"maxSpaceSharingPenalty": 3.695693,
 			"consolidationLevel2Penalties": {
-				"1": 1.0060928,
-				"2": 1.1730672,
-				"3": 1.289078,
-				"4": 1.316628
+				"1": 1.0345342,
+				"2": 1.0659482,
+				"3": 1.2942109,
+				"4": 1.6082404
 			},
-			"maximumAcceleratorMemoryCostBytes": "4703524"
+			"maximumAcceleratorMemoryCostBytes": "8514930348"
 		},
 		"5945a8f652a75895a9b2c98c": {
 			"job": {
@@ -604,21 +604,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "50245",
+			"totalMiniBatches": "30874",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1627861093",
-				"GTX 2080Ti": "4485156177",
-				"V100": "3148199036"
+				"A100": "1006465876",
+				"GTX 2080Ti": "2649196934",
+				"V100": "1944224255"
 			},
-			"minSpaceSharingPenalty": 1.0095547,
-			"maxSpaceSharingPenalty": 3.0850608,
+			"minSpaceSharingPenalty": 1.0154684,
+			"maxSpaceSharingPenalty": 3.739732,
 			"consolidationLevel2Penalties": {
-				"1": 1.0318836,
-				"2": 1.0846244,
-				"3": 1.3484967,
-				"4": 1.323361
+				"1": 1.0304248,
+				"2": 1.1729195,
+				"3": 1.1415377,
+				"4": 1.4115528
 			},
-			"maximumAcceleratorMemoryCostBytes": "4822070"
+			"maximumAcceleratorMemoryCostBytes": "3151879862"
 		},
 		"6103c3f5b9cba56317e22e9b": {
 			"job": {
@@ -640,21 +640,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "43103",
+			"totalMiniBatches": "47036",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "825945633",
-				"GTX 2080Ti": "2088317808",
-				"V100": "1481614157"
+				"A100": "803802702",
+				"GTX 2080Ti": "1913720525",
+				"V100": "1610106180"
 			},
-			"minSpaceSharingPenalty": 1.310609,
-			"maxSpaceSharingPenalty": 2.287127,
+			"minSpaceSharingPenalty": 1.0377924,
+			"maxSpaceSharingPenalty": 2.5343795,
 			"consolidationLevel2Penalties": {
-				"1": 1.0289338,
-				"2": 1.1377972,
-				"3": 1.3972663,
-				"4": 1.6204383
+				"1": 1.0151545,
+				"2": 1.0793864,
+				"3": 1.303989,
+				"4": 1.781172
 			},
-			"maximumAcceleratorMemoryCostBytes": "6889524"
+			"maximumAcceleratorMemoryCostBytes": "4996897797"
 		},
 		"6661e092f01b74b115fd4212": {
 			"job": {
@@ -676,21 +676,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "77768",
+			"totalMiniBatches": "261708",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "807755455",
-				"GTX 2080Ti": "2260662182",
-				"V100": "2027714741"
+				"A100": "241159125",
+				"GTX 2080Ti": "671774427",
+				"V100": "482831511"
 			},
-			"minSpaceSharingPenalty": 1.3862926,
-			"maxSpaceSharingPenalty": 2.6659853,
+			"minSpaceSharingPenalty": 1.4252286,
+			"maxSpaceSharingPenalty": 2.7142334,
 			"consolidationLevel2Penalties": {
-				"1": 1.0345016,
-				"2": 1.0851973,
-				"3": 1.3040115,
-				"4": 1.7654797
+				"1": 1.0129602,
+				"2": 1.1883235,
+				"3": 1.4272913,
+				"4": 1.5923382
 			},
-			"maximumAcceleratorMemoryCostBytes": "4978573"
+			"maximumAcceleratorMemoryCostBytes": "1116317351"
 		},
 		"695ff54bb17951f7a9468608": {
 			"job": {
@@ -712,21 +712,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "109806",
+			"totalMiniBatches": "77659",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "416703236",
-				"GTX 2080Ti": "1462659960",
-				"V100": "880099239"
+				"A100": "522900579",
+				"GTX 2080Ti": "1709327796",
+				"V100": "1244418496"
 			},
-			"minSpaceSharingPenalty": 1.4497596,
-			"maxSpaceSharingPenalty": 2.6160927,
+			"minSpaceSharingPenalty": 1.1152418,
+			"maxSpaceSharingPenalty": 2.9516451,
 			"consolidationLevel2Penalties": {
-				"1": 1.0442544,
-				"2": 1.1925297,
-				"3": 1.1480236,
-				"4": 1.604476
+				"1": 1.0350748,
+				"2": 1.0802197,
+				"3": 1.3155565,
+				"4": 1.7158686
 			},
-			"maximumAcceleratorMemoryCostBytes": "7104136"
+			"maximumAcceleratorMemoryCostBytes": "948553850"
 		},
 		"6ac3373981df75c945f071d8": {
 			"job": {
@@ -748,21 +748,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "76761",
+			"totalMiniBatches": "67609",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "465250446",
-				"GTX 2080Ti": "1145190628",
-				"V100": "862635020"
+				"A100": "667687350",
+				"GTX 2080Ti": "1426587419",
+				"V100": "1300206780"
 			},
-			"minSpaceSharingPenalty": 1.0919082,
-			"maxSpaceSharingPenalty": 3.2525625,
+			"minSpaceSharingPenalty": 1.3450152,
+			"maxSpaceSharingPenalty": 4.317755,
 			"consolidationLevel2Penalties": {
-				"1": 1.0147753,
-				"2": 1.13496,
-				"3": 1.2375742,
-				"4": 1.6393092
+				"1": 1.0283196,
+				"2": 1.0851973,
+				"3": 1.3040115,
+				"4": 1.7654797
 			},
-			"maximumAcceleratorMemoryCostBytes": "8163535"
+			"maximumAcceleratorMemoryCostBytes": "1780339182"
 		},
 		"6d942b15622d001d9edacb8e": {
 			"job": {
@@ -784,21 +784,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "58405",
+			"totalMiniBatches": "330045",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "795733344",
-				"GTX 2080Ti": "2133511901",
-				"V100": "1446203363"
+				"A100": "377551398",
+				"GTX 2080Ti": "1058221481",
+				"V100": "753650247"
 			},
-			"minSpaceSharingPenalty": 1.3277106,
-			"maxSpaceSharingPenalty": 2.3368473,
+			"minSpaceSharingPenalty": 1.0919082,
+			"maxSpaceSharingPenalty": 3.2525625,
 			"consolidationLevel2Penalties": {
-				"1": 1.0265551,
-				"2": 1.0202106,
-				"3": 1.3894776,
-				"4": 1.5445156
+				"1": 1.0171968,
+				"2": 1.1357237,
+				"3": 1.2182021,
+				"4": 1.6374002
 			},
-			"maximumAcceleratorMemoryCostBytes": "881044"
+			"maximumAcceleratorMemoryCostBytes": "8359460824"
 		},
 		"7e4b45b7f77d08b193831669": {
 			"job": {
@@ -820,21 +820,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "38006",
+			"totalMiniBatches": "464724",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "701223113",
-				"GTX 2080Ti": "2154944517",
-				"V100": "1517262191"
+				"A100": "176237748",
+				"GTX 2080Ti": "461533846",
+				"V100": "319598223"
 			},
-			"minSpaceSharingPenalty": 1.2034942,
-			"maxSpaceSharingPenalty": 2.1763136,
+			"minSpaceSharingPenalty": 1.196749,
+			"maxSpaceSharingPenalty": 4.5782976,
 			"consolidationLevel2Penalties": {
-				"1": 1.0490342,
-				"2": 1.1332821,
-				"3": 1.4199811,
-				"4": 1.3787287
+				"1": 1.0395397,
+				"2": 1.0890867,
+				"3": 1.149743,
+				"4": 1.5181726
 			},
-			"maximumAcceleratorMemoryCostBytes": "4346647"
+			"maximumAcceleratorMemoryCostBytes": "7288099447"
 		},
 		"8054ca5587e06275bf4e6160": {
 			"job": {
@@ -856,21 +856,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "53583",
+			"totalMiniBatches": "646402",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "589414182",
-				"GTX 2080Ti": "2390831351",
-				"V100": "1365401200"
+				"A100": "39866121",
+				"GTX 2080Ti": "113184859",
+				"V100": "77439661"
 			},
-			"minSpaceSharingPenalty": 1.4840914,
-			"maxSpaceSharingPenalty": 3.3269796,
+			"minSpaceSharingPenalty": 1.27259,
+			"maxSpaceSharingPenalty": 3.4181044,
 			"consolidationLevel2Penalties": {
-				"1": 1.0368825,
-				"2": 1.0013758,
-				"3": 1.4313,
-				"4": 1.752951
+				"1": 1.0186553,
+				"2": 1.1528077,
+				"3": 1.4572951,
+				"4": 1.7134141
 			},
-			"maximumAcceleratorMemoryCostBytes": "7777626"
+			"maximumAcceleratorMemoryCostBytes": "8178787148"
 		},
 		"81749c2e708fc2cd18918846": {
 			"job": {
@@ -892,21 +892,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "77497",
+			"totalMiniBatches": "156186",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "788985059",
-				"GTX 2080Ti": "2446597902",
-				"V100": "1492893903"
+				"A100": "274819819",
+				"GTX 2080Ti": "740756463",
+				"V100": "558095449"
 			},
-			"minSpaceSharingPenalty": 1.2543449,
-			"maxSpaceSharingPenalty": 3.9936113,
+			"minSpaceSharingPenalty": 1.2425119,
+			"maxSpaceSharingPenalty": 4.871343,
 			"consolidationLevel2Penalties": {
-				"1": 1.0066125,
-				"2": 1.1852579,
-				"3": 1.2786403,
-				"4": 1.5076605
+				"1": 1.0197567,
+				"2": 1.1974394,
+				"3": 1.1608537,
+				"4": 1.4610094
 			},
-			"maximumAcceleratorMemoryCostBytes": "8348025"
+			"maximumAcceleratorMemoryCostBytes": "3439280116"
 		},
 		"83d58b667f5fe071cd2c6c43": {
 			"job": {
@@ -928,21 +928,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "76186",
+			"totalMiniBatches": "48523",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "991442182",
-				"GTX 2080Ti": "3288336165",
-				"V100": "2159719620"
+				"A100": "496864448",
+				"GTX 2080Ti": "1556655203",
+				"V100": "1116818930"
 			},
-			"minSpaceSharingPenalty": 1.0445572,
-			"maxSpaceSharingPenalty": 2.6204946,
+			"minSpaceSharingPenalty": 1.4152392,
+			"maxSpaceSharingPenalty": 2.6830854,
 			"consolidationLevel2Penalties": {
-				"1": 1.0033253,
-				"2": 1.1763793,
-				"3": 1.3187085,
-				"4": 1.4339441
+				"1": 1.0301907,
+				"2": 1.1493621,
+				"3": 1.2295316,
+				"4": 1.6963309
 			},
-			"maximumAcceleratorMemoryCostBytes": "5837192"
+			"maximumAcceleratorMemoryCostBytes": "4263427449"
 		},
 		"963e14597a569879dec92537": {
 			"job": {
@@ -964,21 +964,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "183963",
+			"totalMiniBatches": "38659",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "196138397",
-				"GTX 2080Ti": "503684475",
-				"V100": "407798556"
+				"A100": "871052498",
+				"GTX 2080Ti": "2542457685",
+				"V100": "1940528250"
 			},
-			"minSpaceSharingPenalty": 1.1458465,
-			"maxSpaceSharingPenalty": 3.7643332,
+			"minSpaceSharingPenalty": 1.1743863,
+			"maxSpaceSharingPenalty": 2.24742,
 			"consolidationLevel2Penalties": {
-				"1": 1.0003281,
-				"2": 1.0491247,
-				"3": 1.4021511,
-				"4": 1.6466162
+				"1": 1.0160637,
+				"2": 1.0530314,
+				"3": 1.1910031,
+				"4": 1.3261348
 			},
-			"maximumAcceleratorMemoryCostBytes": "3346024"
+			"maximumAcceleratorMemoryCostBytes": "8110084348"
 		},
 		"98708db96ca1a1575c6e788d": {
 			"job": {
@@ -1000,21 +1000,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "68799",
+			"totalMiniBatches": "239082",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "494455175",
-				"GTX 2080Ti": "1563401043",
-				"V100": "1091905821"
+				"A100": "134981278",
+				"GTX 2080Ti": "444835637",
+				"V100": "314213315"
 			},
-			"minSpaceSharingPenalty": 1.2078793,
-			"maxSpaceSharingPenalty": 4.2261195,
+			"minSpaceSharingPenalty": 1.4835057,
+			"maxSpaceSharingPenalty": 2.72307,
 			"consolidationLevel2Penalties": {
-				"1": 1.028731,
-				"2": 1.0226359,
-				"3": 1.1447965,
-				"4": 1.405549
+				"1": 1.0372266,
+				"2": 1.1020886,
+				"3": 1.1154189,
+				"4": 1.6543008
 			},
-			"maximumAcceleratorMemoryCostBytes": "1503552"
+			"maximumAcceleratorMemoryCostBytes": "5954626364"
 		},
 		"9a4e91d99ee6c5f0df8db2da": {
 			"job": {
@@ -1036,21 +1036,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "155043",
+			"totalMiniBatches": "49238",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "863002741",
-				"GTX 2080Ti": "2902330877",
-				"V100": "1612814564"
+				"A100": "1053581721",
+				"GTX 2080Ti": "2717441653",
+				"V100": "2017840426"
 			},
-			"minSpaceSharingPenalty": 1.3697431,
-			"maxSpaceSharingPenalty": 3.7694972,
+			"minSpaceSharingPenalty": 1.2733856,
+			"maxSpaceSharingPenalty": 4.6456895,
 			"consolidationLevel2Penalties": {
-				"1": 1.038072,
-				"2": 1.0923007,
-				"3": 1.4380926,
-				"4": 1.7814047
+				"1": 1.0404253,
+				"2": 1.1264663,
+				"3": 1.2071552,
+				"4": 1.6377853
 			},
-			"maximumAcceleratorMemoryCostBytes": "6259728"
+			"maximumAcceleratorMemoryCostBytes": "2697815375"
 		},
 		"9e66e03fb57432ff484838d3": {
 			"job": {
@@ -1072,21 +1072,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "215934",
+			"totalMiniBatches": "51586",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "329791032",
-				"GTX 2080Ti": "961341428",
-				"V100": "671774427"
+				"A100": "1442774563",
+				"GTX 2080Ti": "4041313417",
+				"V100": "2811955267"
 			},
-			"minSpaceSharingPenalty": 1.4252286,
-			"maxSpaceSharingPenalty": 2.7142334,
+			"minSpaceSharingPenalty": 1.188415,
+			"maxSpaceSharingPenalty": 3.1937273,
 			"consolidationLevel2Penalties": {
-				"1": 1.0129602,
-				"2": 1.1883235,
-				"3": 1.4272913,
-				"4": 1.5923382
+				"1": 1.018323,
+				"2": 1.0469573,
+				"3": 1.3640871,
+				"4": 1.6267387
 			},
-			"maximumAcceleratorMemoryCostBytes": "1090153"
+			"maximumAcceleratorMemoryCostBytes": "1334745596"
 		},
 		"a049f5da99868e3ee3e91835": {
 			"job": {
@@ -1108,21 +1108,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "718677",
+			"totalMiniBatches": "130453",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "248251717",
-				"GTX 2080Ti": "793633591",
-				"V100": "533020139"
+				"A100": "466885120",
+				"GTX 2080Ti": "1367639169",
+				"V100": "957442593"
 			},
-			"minSpaceSharingPenalty": 1.3754698,
-			"maxSpaceSharingPenalty": 3.2931073,
+			"minSpaceSharingPenalty": 1.4694165,
+			"maxSpaceSharingPenalty": 3.9720595,
 			"consolidationLevel2Penalties": {
-				"1": 1.0324756,
-				"2": 1.1771499,
-				"3": 1.233068,
-				"4": 1.7368753
+				"1": 1.008791,
+				"2": 1.0570073,
+				"3": 1.3643745,
+				"4": 1.5624887
 			},
-			"maximumAcceleratorMemoryCostBytes": "7159181"
+			"maximumAcceleratorMemoryCostBytes": "4790360967"
 		},
 		"a2eb1050f6cbb6ac041a07d5": {
 			"job": {
@@ -1144,21 +1144,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "46391",
+			"totalMiniBatches": "37093",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "909654744",
-				"GTX 2080Ti": "2584578671",
-				"V100": "1631730239"
+				"A100": "2040738570",
+				"GTX 2080Ti": "6534611944",
+				"V100": "4563883879"
 			},
-			"minSpaceSharingPenalty": 1.127219,
-			"maxSpaceSharingPenalty": 4.619921,
+			"minSpaceSharingPenalty": 1.2078793,
+			"maxSpaceSharingPenalty": 4.2261195,
 			"consolidationLevel2Penalties": {
-				"1": 1.0132233,
-				"2": 1.1456031,
-				"3": 1.3719553,
-				"4": 1.5231898
+				"1": 1.0105549,
+				"2": 1.1149238,
+				"3": 1.1452719,
+				"4": 1.3559957
 			},
-			"maximumAcceleratorMemoryCostBytes": "3475819"
+			"maximumAcceleratorMemoryCostBytes": "1539638215"
 		},
 		"aace3b456d48182eea77a570": {
 			"job": {
@@ -1180,21 +1180,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "113869",
+			"totalMiniBatches": "38933",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "243506696",
-				"GTX 2080Ti": "696665736",
-				"V100": "552909103"
+				"A100": "861339006",
+				"GTX 2080Ti": "2037533812",
+				"V100": "1451298758"
 			},
-			"minSpaceSharingPenalty": 1.1852219,
-			"maxSpaceSharingPenalty": 4.9001894,
+			"minSpaceSharingPenalty": 1.1874135,
+			"maxSpaceSharingPenalty": 2.010608,
 			"consolidationLevel2Penalties": {
-				"1": 1.0144346,
-				"2": 1.1573342,
-				"3": 1.481158,
-				"4": 1.7831568
+				"1": 1.0189624,
+				"2": 1.1475356,
+				"3": 1.2968495,
+				"4": 1.7459198
 			},
-			"maximumAcceleratorMemoryCostBytes": "7832945"
+			"maximumAcceleratorMemoryCostBytes": "1713676016"
 		},
 		"abcfb3bdc06c8bc16f294e31": {
 			"job": {
@@ -1216,21 +1216,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "37774",
+			"totalMiniBatches": "269038",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1101201730",
-				"GTX 2080Ti": "2673083129",
-				"V100": "1963343315"
+				"A100": "90855013",
+				"GTX 2080Ti": "275662952",
+				"V100": "178170016"
 			},
-			"minSpaceSharingPenalty": 1.2363508,
-			"maxSpaceSharingPenalty": 2.6917539,
+			"minSpaceSharingPenalty": 1.4420468,
+			"maxSpaceSharingPenalty": 4.0338793,
 			"consolidationLevel2Penalties": {
-				"1": 1.0186553,
-				"2": 1.1528077,
-				"3": 1.4572951,
-				"4": 1.57259
+				"1": 1.0424778,
+				"2": 1.1544325,
+				"3": 1.4232451,
+				"4": 1.6059631
 			},
-			"maximumAcceleratorMemoryCostBytes": "7026729"
+			"maximumAcceleratorMemoryCostBytes": "6566196759"
 		},
 		"ad0c7808ff9d0d4fdb1fabae": {
 			"job": {
@@ -1252,21 +1252,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "38305",
+			"totalMiniBatches": "55821",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1118999727",
-				"GTX 2080Ti": "3757234622",
-				"V100": "2444669688"
+				"A100": "1677548585",
+				"GTX 2080Ti": "4683000594",
+				"V100": "3012514411"
 			},
-			"minSpaceSharingPenalty": 1.1061327,
-			"maxSpaceSharingPenalty": 2.5280826,
+			"minSpaceSharingPenalty": 1.3861499,
+			"maxSpaceSharingPenalty": 3.754459,
 			"consolidationLevel2Penalties": {
-				"1": 1.0169419,
-				"2": 1.013163,
-				"3": 1.4131886,
-				"4": 1.4463313
+				"1": 1.0420597,
+				"2": 1.0023997,
+				"3": 1.1677549,
+				"4": 1.7544471
 			},
-			"maximumAcceleratorMemoryCostBytes": "1318157"
+			"maximumAcceleratorMemoryCostBytes": "2347762640"
 		},
 		"ae8f84cd2f1c5d138981a8f9": {
 			"job": {
@@ -1288,21 +1288,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "63737",
+			"totalMiniBatches": "294590",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1139425978",
-				"GTX 2080Ti": "2997800947",
-				"V100": "2751854037"
+				"A100": "264022969",
+				"GTX 2080Ti": "820010096",
+				"V100": "595386525"
 			},
-			"minSpaceSharingPenalty": 1.1638906,
-			"maxSpaceSharingPenalty": 3.8170798,
+			"minSpaceSharingPenalty": 1.3558002,
+			"maxSpaceSharingPenalty": 3.08507,
 			"consolidationLevel2Penalties": {
-				"1": 1.0197359,
-				"2": 1.0660932,
-				"3": 1.3311753,
-				"4": 1.515313
+				"1": 1.0085766,
+				"2": 1.0455292,
+				"3": 1.1679827,
+				"4": 1.3155638
 			},
-			"maximumAcceleratorMemoryCostBytes": "5795804"
+			"maximumAcceleratorMemoryCostBytes": "7269422479"
 		},
 		"af7db60c9394f83832699e5a": {
 			"job": {
@@ -1324,21 +1324,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "65113",
+			"totalMiniBatches": "53110",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "923159842",
-				"GTX 2080Ti": "3193349915",
-				"V100": "1944228485"
+				"A100": "1034817531",
+				"GTX 2080Ti": "2906313677",
+				"V100": "2383651839"
 			},
-			"minSpaceSharingPenalty": 1.4247779,
-			"maxSpaceSharingPenalty": 4.6522803,
+			"minSpaceSharingPenalty": 1.076407,
+			"maxSpaceSharingPenalty": 3.0567427,
 			"consolidationLevel2Penalties": {
-				"1": 1.0404056,
-				"2": 1.1223853,
-				"3": 1.3994799,
-				"4": 1.6860813
+				"1": 1.0445998,
+				"2": 1.0022542,
+				"3": 1.1403043,
+				"4": 1.4035791
 			},
-			"maximumAcceleratorMemoryCostBytes": "7574979"
+			"maximumAcceleratorMemoryCostBytes": "1578713932"
 		},
 		"af891555f285b94e2dcd12a0": {
 			"job": {
@@ -1360,21 +1360,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "29678",
+			"totalMiniBatches": "33934",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "861339006",
-				"GTX 2080Ti": "2037533812",
-				"V100": "1451298758"
+				"A100": "706405211",
+				"GTX 2080Ti": "1781953481",
+				"V100": "1776159668"
 			},
-			"minSpaceSharingPenalty": 1.1874135,
-			"maxSpaceSharingPenalty": 2.010608,
+			"minSpaceSharingPenalty": 1.4719471,
+			"maxSpaceSharingPenalty": 2.6821072,
 			"consolidationLevel2Penalties": {
-				"1": 1.0246062,
-				"2": 1.178368,
-				"3": 1.2516991,
-				"4": 1.668839
+				"1": 1.0094904,
+				"2": 1.0585505,
+				"3": 1.3326042,
+				"4": 1.3085825
 			},
-			"maximumAcceleratorMemoryCostBytes": "1673511"
+			"maximumAcceleratorMemoryCostBytes": "5692193086"
 		},
 		"b6bac06ff84c086206171e87": {
 			"job": {
@@ -1396,21 +1396,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "37958",
+			"totalMiniBatches": "97236",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "871052498",
-				"GTX 2080Ti": "2542457685",
-				"V100": "1940528250"
+				"A100": "413759854",
+				"GTX 2080Ti": "1163388714",
+				"V100": "757535761"
 			},
-			"minSpaceSharingPenalty": 1.1743863,
-			"maxSpaceSharingPenalty": 2.24742,
+			"minSpaceSharingPenalty": 1.3332051,
+			"maxSpaceSharingPenalty": 4.9420576,
 			"consolidationLevel2Penalties": {
-				"1": 1.0160637,
-				"2": 1.0530314,
-				"3": 1.1910031,
-				"4": 1.3261348
+				"1": 1.0399976,
+				"2": 1.0314915,
+				"3": 1.2944152,
+				"4": 1.7713466
 			},
-			"maximumAcceleratorMemoryCostBytes": "7920004"
+			"maximumAcceleratorMemoryCostBytes": "1177901275"
 		},
 		"c0cb989683049a1f41b8d6d2": {
 			"job": {
@@ -1432,21 +1432,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "46012",
+			"totalMiniBatches": "112762",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1068559968",
-				"GTX 2080Ti": "2772066321",
-				"V100": "1905472357"
+				"A100": "583001992",
+				"GTX 2080Ti": "1485210748",
+				"V100": "1131128661"
 			},
-			"minSpaceSharingPenalty": 1.4785572,
-			"maxSpaceSharingPenalty": 2.4166527,
+			"minSpaceSharingPenalty": 1.4369048,
+			"maxSpaceSharingPenalty": 3.439608,
 			"consolidationLevel2Penalties": {
-				"1": 1.0076067,
-				"2": 1.0970048,
-				"3": 1.2580537,
-				"4": 1.7935988
+				"1": 1.0100232,
+				"2": 1.0885909,
+				"3": 1.458275,
+				"4": 1.4560277
 			},
-			"maximumAcceleratorMemoryCostBytes": "3056745"
+			"maximumAcceleratorMemoryCostBytes": "6536853721"
 		},
 		"c86fa3a41c9fcf9611d4f6e6": {
 			"job": {
@@ -1468,21 +1468,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "103374",
+			"totalMiniBatches": "31112",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "313178779",
-				"GTX 2080Ti": "879013612",
-				"V100": "598697607"
+				"A100": "2920596673",
+				"GTX 2080Ti": "9452952759",
+				"V100": "6630158667"
 			},
-			"minSpaceSharingPenalty": 1.2736406,
-			"maxSpaceSharingPenalty": 4.5854406,
+			"minSpaceSharingPenalty": 1.3702592,
+			"maxSpaceSharingPenalty": 3.9283512,
 			"consolidationLevel2Penalties": {
-				"1": 1.0276318,
-				"2": 1.1458492,
-				"3": 1.2489953,
-				"4": 1.7263383
+				"1": 1.0168964,
+				"2": 1.0673343,
+				"3": 1.1864184,
+				"4": 1.4874281
 			},
-			"maximumAcceleratorMemoryCostBytes": "3180991"
+			"maximumAcceleratorMemoryCostBytes": "1747095173"
 		},
 		"d19357ab93a751e353923655": {
 			"job": {
@@ -1504,21 +1504,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "571275",
+			"totalMiniBatches": "38012",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "156997732",
-				"GTX 2080Ti": "456495575",
-				"V100": "293547966"
+				"A100": "2359430679",
+				"GTX 2080Ti": "6801210079",
+				"V100": "5233372851"
 			},
-			"minSpaceSharingPenalty": 1.0377924,
-			"maxSpaceSharingPenalty": 2.5343795,
+			"minSpaceSharingPenalty": 1.4016052,
+			"maxSpaceSharingPenalty": 4.312659,
 			"consolidationLevel2Penalties": {
-				"1": 1.0254986,
-				"2": 1.1924689,
-				"3": 1.2212355,
-				"4": 1.4984659
+				"1": 1.0317022,
+				"2": 1.1845219,
+				"3": 1.2351177,
+				"4": 1.4989139
 			},
-			"maximumAcceleratorMemoryCostBytes": "4879783"
+			"maximumAcceleratorMemoryCostBytes": "1443780294"
 		},
 		"d436f8106a02a2ddb385947d": {
 			"job": {
@@ -1540,21 +1540,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "30975",
+			"totalMiniBatches": "51301",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "920803420",
-				"GTX 2080Ti": "2920596673",
-				"V100": "1977396182"
+				"A100": "1763401394",
+				"GTX 2080Ti": "4967321707",
+				"V100": "4029887919"
 			},
-			"minSpaceSharingPenalty": 1.1689633,
-			"maxSpaceSharingPenalty": 4.2215548,
+			"minSpaceSharingPenalty": 1.3247564,
+			"maxSpaceSharingPenalty": 4.252819,
 			"consolidationLevel2Penalties": {
-				"1": 1.0075141,
-				"2": 1.0673343,
-				"3": 1.1864184,
-				"4": 1.4874281
+				"1": 1.0442874,
+				"2": 1.0665339,
+				"3": 1.4495003,
+				"4": 1.7218351
 			},
-			"maximumAcceleratorMemoryCostBytes": "5442797"
+			"maximumAcceleratorMemoryCostBytes": "6811801621"
 		},
 		"d71111659c45b2132bc08797": {
 			"job": {
@@ -1576,21 +1576,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "64672",
+			"totalMiniBatches": "72260",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "850491297",
-				"GTX 2080Ti": "2825471891",
-				"V100": "2245311802"
+				"A100": "978944117",
+				"GTX 2080Ti": "2528777607",
+				"V100": "1442457292"
 			},
-			"minSpaceSharingPenalty": 1.0932531,
-			"maxSpaceSharingPenalty": 2.2869987,
+			"minSpaceSharingPenalty": 1.3649205,
+			"maxSpaceSharingPenalty": 2.8590639,
 			"consolidationLevel2Penalties": {
-				"1": 1.0105349,
-				"2": 1.1864922,
-				"3": 1.281495,
-				"4": 1.7133749
+				"1": 1.0300753,
+				"2": 1.0385935,
+				"3": 1.1475846,
+				"4": 1.5116313
 			},
-			"maximumAcceleratorMemoryCostBytes": "4606507"
+			"maximumAcceleratorMemoryCostBytes": "4350838218"
 		},
 		"d7135d32f9e011a16ccc39ec": {
 			"job": {
@@ -1612,21 +1612,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "62081",
+			"totalMiniBatches": "72898",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "1396974176",
-				"GTX 2080Ti": "3638159018",
-				"V100": "2522148169"
+				"A100": "957381197",
+				"GTX 2080Ti": "2271985102",
+				"V100": "2147922682"
 			},
-			"minSpaceSharingPenalty": 1.0226995,
-			"maxSpaceSharingPenalty": 2.307437,
+			"minSpaceSharingPenalty": 1.162653,
+			"maxSpaceSharingPenalty": 2.1861289,
 			"consolidationLevel2Penalties": {
-				"1": 1.0333416,
-				"2": 1.186868,
-				"3": 1.114197,
-				"4": 1.5281762
+				"1": 1.0099783,
+				"2": 1.0888163,
+				"3": 1.2956502,
+				"4": 1.453697
 			},
-			"maximumAcceleratorMemoryCostBytes": "5320063"
+			"maximumAcceleratorMemoryCostBytes": "5549420407"
 		},
 		"dd3a0a978475dfd449bdd136": {
 			"job": {
@@ -1648,21 +1648,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "77656",
+			"totalMiniBatches": "93735",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "437050982",
-				"GTX 2080Ti": "1041694522",
-				"V100": "825852930"
+				"A100": "344217700",
+				"GTX 2080Ti": "863002741",
+				"V100": "553639117"
 			},
-			"minSpaceSharingPenalty": 1.1379396,
-			"maxSpaceSharingPenalty": 3.101303,
+			"minSpaceSharingPenalty": 1.3807197,
+			"maxSpaceSharingPenalty": 4.2184587,
 			"consolidationLevel2Penalties": {
-				"1": 1.0363472,
-				"2": 1.0349152,
-				"3": 1.4561255,
-				"4": 1.7815824
+				"1": 1.0481405,
+				"2": 1.1458598,
+				"3": 1.2846013,
+				"4": 1.7226158
 			},
-			"maximumAcceleratorMemoryCostBytes": "1817785"
+			"maximumAcceleratorMemoryCostBytes": "678623226"
 		},
 		"e6fbc0b25267595b15fd9ce0": {
 			"job": {
@@ -1684,21 +1684,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "164678",
+			"totalMiniBatches": "102498",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "172638053",
-				"GTX 2080Ti": "547787094",
-				"V100": "489093447"
+				"A100": "416703236",
+				"GTX 2080Ti": "1462659960",
+				"V100": "880099239"
 			},
-			"minSpaceSharingPenalty": 1.3269066,
-			"maxSpaceSharingPenalty": 3.695693,
+			"minSpaceSharingPenalty": 1.4497596,
+			"maxSpaceSharingPenalty": 2.6160927,
 			"consolidationLevel2Penalties": {
-				"1": 1.0345342,
-				"2": 1.0659482,
-				"3": 1.2942109,
-				"4": 1.6082404
+				"1": 1.0442544,
+				"2": 1.1925297,
+				"3": 1.1480236,
+				"4": 1.604476
 			},
-			"maximumAcceleratorMemoryCostBytes": "8315361"
+			"maximumAcceleratorMemoryCostBytes": "7274635532"
 		},
 		"e77a35158cd6afad191ce35b": {
 			"job": {
@@ -1720,21 +1720,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "28403",
+			"totalMiniBatches": "30002",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "949387084",
-				"GTX 2080Ti": "2851941120",
-				"V100": "2131368125"
+				"A100": "1409797824",
+				"GTX 2080Ti": "3607999662",
+				"V100": "2699971176"
 			},
-			"minSpaceSharingPenalty": 1.4500933,
-			"maxSpaceSharingPenalty": 3.8749096,
+			"minSpaceSharingPenalty": 1.1075227,
+			"maxSpaceSharingPenalty": 3.9430387,
 			"consolidationLevel2Penalties": {
-				"1": 1.0289528,
-				"2": 1.0653437,
-				"3": 1.3858014,
-				"4": 1.4167448
+				"1": 1.0071748,
+				"2": 1.0220636,
+				"3": 1.2318411,
+				"4": 1.673262
 			},
-			"maximumAcceleratorMemoryCostBytes": "2236268"
+			"maximumAcceleratorMemoryCostBytes": "4129264686"
 		},
 		"f6304007ef3e25fc37150d2c": {
 			"job": {
@@ -1756,21 +1756,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "202734",
+			"totalMiniBatches": "58760",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "173005729",
-				"GTX 2080Ti": "571718756",
-				"V100": "331903789"
+				"A100": "828376330",
+				"GTX 2080Ti": "1972543352",
+				"V100": "1590798866"
 			},
-			"minSpaceSharingPenalty": 1.3493294,
-			"maxSpaceSharingPenalty": 2.9077187,
+			"minSpaceSharingPenalty": 1.0609273,
+			"maxSpaceSharingPenalty": 3.3173535,
 			"consolidationLevel2Penalties": {
-				"1": 1.0067133,
-				"2": 1.0111403,
-				"3": 1.3382804,
-				"4": 1.6296554
+				"1": 1.0432668,
+				"2": 1.094539,
+				"3": 1.1133025,
+				"4": 1.5657088
 			},
-			"maximumAcceleratorMemoryCostBytes": "6011522"
+			"maximumAcceleratorMemoryCostBytes": "2581371511"
 		},
 		"f92eff9824837558a972da2c": {
 			"job": {
@@ -1792,21 +1792,21 @@
 					"user": "74238accb90b"
 				}
 			},
-			"totalMiniBatches": "542554",
+			"totalMiniBatches": "44298",
 			"acceleratorType2MiniBatchDurationNanoSecond": {
-				"A100": "151046623",
-				"GTX 2080Ti": "493520903",
-				"V100": "276003667"
+				"A100": "977441208",
+				"GTX 2080Ti": "2625652332",
+				"V100": "1849961543"
 			},
-			"minSpaceSharingPenalty": 1.2573131,
-			"maxSpaceSharingPenalty": 3.276531,
+			"minSpaceSharingPenalty": 1.3914857,
+			"maxSpaceSharingPenalty": 2.1974437,
 			"consolidationLevel2Penalties": {
-				"1": 1.0255221,
-				"2": 1.0482047,
-				"3": 1.4868046,
-				"4": 1.6722655
+				"1": 1.0050473,
+				"2": 1.049414,
+				"3": 1.2633528,
+				"4": 1.4463313
 			},
-			"maximumAcceleratorMemoryCostBytes": "827436"
+			"maximumAcceleratorMemoryCostBytes": "1684947991"
 		}
 	}
 }

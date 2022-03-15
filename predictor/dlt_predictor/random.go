@@ -102,7 +102,7 @@ func (p *RandomPredictor) getDataParallelTasksSpaceSharingMiniBatchDuration(ctx 
 
 func (p *RandomPredictor) getMaximumAcceleratorMemoryCostBytes(ctx *PredictSessionContext, jobID string) int64 {
 	cs := int64(crc32.ChecksumIEEE([]byte(jobID)))
-	GiB := 1024 * 1024                                                              // 1024 * 1024 bytes = 1 GiB
+	GiB := 1024 * 1024 * 1024                                                       // 1024 * 1024 * 1024 bytes = 1 GiB
 	result := int64(7.5*float64(GiB)*(float64(cs%100)/100)) + int64(float64(GiB)/2) // min: 512MB max: 8 GiB
 	return result
 }

@@ -6,6 +6,8 @@ import (
 	"UNS/utils"
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
+	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -14,6 +16,10 @@ import (
 	"sort"
 	"strconv"
 )
+
+var resourceManagerID = "RESOURCE_MANAGER_ID"
+var partitionID = "PARTITION_ID"
+var schedulerID = "SCHEDULER_ID"
 
 var dataDir = "/Users/purchaser/datasets/ali-cluster/cluster-trace-gpu-v2020/data"
 var maxReadLines = -1
@@ -25,33 +31,122 @@ var GPUEfficiencyRatio = map[string][]float64{
 }
 var minSpaceSharingPenaltyDistribution = []float64{1, 1.5}
 var maxSpaceSharingPenaltyDistribution = []float64{2, 5}
-var gpuTypes = []string{"A100", "V100", "GTX 2080Ti"}
+
+const (
+	A100      = "A100"
+	V100      = "V100"
+	GTX2080Ti = "GTX 2080Ti"
+
+	GiB = 1024 * 1024 * 1024
+)
+
+var GPUType2Meta = map[string]*objects.AcceleratorMetaInfo{
+	GTX2080Ti: {
+		BriefType: GTX2080Ti,
+		AcceleratorMemory: &objects.AcceleratorMemory{
+			BytesCapacity: 16 * GiB,
+		},
+	},
+	V100: {
+		BriefType: V100,
+		AcceleratorMemory: &objects.AcceleratorMemory{
+			BytesCapacity: 32 * GiB,
+		},
+	},
+	A100: {
+		BriefType: A100,
+		AcceleratorMemory: &objects.AcceleratorMemory{
+			BytesCapacity: 40 * GiB,
+		},
+	},
+}
+
+var gpuTypes = []string{A100, V100, GTX2080Ti}
 var consolidationLevel2PenaltyDistributions = map[configs.ConsolidationLevel][]float64{
 	configs.ConsolidationLevel_NVLink:        {1, 1.05},
 	configs.ConsolidationLevel_SameCPUSocket: {1, 1.2},
 	configs.ConsolidationLevel_DiffCPUSocket: {1.1, 1.5},
 	configs.ConsolidationLevel_DiffNode:      {1.3, 1.8},
 }
-var GiB = 1024 * 1024
+
 var gpuMemoryCostDistributions = []int64{int64(0.5 * float64(GiB)), int64(8 * GiB)}
+
+var instance2Count = map[*Instance]int64{
+	NewInstance(map[int64][]string{
+		0: {GTX2080Ti, GTX2080Ti},
+		1: {GTX2080Ti, GTX2080Ti},
+	}): 16,
+	NewInstance(map[int64][]string{
+		0: {GTX2080Ti, GTX2080Ti, GTX2080Ti, GTX2080Ti},
+		1: {V100, V100, V100, V100},
+	}): 16,
+	NewInstance(map[int64][]string{
+		0: {V100, V100, V100, V100},
+		1: {V100, V100, V100, V100},
+	}): 32,
+	NewInstance(map[int64][]string{
+		0: {A100, A100, A100, A100},
+		1: {A100, A100, A100, A100},
+		2: {A100, A100, A100, A100},
+		3: {A100, A100, A100, A100},
+	}): 32,
+}
+
+var naiveSchedulerConfiguration = &configs.NaiveSchedulerConfiguration{
+	SchedulerID:       schedulerID,
+	ResourceManagerID: resourceManagerID,
+	PartitionID:       partitionID,
+	IntervalNano:      1e9,
+	SyncMode:          true,
+}
 
 func init() {
 	rand.Seed(1)
 }
 
 func main() {
+	predictorDataPath := "/Users/purchaser/go/src/UNS/cases/predictor_data.json"
+	simulatorConfigurationPath := "/Users/purchaser/go/src/UNS/cases/simulator_configuration.json"
+
 	generator := &CaseGenerator{}
 	jobHeader, jobRecords := generator.ReadTable("pai_job_table.header", "pai_job_table.csv")
 	taskHeader, taskRecords := generator.ReadTable("pai_task_table.header", "pai_task_table.csv")
 	taskHeader, taskRecords = generator.PreprocessTaskTable(taskHeader, taskRecords)
 	mergedHeader, mergedRecords := generator.MergeTaskAndJob(taskHeader, taskRecords, jobHeader, jobRecords)
-	jobID2DLTJobData := generator.GenerateJobsData(mergedHeader, mergedRecords)
+	jobID2DLTJobData, jobs := generator.GenerateJobsData(mergedHeader, mergedRecords)
 	predictorData := &configs.DLTPredictorDataOrientedDataFormat{JobID2DLTJobData: jobID2DLTJobData}
-	s, err := utils.MarshalJsonPB(predictorData)
+	cluster := generator.GenerateCluster()
+
+	schedulersConfiguration := generator.GenerateNaiveSchedulerConfiguration()
+
+	simulatorConfiguration := &configs.MonoPartitionSyncDLTSimulatorConfiguration{
+		ResourceManagerID: resourceManagerID,
+		PartitionID:       partitionID,
+		RmConfiguration: &configs.RMConfiguration{
+			Cluster:                 cluster,
+			SchedulersConfiguration: schedulersConfiguration,
+		},
+		PredictorConfiguration: &configs.PredictorConfiguration{
+			PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+			Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+				DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+					DataSourcePath: predictorDataPath,
+				},
+			},
+		},
+		Jobs: jobs,
+	}
+
+	write(predictorDataPath, predictorData)
+	write(simulatorConfigurationPath, simulatorConfiguration)
+}
+
+func write(path string, message proto.Message) {
+	s, err := utils.MarshalJsonPB(message)
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile("/Users/purchaser/go/src/UNS/cases/case_test.json", []byte(s), 0666)
+	err = ioutil.WriteFile(path, []byte(s), 0666)
 	if err != nil {
 		panic(err)
 	}
@@ -253,7 +348,7 @@ func (g *CaseGenerator) MergeTaskAndJob(taskHeader []string, taskRecords [][]str
 	return mergedHeader, mergedRecords
 }
 
-func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords [][]string) map[string]*configs.DLTJobData {
+func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords [][]string) (map[string]*configs.DLTJobData, []*objects.Job) {
 	mergedRecords = mergedRecords[:jobCount]
 	//mergedHeader := []string{
 	//	"jobID",
@@ -341,7 +436,11 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 		}
 	}
 	log.Printf("GenerateJobsData finished, generated jobs count = %d, gangJobsCount = %d, singleJobsCount = %d", len(data), gangJobsCount, len(data)-gangJobsCount)
-	return data
+	jobs := make([]*objects.Job, 0, len(data))
+	for _, d := range data {
+		jobs = append(jobs, d.GetJob())
+	}
+	return data, jobs
 }
 
 func (g *CaseGenerator) generateConsolidationLevel2Penalties() map[int64]float32 {
@@ -388,4 +487,69 @@ func (g *CaseGenerator) generateGPURatio(fromGPU, toGPU string) float64 {
 func (g *CaseGenerator) randomUniform(minAndMax []float64) float64 {
 	size := minAndMax[1] - minAndMax[0]
 	return minAndMax[0] + size*rand.Float64()
+}
+
+func (g *CaseGenerator) GenerateCluster() *objects.Cluster {
+	partition := &objects.Partition{
+		PartitionID: partitionID,
+		Nodes:       make([]*objects.Node, 0),
+	}
+	cluster := &objects.Cluster{
+		ResourceManagerID: resourceManagerID,
+		Partitions: []*objects.Partition{
+			partition,
+		},
+	}
+	instanceType := 0
+	for instance, count := range instance2Count {
+		instanceType += 1
+		for i := 0; i < int(count); i++ {
+			nodeID := fmt.Sprintf("inst-%d-replica-%d", instanceType, i)
+			CPUSockets := make([]*objects.CPUSocket, 0, len(instance.CPUSocket2GPUs))
+			for CPUSocketIdx, GPUs := range instance.CPUSocket2GPUs {
+				CPUSocket := &objects.CPUSocket{}
+				CPUSocket.CPUSocketID = fmt.Sprintf("%s-cpusocket-%d", nodeID, CPUSocketIdx)
+				CPUSocket.Accelerators = make([]*objects.Accelerator, 0, len(GPUs))
+				for GPUIdx, GPUType := range GPUs {
+					CPUSocket.Accelerators = append(CPUSocket.Accelerators, &objects.Accelerator{
+						AcceleratorID:       fmt.Sprintf("%s-acc-%d", CPUSocket.CPUSocketID, GPUIdx),
+						AcceleratorMetaInfo: GPUType2Meta[GPUType],
+					})
+				}
+				CPUSockets = append(CPUSockets, CPUSocket)
+			}
+			node := &objects.Node{
+				NodeID:     fmt.Sprintf("inst-%d-replica-%d", instanceType, i),
+				CPUSockets: CPUSockets,
+			}
+			partition.Nodes = append(partition.Nodes, node)
+		}
+	}
+	return cluster
+}
+
+func (g *CaseGenerator) GenerateNaiveSchedulerConfiguration() *configs.SchedulersConfiguration {
+	return &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+		schedulerID: {
+			SchedulerType: configs.SchedulerType_schedulerTypeNaive,
+			Configuration: &configs.SchedulerConfiguration_NaiveSchedulerConfiguration{NaiveSchedulerConfiguration: naiveSchedulerConfiguration},
+		},
+	}}
+}
+
+func (g *CaseGenerator) GenerateUNSSchedulerConfiguration() *configs.SchedulersConfiguration {
+	return &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+		schedulerID: {
+			SchedulerType: configs.SchedulerType_schedulerTypeUNS,
+			Configuration: &configs.SchedulerConfiguration_UnsSchedulerConfiguration{UnsSchedulerConfiguration: nil},
+		},
+	}}
+}
+
+type Instance struct {
+	CPUSocket2GPUs map[int64][]string
+}
+
+func NewInstance(CPUSocket2GPUs map[int64][]string) *Instance {
+	return &Instance{CPUSocket2GPUs: CPUSocket2GPUs}
 }

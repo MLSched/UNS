@@ -10,7 +10,7 @@ import (
 )
 
 var configPath = "/Users/purchaser/go/src/UNS/simulator/configs/mono_partition_sync_dlt_simulator.json"
-var GiB = int64(1024 * 1024)
+var GiB = int64(1024 * 1024 * 1024)
 
 func init() {
 	//f, err := os.OpenFile("/Users/purchaser/go/src/UNS/logs/simulator_test.log", os.O_CREATE, 0666)
