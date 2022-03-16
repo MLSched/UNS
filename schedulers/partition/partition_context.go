@@ -187,3 +187,16 @@ func (c *Context) GetPendingAllocationsSlice() []*objects.JobAllocation {
 	}
 	return allocations
 }
+
+func (c *Context) GetUnallocatedJobs() map[string]*objects.Job {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	jobs := make(map[string]*objects.Job)
+	for jobID, job := range c.UnfinishedJobs {
+		jobs[jobID] = job
+	}
+	for jobID := range c.Allocations {
+		delete(jobs, jobID)
+	}
+	return jobs
+}

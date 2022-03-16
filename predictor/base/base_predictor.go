@@ -151,8 +151,8 @@ func (r *PredictResult) IsResultComplete(taskAllocation *objects.TaskAllocation)
 	return false
 }
 
-func (r *PredictResult) GetResult(taskAllocation *objects.TaskAllocation) (interfaces.EachPredictResult, bool) {
-	return r.Results[taskAllocation], r.IsResultComplete(taskAllocation)
+func (r *PredictResult) GetResult(taskAllocation *objects.TaskAllocation) interfaces.EachPredictResult {
+	return r.Results[taskAllocation]
 }
 
 func (r *PredictResult) Range(f func(taskAllocation *objects.TaskAllocation, result interfaces.EachPredictResult)) {

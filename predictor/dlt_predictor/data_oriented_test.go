@@ -109,8 +109,8 @@ func TestDataOrientedCase1(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, allocation := range allocations {
-		each, complete := result.GetResult(p.extractRepresentTaskAllocation(allocation))
-		t.Logf("allocation job ID = %s, startExecutionTime = %f, finishTime = %f, complete = %v", allocation.GetJobID(), float64(*each.GetStartExecutionNanoTime())/1e9, float64(*each.GetFinishNanoTime())/1e9, complete)
+		each := result.GetResult(p.extractRepresentTaskAllocation(allocation))
+		t.Logf("allocation job ID = %s, startExecutionTime = %f, finishTime = %f", allocation.GetJobID(), float64(*each.GetStartExecutionNanoTime())/1e9, float64(*each.GetFinishNanoTime())/1e9)
 	}
 
 	r := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_2_1_1"], partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_2_2_1"]}, []*objects.Job{job1})

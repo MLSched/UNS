@@ -51,6 +51,9 @@ var jobExecutionTimeScaleFactor = float64(1)
 //var syncMode = false
 var syncMode = true
 
+var deadlineProb = 0.3
+var deadlineDistribution = []float64{1.2, 3}
+
 const (
 	A100      = "A100"
 	V100      = "V100"
@@ -396,6 +399,8 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 		if totalMiniBatches < 10 {
 			totalMiniBatches = 10
 		}
+		submitTimeNanoSecond := int64(submitTimeScaleFactor * startTimeSecond * 1e9)
+		executionDurationNanoSecond := totalMiniBatches * miniBatchDurationNanoSecond
 		GPUCount, _ := strconv.ParseInt(record[GPUCountIdx], 10, 64)
 		GPUType := record[GPUTypeIdx]
 		var taskGroup *objects.TaskGroup
@@ -432,11 +437,12 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 			JobID:                jobID,
 			JobType:              objects.JobType_jobTypeDLT,
 			TaskGroup:            taskGroup,
-			SubmitTimeNanoSecond: int64(submitTimeScaleFactor * startTimeSecond * 1e9),
+			SubmitTimeNanoSecond: submitTimeNanoSecond,
 			UserGroup: &objects.UserGroup{
 				User:  record[userIDIdx],
 				Group: "", // TODO
 			},
+			Deadline: g.generateDeadline(submitTimeNanoSecond, executionDurationNanoSecond),
 		}
 		return &configs.DLTJobData{
 			Job:              job,
@@ -550,6 +556,14 @@ func (g *CaseGenerator) GenerateCluster() *objects.Cluster {
 		}
 	}
 	return cluster
+}
+
+func (g *CaseGenerator) generateDeadline(submitNanoTime int64, executionDurationNanoTime int64) int64 {
+	if rand.Float64() > deadlineProb {
+		return 0
+	}
+	factor := g.randomUniform(deadlineDistribution)
+	return submitNanoTime + int64(float64(executionDurationNanoTime)*factor)
 }
 
 type Instance struct {

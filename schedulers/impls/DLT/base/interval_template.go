@@ -6,6 +6,7 @@ import (
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
 	"log"
+	"math"
 	"time"
 )
 
@@ -102,6 +103,9 @@ func (i *IntervalSchedulerTemplate) DoSchedule() {
 func (i *IntervalSchedulerTemplate) StartService() {
 	go func() {
 		dur := time.Duration(i.intervalNano) * time.Nanosecond
+		if i.syncMode {
+			dur = math.MaxInt64 // sync mode doesn't provide interval scheduling automatically
+		}
 		timer := time.NewTimer(dur)
 		scheduleCount := 0
 		for {

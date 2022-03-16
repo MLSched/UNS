@@ -14,8 +14,6 @@ type Scheduler struct {
 	*base2.IntervalSchedulerTemplate
 
 	Config *configs.NaiveSchedulerConfiguration
-
-	pusher base2.EventPusher
 }
 
 func (s *Scheduler) GetSchedulerID() string {

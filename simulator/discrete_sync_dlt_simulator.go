@@ -101,7 +101,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 			panic(fmt.Sprintf("DiscreteSyncDLTSimulator Predict err = %s", err))
 		}
 		for _, allocation := range allocations {
-			r, _ := predictResult.GetResult(allocation.GetTaskAllocations()[0])
+			r := predictResult.GetResult(allocation.GetTaskAllocations()[0])
 			if *r.GetFinishNanoTime() == *r.GetStartExecutionNanoTime() {
 				panic(fmt.Sprintf("predictResult Finish = %d, Start = %d， allocation jobID = %s", *r.GetFinishNanoTime(), *r.GetStartExecutionNanoTime(), allocation.GetJobID()))
 			}
@@ -109,7 +109,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 		finishTime := int64(math.MaxInt64)
 		closest2FinishAllocations := make([]*objects.JobAllocation, 0)
 		for _, allocation := range allocations {
-			r, _ := predictResult.GetResult(allocation.GetTaskAllocations()[0])
+			r := predictResult.GetResult(allocation.GetTaskAllocations()[0])
 			jobFinishNanoTime := *r.GetFinishNanoTime()
 			if jobFinishNanoTime < finishTime {
 				finishTime = jobFinishNanoTime
@@ -121,7 +121,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 		}
 		newStartedPlaceholderAllocations := make([]*objects.JobAllocation, 0)
 		for _, allocation := range allocations {
-			r, _ := predictResult.GetResult(allocation.GetTaskAllocations()[0])
+			r := predictResult.GetResult(allocation.GetTaskAllocations()[0])
 			if allocation.GetTaskAllocations()[0].GetPlaceholder() && allocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond() == nil && r.GetStartExecutionNanoTime() != nil {
 				newStartedPlaceholderAllocations = append(newStartedPlaceholderAllocations, allocation)
 			}

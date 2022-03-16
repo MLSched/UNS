@@ -185,12 +185,12 @@ nextAlloc:
 					if taskAllocation.GetPlaceholder() && taskAllocation.GetStartExecutionTimeNanoSecond() == nil {
 						continue
 					}
-					if _, complete := ctx.result.GetResult(taskAllocation); !complete {
+					if !ctx.result.IsResultComplete(taskAllocation) {
 						ctx.result.UpdateStartExecutionTime(taskAllocation, 0)
 						ctx.result.UpdateFinishTime(taskAllocation, 0)
 						continue nextAlloc
 					}
-					r, _ := ctx.result.GetResult(taskAllocation)
+					r := ctx.result.GetResult(taskAllocation)
 					startExecutionTime = math.Max(float64(*r.GetFinishNanoTime()), startExecutionTime)
 				}
 			}
@@ -219,7 +219,7 @@ func (p *DLTBasePredictor) getGangTaskGroupDLTExtra(ctx *PredictSessionContext, 
 // 因为placeholder任务的存在，它们不知道自己什么时候开始，我们需要将其他全部任务的结束时间算出后，才能计算他们的开始执行时间。
 // 而allocation在Predict中是只读的，我们需要另外的数据结构存储它们临时的开始时间。
 func (p *DLTBasePredictor) getStartExecutionNanoTimeInSession(ctx *PredictSessionContext, allocation *objects.JobAllocation) *int64 {
-	r, _ := ctx.result.GetResult(p.extractRepresentTaskAllocation(allocation))
+	r := ctx.result.GetResult(p.extractRepresentTaskAllocation(allocation))
 	return r.GetStartExecutionNanoTime()
 }
 

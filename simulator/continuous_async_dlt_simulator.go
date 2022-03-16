@@ -129,7 +129,7 @@ func (s *ContinuousAsyncDLTSimulator) checkFinishedJobs() {
 			newlyStartedAllocations := make([]*objects.JobAllocation, 0)
 			isNewlyStarted := func(results interfaces.PredictResult, allocation *objects.JobAllocation) bool {
 				ftaskAllocation := allocation.GetTaskAllocations()[0]
-				r, _ := results.GetResult(ftaskAllocation)
+				r := results.GetResult(ftaskAllocation)
 				if *r.GetStartExecutionNanoTime() <= now && ftaskAllocation.GetStartExecutionTimeNanoSecond() == nil {
 					return true
 				}
@@ -138,7 +138,7 @@ func (s *ContinuousAsyncDLTSimulator) checkFinishedJobs() {
 			finishedJobIDs := make([]string, 0)
 			for _, allocation := range s.partitionContext.GetPendingAllocationsSlice() {
 				ftaskAllocation := allocation.GetTaskAllocations()[0]
-				r, _ := predictResults.GetResult(ftaskAllocation)
+				r := predictResults.GetResult(ftaskAllocation)
 				if isNewlyStarted(predictResults, allocation) {
 					newlyStartedAllocations = append(newlyStartedAllocations, allocation)
 					continue
