@@ -1506,7 +1506,6 @@ func (x *JobAllocation) GetExtra() []byte {
 
 // TaskAllocation
 // 表示Task所占用的内存，CPU，加速器等信息。
-// 并且包含一个Task的开始执行时间与执行总时间。
 type TaskAllocation struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1622,6 +1621,8 @@ func (x *TaskAllocation) GetExtra() []byte {
 	return nil
 }
 
+// JobExecutionHistory
+// 表示Job的执行历史
 type JobExecutionHistory struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1693,6 +1694,9 @@ func (x *JobExecutionHistory) GetTaskExecutionHistories() []*TaskExecutionHistor
 	return nil
 }
 
+// TaskExecutionHistory
+// 表示Task的执行历史
+// 包含了该Task的执行环境（allocation），以及开始和结束时间
 type TaskExecutionHistory struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

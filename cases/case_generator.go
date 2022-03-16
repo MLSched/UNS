@@ -110,13 +110,28 @@ var instance2Count = map[*Instance]int64{
 	}): 32,
 }
 
-var naiveSchedulerConfiguration = &configs.NaiveSchedulerConfiguration{
-	SchedulerID:       schedulerID,
-	ResourceManagerID: resourceManagerID,
-	PartitionID:       partitionID,
-	IntervalNano:      1e16,
-	SyncMode:          syncMode,
-}
+var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+	partitionID: {
+		SchedulerType: configs.SchedulerType_schedulerTypeNaive,
+		Configuration: &configs.SchedulerConfiguration_NaiveSchedulerConfiguration{NaiveSchedulerConfiguration: &configs.NaiveSchedulerConfiguration{
+			SchedulerID:       schedulerID,
+			ResourceManagerID: resourceManagerID,
+			PartitionID:       partitionID,
+			IntervalNano:      1e16,
+			SyncMode:          syncMode,
+			PredictorConfiguration: &configs.PredictorConfiguration{
+				PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+				Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+					DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+						DataSourcePath: predictorDataPath,
+					},
+				},
+			},
+		}},
+	},
+}}
+
+var schedulerConfiguration = naiveSchedulerConfiguration
 
 func init() {
 	rand.Seed(1)
@@ -132,7 +147,7 @@ func main() {
 	predictorData := &configs.DLTPredictorDataOrientedDataFormat{JobID2DLTJobData: jobID2DLTJobData}
 	cluster := generator.GenerateCluster()
 
-	schedulersConfiguration := generator.GenerateNaiveSchedulerConfiguration()
+	schedulersConfiguration := schedulerConfiguration
 
 	simulatorConfiguration := &configs.DLTSimulatorConfiguration{
 		ResourceManagerID: resourceManagerID,
@@ -535,24 +550,6 @@ func (g *CaseGenerator) GenerateCluster() *objects.Cluster {
 		}
 	}
 	return cluster
-}
-
-func (g *CaseGenerator) GenerateNaiveSchedulerConfiguration() *configs.SchedulersConfiguration {
-	return &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
-		partitionID: {
-			SchedulerType: configs.SchedulerType_schedulerTypeNaive,
-			Configuration: &configs.SchedulerConfiguration_NaiveSchedulerConfiguration{NaiveSchedulerConfiguration: naiveSchedulerConfiguration},
-		},
-	}}
-}
-
-func (g *CaseGenerator) GenerateUNSSchedulerConfiguration() *configs.SchedulersConfiguration {
-	return &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
-		partitionID: {
-			SchedulerType: configs.SchedulerType_schedulerTypeUNS,
-			Configuration: &configs.SchedulerConfiguration_UnsSchedulerConfiguration{UnsSchedulerConfiguration: nil},
-		},
-	}}
 }
 
 type Instance struct {

@@ -39,6 +39,7 @@ message NaiveSchedulerConfiguration {
   string partitionID = 3;
   int64 intervalNano = 4;
   bool syncMode = 5;
+  PredictorConfiguration predictorConfiguration = 6;
 }
 
 message UNSSchedulerConfiguration {
@@ -47,6 +48,7 @@ message UNSSchedulerConfiguration {
   string partitionID = 3;
   int64 intervalNano = 4;
   bool syncMode = 5;
+  PredictorConfiguration predictorConfiguration = 6;
 }
 
 // 任务执行时间预测器的配置
