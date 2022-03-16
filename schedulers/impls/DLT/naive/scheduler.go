@@ -107,7 +107,9 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 			}
 			taskAllocation := &objects.TaskAllocation{
 				NodeID:                acceleratorID2NodeID[accID],
+				JobID:                 job.GetJobID(),
 				TaskID:                task.GetTaskID(),
+				Placeholder:           true,
 				AcceleratorAllocation: acceleratorAllocation,
 			}
 			taskAllocations = append(taskAllocations, taskAllocation)

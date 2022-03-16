@@ -70,9 +70,7 @@ func (c *Context) refreshView() {
 func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if eo.GetCurrentNanoTime() != 0 {
-		c.updateCurrentTime(eo.GetCurrentNanoTime())
-	}
+	c.updateCurrentTime(eo.GetCurrentNanoTime())
 	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {
 		jobID := updatedJobAllocation.GetJobID()
 		if _, ok := c.UnfinishedJobs[jobID]; !ok {
@@ -98,9 +96,7 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 func (c *Context) UpdateJobs(eo *eventobjs.RMUpdateJobsEvent) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if eo.GetCurrentNanoTime() != 0 {
-		c.updateCurrentTime(eo.GetCurrentNanoTime())
-	}
+	c.updateCurrentTime(eo.GetCurrentNanoTime())
 	for _, job := range eo.GetNewJobs() {
 		if _, duplicated := c.UnfinishedJobs[job.GetJobID()]; duplicated {
 			reason := fmt.Sprintf("Partition Context ID = [%s] update jobs, add new jobs, encounter duplicated job ID = [%s]", c.Meta.GetPartitionID(), job.GetJobID())
@@ -131,6 +127,9 @@ func (c *Context) UpdateTime(eo *eventobjs.RMUpdateTimeEvent) error {
 }
 
 func (c *Context) updateCurrentTime(currentNanoTime int64) {
+	if currentNanoTime == 0 {
+		return
+	}
 	c.Time = &currentNanoTime
 }
 

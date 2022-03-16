@@ -4,8 +4,10 @@ import (
 	"UNS/pb_gen/objects"
 	"UNS/predictor/interfaces"
 	"UNS/schedulers/partition"
+	"UNS/utils"
 	"fmt"
 	"log"
+	"sort"
 )
 
 // Base 支持
@@ -151,4 +153,28 @@ func (r *PredictResult) IsResultComplete(taskAllocation *objects.TaskAllocation)
 
 func (r *PredictResult) GetResult(taskAllocation *objects.TaskAllocation) (interfaces.EachPredictResult, bool) {
 	return r.Results[taskAllocation], r.IsResultComplete(taskAllocation)
+}
+
+func (r *PredictResult) Range(f func(taskAllocation *objects.TaskAllocation, result interfaces.EachPredictResult)) {
+	taskAllocations := make([]*objects.TaskAllocation, 0, len(r.Results))
+	for allocation := range r.Results {
+		taskAllocations = append(taskAllocations, allocation)
+	}
+	sorter := &utils.Sorter{
+		LenFunc: func() int {
+			return len(taskAllocations)
+		},
+		LessFunc: func(i, j int) bool {
+			return taskAllocations[i].GetJobID() < taskAllocations[j].GetJobID()
+		},
+		SwapFunc: func(i, j int) {
+			t := taskAllocations[i]
+			taskAllocations[i] = taskAllocations[j]
+			taskAllocations[j] = t
+		},
+	}
+	sort.Sort(sorter)
+	for _, taskAllocation := range taskAllocations {
+		f(taskAllocation, r.Results[taskAllocation])
+	}
 }

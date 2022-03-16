@@ -98,15 +98,7 @@ enum ConsolidationLevel {
 
 
 // 模拟器配置
-message MonoPartitionSyncDLTSimulatorConfiguration {
-  string resourceManagerID = 1;
-  string partitionID = 2;
-  RMConfiguration rmConfiguration = 3;
-  PredictorConfiguration predictorConfiguration = 4;
-  repeated Job jobs = 5;
-}
-
-message MonoPartitionAsyncDLTSimulatorConfiguration {
+message DLTSimulatorConfiguration {
   string resourceManagerID = 1;
   string partitionID = 2;
   RMConfiguration rmConfiguration = 3;

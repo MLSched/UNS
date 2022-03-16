@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"path"
@@ -22,15 +23,33 @@ var partitionID = "PARTITION_ID"
 var schedulerID = "SCHEDULER_ID"
 
 var dataDir = "/Users/purchaser/datasets/ali-cluster/cluster-trace-gpu-v2020/data"
-var maxReadLines = -1
-var jobCount = 50
+
+//var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/async_predictor_data.json"
+//var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/async_simulator_configuration.json"
+
+var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
+var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
+
+var gpuTypes = []string{A100, V100, GTX2080Ti}
+
+var jobCount = 1000
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
+var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
-	"A100_to_V100":       {1.78, 2.42},
-	"A100_to_GTX_2080Ti": {2.36, 3.42},
+	V100:      {1.78, 2.42},
+	GTX2080Ti: {2.36, 3.42},
 }
 var minSpaceSharingPenaltyDistribution = []float64{1, 1.5}
 var maxSpaceSharingPenaltyDistribution = []float64{2, 5}
+
+//var submitTimeScaleFactor = float64(0.01)
+var submitTimeScaleFactor = float64(10)
+
+//var jobExecutionTimeScaleFactor = float64(0.00001)
+var jobExecutionTimeScaleFactor = float64(1)
+
+//var syncMode = false
+var syncMode = true
 
 const (
 	A100      = "A100"
@@ -61,7 +80,6 @@ var GPUType2Meta = map[string]*objects.AcceleratorMetaInfo{
 	},
 }
 
-var gpuTypes = []string{A100, V100, GTX2080Ti}
 var consolidationLevel2PenaltyDistributions = map[configs.ConsolidationLevel][]float64{
 	configs.ConsolidationLevel_NVLink:        {1, 1.05},
 	configs.ConsolidationLevel_SameCPUSocket: {1, 1.2},
@@ -96,8 +114,8 @@ var naiveSchedulerConfiguration = &configs.NaiveSchedulerConfiguration{
 	SchedulerID:       schedulerID,
 	ResourceManagerID: resourceManagerID,
 	PartitionID:       partitionID,
-	IntervalNano:      1e9,
-	SyncMode:          true,
+	IntervalNano:      1e16,
+	SyncMode:          syncMode,
 }
 
 func init() {
@@ -105,9 +123,6 @@ func init() {
 }
 
 func main() {
-	predictorDataPath := "/Users/purchaser/go/src/UNS/cases/predictor_data.json"
-	simulatorConfigurationPath := "/Users/purchaser/go/src/UNS/cases/simulator_configuration.json"
-
 	generator := &CaseGenerator{}
 	jobHeader, jobRecords := generator.ReadTable("pai_job_table.header", "pai_job_table.csv")
 	taskHeader, taskRecords := generator.ReadTable("pai_task_table.header", "pai_task_table.csv")
@@ -119,7 +134,7 @@ func main() {
 
 	schedulersConfiguration := generator.GenerateNaiveSchedulerConfiguration()
 
-	simulatorConfiguration := &configs.MonoPartitionSyncDLTSimulatorConfiguration{
+	simulatorConfiguration := &configs.DLTSimulatorConfiguration{
 		ResourceManagerID: resourceManagerID,
 		PartitionID:       partitionID,
 		RmConfiguration: &configs.RMConfiguration{
@@ -178,20 +193,9 @@ func (g *CaseGenerator) ReadTable(headerFileName string, dataFilename string) ([
 	}
 	reader := csv.NewReader(tt)
 	var records [][]string
-	if maxReadLines < 0 {
-		records, err = reader.ReadAll()
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		records = make([][]string, 0, maxReadLines)
-		for i := 0; i < maxReadLines; i++ {
-			record, err := reader.Read()
-			if err != nil {
-				panic(err)
-			}
-			records = append(records, record)
-		}
+	records, err = reader.ReadAll()
+	if err != nil {
+		panic(err)
 	}
 	log.Printf("ReadTable headerFileName %s, dataFileName %s, records len = %d\n", headerFileName, dataFilename, len(records))
 	return header, records
@@ -369,11 +373,14 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 		jobID := record[jobIDIdx]
 		startTimeSecond, _ := strconv.ParseFloat(record[startTimeIdx], 64)
 		endTimeSecond, _ := strconv.ParseFloat(record[endTimeIdx], 64)
-		executionDurationSecond := endTimeSecond - startTimeSecond
+		executionDurationSecond := jobExecutionTimeScaleFactor * (endTimeSecond - startTimeSecond)
 		min := float64(miniBatchDurationNanoSecondDistribution[0])
 		max := float64(miniBatchDurationNanoSecondDistribution[1])
 		miniBatchDurationNanoSecond := int64(g.randomUniform([]float64{min, max}))
 		totalMiniBatches := int64(executionDurationSecond * 1e9 / float64(miniBatchDurationNanoSecond))
+		if totalMiniBatches < 10 {
+			totalMiniBatches = 10
+		}
 		GPUCount, _ := strconv.ParseInt(record[GPUCountIdx], 10, 64)
 		GPUType := record[GPUTypeIdx]
 		var taskGroup *objects.TaskGroup
@@ -410,7 +417,7 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 			JobID:                jobID,
 			JobType:              objects.JobType_jobTypeDLT,
 			TaskGroup:            taskGroup,
-			SubmitTimeNanoSecond: int64(startTimeSecond * 1e9),
+			SubmitTimeNanoSecond: int64(submitTimeScaleFactor * startTimeSecond * 1e9),
 			UserGroup: &objects.UserGroup{
 				User:  record[userIDIdx],
 				Group: "", // TODO
@@ -435,6 +442,18 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 			gangJobsCount++
 		}
 	}
+	normalizeSubmitTime := func(data map[string]*configs.DLTJobData) {
+		minSubmitTime := int64(math.MaxInt64)
+		for _, d := range data {
+			if d.GetJob().GetSubmitTimeNanoSecond() < minSubmitTime {
+				minSubmitTime = d.GetJob().GetSubmitTimeNanoSecond()
+			}
+		}
+		for _, d := range data {
+			d.GetJob().SubmitTimeNanoSecond -= minSubmitTime
+		}
+	}
+	normalizeSubmitTime(data)
 	log.Printf("GenerateJobsData finished, generated jobs count = %d, gangJobsCount = %d, singleJobsCount = %d", len(data), gangJobsCount, len(data)-gangJobsCount)
 	jobs := make([]*objects.Job, 0, len(data))
 	for _, d := range data {
@@ -463,24 +482,14 @@ func (g *CaseGenerator) generateGPURatio(fromGPU, toGPU string) float64 {
 	if fromGPU == toGPU {
 		return 1
 	}
-	a100Base := 1.0
-	if fromGPU != "A100" {
-		if fromGPU == "V100" {
-			a100Base = 1. / g.randomUniform(GPUEfficiencyRatio["A100_to_V100"])
-		} else if fromGPU == "GTX 2080Ti" {
-			a100Base = 1. / g.randomUniform(GPUEfficiencyRatio["A100_to_GTX_2080Ti"])
-		} else {
-			panic("unsupported fromGPU")
-		}
+	base := 1.0
+	if fromGPU != BaseGPU {
+		base = 1. / g.randomUniform(GPUEfficiencyRatio[fromGPU])
 	}
-	if toGPU == "A100" {
-		return a100Base
-	} else if toGPU == "V100" {
-		return a100Base * g.randomUniform(GPUEfficiencyRatio["A100_to_V100"])
-	} else if toGPU == "GTX 2080Ti" {
-		return a100Base * g.randomUniform(GPUEfficiencyRatio["A100_to_GTX_2080Ti"])
+	if toGPU == BaseGPU {
+		return base
 	} else {
-		panic("unsupported toGPU")
+		return base * g.randomUniform(GPUEfficiencyRatio[toGPU])
 	}
 }
 
@@ -530,7 +539,7 @@ func (g *CaseGenerator) GenerateCluster() *objects.Cluster {
 
 func (g *CaseGenerator) GenerateNaiveSchedulerConfiguration() *configs.SchedulersConfiguration {
 	return &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
-		schedulerID: {
+		partitionID: {
 			SchedulerType: configs.SchedulerType_schedulerTypeNaive,
 			Configuration: &configs.SchedulerConfiguration_NaiveSchedulerConfiguration{NaiveSchedulerConfiguration: naiveSchedulerConfiguration},
 		},
@@ -539,7 +548,7 @@ func (g *CaseGenerator) GenerateNaiveSchedulerConfiguration() *configs.Scheduler
 
 func (g *CaseGenerator) GenerateUNSSchedulerConfiguration() *configs.SchedulersConfiguration {
 	return &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
-		schedulerID: {
+		partitionID: {
 			SchedulerType: configs.SchedulerType_schedulerTypeUNS,
 			Configuration: &configs.SchedulerConfiguration_UnsSchedulerConfiguration{UnsSchedulerConfiguration: nil},
 		},

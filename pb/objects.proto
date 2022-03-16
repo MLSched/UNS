@@ -188,7 +188,6 @@ message JobAllocation {
 
 // TaskAllocation
 // 表示Task所占用的内存，CPU，加速器等信息。
-// 并且包含一个Task的开始执行时间与执行总时间。
 message TaskAllocation {
   string nodeID = 1;
   string jobID = 2;
@@ -206,6 +205,8 @@ message TaskAllocation {
   bytes extra = 255;
 }
 
+// JobExecutionHistory
+// 表示Job的执行历史
 message JobExecutionHistory {
   string jobID = 1;
   string resourceManagerID = 2;
@@ -213,6 +214,9 @@ message JobExecutionHistory {
   repeated TaskExecutionHistory taskExecutionHistories = 4;
 }
 
+// TaskExecutionHistory
+// 表示Task的执行历史
+// 包含了该Task的执行环境（allocation），以及开始和结束时间
 message TaskExecutionHistory {
   string executionID = 1;
   string nodeID = 2;

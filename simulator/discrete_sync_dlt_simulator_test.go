@@ -9,7 +9,8 @@ import (
 	"testing"
 )
 
-var configPath = "/Users/purchaser/go/src/UNS/simulator/configs/mono_partition_sync_dlt_simulator.json"
+var syncConfigPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
+
 var GiB = int64(1024 * 1024 * 1024)
 
 func init() {
@@ -21,13 +22,13 @@ func init() {
 }
 
 func TestSimulator(t *testing.T) {
-	simulator := NewMonoPartitionSyncDLTSimulator(configPath)
+	simulator := NewDiscreteSyncDLTSimulator(syncConfigPath)
 	simulator.StartSimulation()
 }
 
 func TestUnmarshalConfiguration(t *testing.T) {
-	config := &configs.MonoPartitionSyncDLTSimulatorConfiguration{}
-	bytes, err := ioutil.ReadFile(configPath)
+	config := &configs.DLTSimulatorConfiguration{}
+	bytes, err := ioutil.ReadFile(syncConfigPath)
 	if err != nil {
 		panic(err)
 	}
@@ -231,7 +232,7 @@ func TestSimulatorConfiguration(t *testing.T) {
 			TaskGroupInfo: job1and4TaskGroupInfo,
 		},
 	}
-	simulatorConfig := &configs.MonoPartitionSyncDLTSimulatorConfiguration{
+	simulatorConfig := &configs.DLTSimulatorConfiguration{
 		ResourceManagerID: "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID",
 		PartitionID:       "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
 		RmConfiguration:   rmConfig,
@@ -248,7 +249,7 @@ func TestSimulatorConfiguration(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile(configPath, []byte(str), 0666)
+	err = ioutil.WriteFile(syncConfigPath, []byte(str), 0666)
 	if err != nil {
 		panic(err)
 	}
@@ -373,7 +374,7 @@ func TestDataOrientedPredictorSimulator(t *testing.T) {
 		SchedulersConfiguration: schedulersConfiguration,
 	}
 
-	casePath := "/Users/purchaser/go/src/UNS/cases/case_test.json"
+	casePath := "/Users/purchaser/go/src/UNS/cases/predictor_data.json"
 	bytes, err := ioutil.ReadFile(casePath)
 	if err != nil {
 		panic(err)
@@ -388,7 +389,7 @@ func TestDataOrientedPredictorSimulator(t *testing.T) {
 		jobs = append(jobs, jobDLTData.GetJob())
 	}
 
-	simulatorConfig := &configs.MonoPartitionSyncDLTSimulatorConfiguration{
+	simulatorConfig := &configs.DLTSimulatorConfiguration{
 		ResourceManagerID: "SINGLE_PARTITION_DLT_SIMULATOR_RESOURCE_MANAGER_ID",
 		PartitionID:       "SINGLE_PARTITION_DLT_SIMULATOR_PARTITION_ID",
 		RmConfiguration:   rmConfig,
@@ -402,7 +403,7 @@ func TestDataOrientedPredictorSimulator(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile(configPath, []byte(str), 0666)
+	err = ioutil.WriteFile(syncConfigPath, []byte(str), 0666)
 	if err != nil {
 		panic(err)
 	}

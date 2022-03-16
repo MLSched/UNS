@@ -13,6 +13,7 @@ type Predictor interface {
 
 type PredictResult interface {
 	GetResult(taskAllocation *objects.TaskAllocation) (EachPredictResult, bool)
+	Range(func(allocation *objects.TaskAllocation, result EachPredictResult))
 }
 
 type EachPredictResult interface {
