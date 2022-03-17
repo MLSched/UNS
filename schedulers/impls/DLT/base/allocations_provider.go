@@ -6,7 +6,6 @@ import (
 	"UNS/schedulers/partition"
 	"UNS/utils"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"log"
 	"sort"
 	"strings"
 )
@@ -38,9 +37,6 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 	}
 	finishTime := func(taskAllocation *objects.TaskAllocation) int64 {
 		return *predictResult.GetResult(taskAllocation).GetFinishNanoTime()
-	}
-	if job.GetJobID() == "2d91199618980980723f3d89" || job.GetJobID() == "058a19e3095578771546d72b" || job.GetJobID() == "a2eb1050f6cbb6ac041a07d5" {
-		log.Printf("")
 	}
 	for _, accID := range pc.View.AcceleratorIDs {
 		taskAllocations := accID2SortedTaskAllocations[accID]

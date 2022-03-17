@@ -269,19 +269,13 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 			}
 			spaceSharedRunningAllocations := getSpaceSharedAllocations(runningAllocation)
 			r, err := p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, spaceSharedRunningAllocations)
-			//log.Printf("%r = \n", r)
 			if err != nil {
 				return nil, err
 			}
 			for jobID, miniBatchDuration := range r {
-				//if jobID == "c0cb989683049a1f41b8d6d2" {
-				//	fmt.Println("jobID c0cb989683049a1f41b8d6d2\n")
-				//}
 				jobID2MiniBatchDuration[jobID] = miniBatchDuration
 			}
 		}
-		//log.Printf("jobID2MiniBatchDuration %+v\n", jobID2MiniBatchDuration)
-		// calculate the closest event: any of jobs finished, or a new job comes in.
 		runningJobFinishTimes := make(map[string]int64)
 		closestFinishedJobTime := int64(math.MaxInt64)
 		for runningJobID := range runningAllocations {
@@ -344,13 +338,6 @@ func (p *DLTBasePredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, jo
 }
 
 func (p *DLTBasePredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *PredictSessionContext, allocations []*objects.JobAllocation) (map[string]int64, error) {
-	//if len(allocations) == 2 {
-	//	if allocations[0].GetJobID() == "81749c2e708fc2cd18918846" {
-	//		log.Printf("")
-	//	} else if allocations[1].GetJobID() == "81749c2e708fc2cd18918846" {
-	//		log.Printf("")
-	//	}
-	//}
 	if len(allocations) > 2 {
 		return nil, fmt.Errorf("space sharing only supports two jobs, but received allocations of %d", len(allocations))
 	}
