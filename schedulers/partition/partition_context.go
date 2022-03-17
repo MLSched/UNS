@@ -60,7 +60,10 @@ func (c *Context) refreshView() {
 		c.View.NodeID2Node[node.GetNodeID()] = node
 		accelerators := make([]*objects.Accelerator, 0)
 		for _, CPUSocket := range node.GetCPUSockets() {
-			accelerators = append(accelerators, CPUSocket.GetAccelerators()...)
+			for _, accelerator := range CPUSocket.GetAccelerators() {
+				accelerators = append(accelerators, accelerator)
+			}
+			//accelerators = append(accelerators, CPUSocket.GetAccelerators()...)
 			for _, accelerator := range accelerators {
 				c.View.AcceleratorID2Accelerator[accelerator.GetAcceleratorID()] = accelerator
 				c.View.AcceleratorID2NodeID[accelerator.GetAcceleratorID()] = node.GetNodeID()
