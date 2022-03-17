@@ -539,12 +539,13 @@ func (g *CaseGenerator) GenerateCluster() *objects.Cluster {
 			for CPUSocketIdx, GPUs := range instance.CPUSocket2GPUs {
 				CPUSocket := &objects.CPUSocket{}
 				CPUSocket.CPUSocketID = fmt.Sprintf("%s-cpusocket-%d", nodeID, CPUSocketIdx)
-				CPUSocket.Accelerators = make([]*objects.Accelerator, 0, len(GPUs))
+				CPUSocket.Accelerators = make(map[string]*objects.Accelerator)
 				for GPUIdx, GPUType := range GPUs {
-					CPUSocket.Accelerators = append(CPUSocket.Accelerators, &objects.Accelerator{
+					acc := &objects.Accelerator{
 						AcceleratorID:       fmt.Sprintf("%s-acc-%d", CPUSocket.CPUSocketID, GPUIdx),
 						AcceleratorMetaInfo: GPUType2Meta[GPUType],
-					})
+					}
+					CPUSocket.Accelerators[acc.GetAcceleratorID()] = acc
 				}
 				CPUSockets = append(CPUSockets, CPUSocket)
 			}

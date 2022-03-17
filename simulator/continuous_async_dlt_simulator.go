@@ -121,7 +121,7 @@ func (s *ContinuousAsyncDLTSimulator) checkFinishedJobs() {
 		time.Sleep(asyncCheckFinishedInterval)
 		s.partitionEditLocked(func() {
 			now := s.partitionContext.Now()
-			predictResults, err := s.predictor.Predict(s.partitionContext, s.partitionContext.GetPendingAllocationsSlice())
+			predictResults, err := s.predictor.Predict(s.partitionContext, s.partitionContext.GetAllocationsSlice())
 			log.Printf("Check finished jobs, now %s", time.Unix(0, now).String())
 			printPredictResults(predictResults, true)
 			fastFail(err)
@@ -136,7 +136,7 @@ func (s *ContinuousAsyncDLTSimulator) checkFinishedJobs() {
 				return false
 			}
 			finishedJobIDs := make([]string, 0)
-			for _, allocation := range s.partitionContext.GetPendingAllocationsSlice() {
+			for _, allocation := range s.partitionContext.GetAllocationsSlice() {
 				ftaskAllocation := allocation.GetTaskAllocations()[0]
 				r := predictResults.GetResult(ftaskAllocation)
 				if isNewlyStarted(predictResults, allocation) {

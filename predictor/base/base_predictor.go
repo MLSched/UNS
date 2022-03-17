@@ -178,3 +178,17 @@ func (r *PredictResult) Range(f func(taskAllocation *objects.TaskAllocation, res
 		f(taskAllocation, r.Results[taskAllocation])
 	}
 }
+
+func (r *PredictResult) Combine(target interfaces.PredictResult) interfaces.PredictResult {
+	if _, ok := target.(*PredictResult); !ok {
+		panic("PredictResult Combine target type does not match.")
+	}
+	newPr := &PredictResult{Results: make(map[*objects.TaskAllocation]*EachPredictResult)}
+	for ta, e := range r.Results {
+		newPr.Results[ta] = e
+	}
+	target.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+		newPr.Results[allocation] = result.(*EachPredictResult)
+	})
+	return newPr
+}

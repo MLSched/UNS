@@ -96,9 +96,10 @@ message Cluster {
 // 如100个节点组成的集群，前50个和后50个节点分别组成两个Partition。
 // 则他们可以互不影响的使用两个调度器进行调度。
 message Partition {
-  string partitionID = 1;
-  string description = 2;
-  repeated Node nodes = 3;
+  string resourceManagerID = 1;
+  string partitionID = 2;
+  string description = 3;
+  repeated Node nodes = 4;
 
   bytes extra = 255;
 }
@@ -121,7 +122,7 @@ message CPUSocket {
   string description = 2;
   CPU CPU = 3;
   HostMemory hostMemory = 4;
-  repeated Accelerator accelerators = 5;
+  map<string, Accelerator> accelerators = 5;
 
   bytes extra = 255;
 }

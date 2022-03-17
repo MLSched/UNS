@@ -94,7 +94,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 		necessity bool
 	}
 	simulateClosestFinishAllocation := func() *timeAndCallback {
-		allocations := s.partitionContext.GetPendingAllocationsSlice()
+		allocations := s.partitionContext.GetAllocationsSlice()
 		//s.printAllocations(allocations)
 		predictResult, err := s.predictor.Predict(s.partitionContext, allocations)
 		if err != nil {

@@ -30,6 +30,7 @@ type View struct {
 	NodeID2Node               map[string]*objects.Node
 	NodeID2Accelerators       map[string][]*objects.Accelerator
 	AcceleratorID2Accelerator map[string]*objects.Accelerator
+	AcceleratorID2NodeID      map[string]string
 }
 
 func Build(partition *objects.Partition) (*Context, error) {
@@ -53,6 +54,7 @@ func (c *Context) refreshView() {
 		NodeID2Node:               make(map[string]*objects.Node),
 		NodeID2Accelerators:       make(map[string][]*objects.Accelerator),
 		AcceleratorID2Accelerator: make(map[string]*objects.Accelerator),
+		AcceleratorID2NodeID:      make(map[string]string),
 	}
 	for _, node := range c.Meta.GetNodes() {
 		c.View.NodeID2Node[node.GetNodeID()] = node
@@ -61,6 +63,7 @@ func (c *Context) refreshView() {
 			accelerators = append(accelerators, CPUSocket.GetAccelerators()...)
 			for _, accelerator := range accelerators {
 				c.View.AcceleratorID2Accelerator[accelerator.GetAcceleratorID()] = accelerator
+				c.View.AcceleratorID2NodeID[accelerator.GetAcceleratorID()] = node.GetNodeID()
 			}
 		}
 		c.View.NodeID2Accelerators[node.GetNodeID()] = accelerators
@@ -169,6 +172,7 @@ func (c *Context) Clone() *Context {
 	cloned.UnfinishedJobs = c.UnfinishedJobs
 	cloned.FinishedJobs = c.FinishedJobs
 	cloned.ExecutionHistoryManager = c.ExecutionHistoryManager.Clone()
+	cloned.Time = c.Time
 	return cloned
 }
 
@@ -178,7 +182,7 @@ func (c *Context) GetUnfinishedJob(jobID string) *objects.Job {
 	return c.UnfinishedJobs[jobID]
 }
 
-func (c *Context) GetPendingAllocationsSlice() []*objects.JobAllocation {
+func (c *Context) GetAllocationsSlice() []*objects.JobAllocation {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	allocations := make([]*objects.JobAllocation, 0, len(c.Allocations))
