@@ -5,6 +5,7 @@ option go_package = "UNS/pb_gen/events";
 
 import "objects.proto";
 import "config.proto";
+import "google/protobuf/wrappers.proto";
 
 // RM prefix means an event initiated by Resource Manager
 
@@ -22,7 +23,7 @@ message RMUpdateAllocationsEvent {
   repeated JobExecutionHistory jobExecutionHistories = 3;
 
   // 模拟器专用：更新时间
-  int64 currentNanoTime = 255;
+  google.protobuf.Int64Value currentNanoTime = 255;
 }
 
 // 异步事件：RM -> Scheduler
@@ -31,7 +32,7 @@ message RMUpdateJobsEvent {
   repeated string removedJobIDs = 2;
 
   // 模拟器专用：更新时间
-  int64 currentNanoTime = 255;
+  google.protobuf.Int64Value currentNanoTime = 255;
 }
 
 // 异步事件：RM -> Scheduler

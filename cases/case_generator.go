@@ -32,7 +32,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 1000
+var jobCount = 100
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -134,7 +134,30 @@ var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2S
 	},
 }}
 
-var schedulerConfiguration = naiveSchedulerConfiguration
+var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+	partitionID: {
+		SchedulerType: configs.SchedulerType_schedulerTypeUNS,
+		Configuration: &configs.SchedulerConfiguration_UnsSchedulerConfiguration{UnsSchedulerConfiguration: &configs.UNSSchedulerConfiguration{
+			SchedulerID:       schedulerID,
+			ResourceManagerID: resourceManagerID,
+			PartitionID:       partitionID,
+			IntervalNano:      1e16,
+			SyncMode:          syncMode,
+			PredictorConfiguration: &configs.PredictorConfiguration{
+				PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+				Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+					DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+						DataSourcePath: predictorDataPath,
+					},
+				},
+			},
+		}},
+	},
+}}
+
+//var schedulerConfiguration = naiveSchedulerConfiguration
+
+var schedulerConfiguration = unsSchedulerConfiguration
 
 func init() {
 	rand.Seed(1)

@@ -85,6 +85,8 @@ func (s *DiscreteSyncDLTSimulator) simulatePrerequisite() {
 		}
 		return math.MaxInt64
 	}()
+	// 6. update time to 0
+	s.pushUpdateTime(0)
 }
 
 func (s *DiscreteSyncDLTSimulator) simulateInternal() {
@@ -145,7 +147,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 					UpdatedJobAllocations: newStartedPlaceholderAllocations,
 					FinishedJobIDs:        finishedJobIDs,
 					JobExecutionHistories: jobExecutionHistories,
-					CurrentNanoTime:       finishTime,
+					CurrentNanoTime:       &wrappers.Int64Value{Value: finishTime},
 				})
 				if err != nil {
 					panic(err)
@@ -155,7 +157,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 					UpdatedJobAllocations: newStartedPlaceholderAllocations,
 					FinishedJobIDs:        finishedJobIDs,
 					JobExecutionHistories: jobExecutionHistories,
-					CurrentNanoTime:       finishTime,
+					CurrentNanoTime:       &wrappers.Int64Value{Value: finishTime},
 				})
 			},
 		}
@@ -176,7 +178,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 				callback: func() {
 					err := s.partitionContext.UpdateJobs(&eventobjs.RMUpdateJobsEvent{
 						NewJobs:         jobs,
-						CurrentNanoTime: submitTime,
+						CurrentNanoTime: &wrappers.Int64Value{Value: submitTime},
 					})
 					if err != nil {
 						panic(err)
@@ -204,8 +206,8 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 			e := s.updateAllocationsEvents[0]
 			s.updateAllocationsEvents = s.updateAllocationsEvents[1:]
 			t := e.GetCurrentNanoTime()
-			return &timeAndCallback{nanoTime: t, necessity: true, callback: func() {
-				log.Printf("simulateUpdateAllocations callback called, current nano time = %d", t)
+			return &timeAndCallback{nanoTime: t.GetValue(), necessity: true, callback: func() {
+				log.Printf("simulateUpdateAllocations callback called, current nano time = %d", t.GetValue())
 				s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
 					UpdatedJobAllocations: e.GetUpdatedJobAllocations(),
 					CurrentNanoTime:       t,
@@ -238,7 +240,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 				callbacks = append(callbacks, tac.callback)
 			}
 		}
-		log.Printf("simulator time passed to %d", closestTime)
+		log.Printf("simulator time passed to %f seconds.", float64(closestTime)/1e9)
 		err := s.partitionContext.UpdateTime(&eventobjs.RMUpdateTimeEvent{CurrentNanoTime: closestTime})
 		if err != nil {
 			panic(err)
@@ -280,7 +282,7 @@ func (s *DiscreteSyncDLTSimulator) pushNewJobs(submitTime int64, newJobs []*obje
 	s.push(&events.Event{
 		Data: &eventobjs.RMUpdateJobsEvent{
 			NewJobs:         newJobs,
-			CurrentNanoTime: submitTime,
+			CurrentNanoTime: &wrappers.Int64Value{Value: submitTime},
 		},
 		ResultChan: resultChan,
 	})
@@ -343,6 +345,9 @@ func (s *DiscreteSyncDLTSimulator) HandleEvent(event *events.Event) {
 }
 
 func (s *DiscreteSyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSUpdateAllocationsEvent) error {
+	if len(eo.GetNewJobAllocations()) == 0 {
+		return nil
+	}
 	now := s.partitionContext.Now()
 	occupiedAcceleratorIDs := make(map[string]bool)
 	for _, pendingAllocation := range s.partitionContext.Allocations {
@@ -406,12 +411,12 @@ nextFiltered:
 	if len(filteredAllocations) > 0 {
 		err := s.partitionContext.UpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
 			UpdatedJobAllocations: filteredAllocations,
-			CurrentNanoTime:       s.partitionContext.Now(),
+			CurrentNanoTime:       &wrappers.Int64Value{Value: s.partitionContext.Now()},
 		})
 		fastFail(err)
 		s.updateAllocationsEvents = append(s.updateAllocationsEvents, &eventobjs.RMUpdateAllocationsEvent{
 			UpdatedJobAllocations: filteredAllocations,
-			CurrentNanoTime:       s.partitionContext.Now(),
+			CurrentNanoTime:       &wrappers.Int64Value{Value: s.partitionContext.Now()},
 		})
 	}
 	return nil

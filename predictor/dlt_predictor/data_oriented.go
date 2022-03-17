@@ -5,9 +5,10 @@ import (
 	"UNS/pb_gen/objects"
 	"UNS/utils"
 	"fmt"
+	"hash/crc32"
 	"io/ioutil"
-	"log"
-	"math/rand"
+	"sort"
+	"strings"
 )
 
 type DataOrientedPredictor struct {
@@ -73,15 +74,14 @@ func (p *DataOrientedPredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *
 	if len(jobIDs) != 2 {
 		panic("getSpaceSharingMiniBatchDurationNanoSecond jobIDs len must be 1 or 2.")
 	}
+	joined := strings.Join(jobIDs, "")
+	hashes := crc32.ChecksumIEEE([]byte(joined))
 	calculateSharingDurationNanoSecond := func(job *objects.Job) int64 {
 		d := p.getDLTJobData(job.GetJobID())
 		penaltyRange := float64(d.GetMaxSpaceSharingPenalty() - d.GetMinSpaceSharingPenalty())
 		solely := p.getMiniBatchDurationNanoSecond(ctx, job, accelerators[0].GetAcceleratorMetaInfo().GetBriefType())
-		ratio := float64(rand.Intn(100)) / 100
+		ratio := float64(hashes%100) / 100
 		calculated := int64(float64(solely) * (float64(d.GetMinSpaceSharingPenalty()) + penaltyRange*ratio))
-		if calculated == 0 {
-			log.Printf("0 calculated\n")
-		}
 		return calculated
 	}
 	result := make(map[string]int64)
@@ -96,10 +96,13 @@ func (p *DataOrientedPredictor) getJobTotalMiniBatches(ctx *PredictSessionContex
 }
 
 func (p *DataOrientedPredictor) getSingleTaskSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorID string, jobIDs []string) map[string]int64 {
+	sort.Strings(jobIDs)
 	return p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, p.getAccelerators(ctx, []string{acceleratorID}), p.getJobs(ctx, jobIDs))
 }
 
 func (p *DataOrientedPredictor) getDataParallelTasksSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorIDs []string, jobIDs []string) map[string]int64 {
+	sort.Strings(jobIDs)
+	sort.Strings(acceleratorIDs)
 	return p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, p.getAccelerators(ctx, acceleratorIDs), p.getJobs(ctx, jobIDs))
 }
 

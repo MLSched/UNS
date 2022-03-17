@@ -51,23 +51,6 @@ func (p *DLTBasePredictor) PrerequisiteCheck(partitionContext *partition.Context
 	if err := p.Base.PrerequisiteCheck(partitionContext, allocations); err != nil {
 		return err
 	}
-	//for _, allocation := range allocations {
-	//	job := partitionContext.GetUnfinishedJob(allocation.GetJobID())
-	//	for _, taskAllocation := range allocation.GetTaskAllocations() {
-	//		if len(taskAllocation.GetExecutionRanges()) > 1 {
-	//			reason := "DLTBasePredictor PrerequisiteCheck failed, do not only support preemptive task allocation prediction, but execution ranges len > 1"
-	//			log.Println(reason)
-	//			return errors.New(reason)
-	//		}
-	//	}
-	//	for _, task := range job.GetTaskGroup().GetTasks() {
-	//		if task.GetPreemptive() {
-	//			reason := "DLTBasePredictor PrerequisiteCheck failed, do not only support preemptive task allocation prediction"
-	//			log.Println(reason)
-	//			return errors.New(reason)
-	//		}
-	//	}
-	//}
 	return nil
 }
 
@@ -147,7 +130,10 @@ func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Pr
 			continue
 		}
 		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil {
-			ctx.result.UpdateStartExecutionTime(taskAllocation, taskAllocation.GetStartExecutionTimeNanoSecond().GetValue())
+			p.updateJobStartExecutionTime(ctx, allocation, taskAllocation.GetStartExecutionTimeNanoSecond().GetValue())
+			//p.rangeAllTaskAllocations(allocation, func(taskAllocation *objects.TaskAllocation) {
+			//	ctx.result.UpdateStartExecutionTime(taskAllocation, taskAllocation.GetStartExecutionTimeNanoSecond().GetValue())
+			//})
 		}
 		startExecutionTimeKnownAllocation = append(startExecutionTimeKnownAllocation, allocation)
 	}
@@ -156,7 +142,8 @@ func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Pr
 		return err
 	}
 	for allocation, finishTime := range r {
-		ctx.result.UpdateFinishTime(p.extractRepresentTaskAllocation(allocation), finishTime)
+		p.updateJobFinishTime(ctx, allocation, finishTime)
+		//ctx.result.UpdateFinishTime(p.extractRepresentTaskAllocation(allocation), finishTime)
 	}
 	return nil
 }
@@ -186,8 +173,10 @@ nextAlloc:
 						continue
 					}
 					if !ctx.result.IsResultComplete(taskAllocation) {
-						ctx.result.UpdateStartExecutionTime(taskAllocation, 0)
-						ctx.result.UpdateFinishTime(taskAllocation, 0)
+						p.updateJobStartExecutionTime(ctx, previousAllocation, 0)
+						p.updateJobFinishTime(ctx, previousAllocation, 0)
+						//ctx.result.UpdateStartExecutionTime(taskAllocation, 0)
+						//ctx.result.UpdateFinishTime(taskAllocation, 0)
 						continue nextAlloc
 					}
 					r := ctx.result.GetResult(taskAllocation)
@@ -197,7 +186,8 @@ nextAlloc:
 			if startExecutionTime != 0. {
 				marked = true
 			}
-			ctx.result.UpdateStartExecutionTime(p.extractRepresentTaskAllocation(allocation), int64(startExecutionTime))
+			p.updateJobStartExecutionTime(ctx, allocation, int64(startExecutionTime))
+			//ctx.result.UpdateStartExecutionTime(p.extractRepresentTaskAllocation(allocation), int64(startExecutionTime))
 		}
 	}
 	return marked
@@ -279,6 +269,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 			}
 			spaceSharedRunningAllocations := getSpaceSharedAllocations(runningAllocation)
 			r, err := p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, spaceSharedRunningAllocations)
+			//log.Printf("%r = \n", r)
 			if err != nil {
 				return nil, err
 			}
@@ -353,6 +344,13 @@ func (p *DLTBasePredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, jo
 }
 
 func (p *DLTBasePredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *PredictSessionContext, allocations []*objects.JobAllocation) (map[string]int64, error) {
+	//if len(allocations) == 2 {
+	//	if allocations[0].GetJobID() == "81749c2e708fc2cd18918846" {
+	//		log.Printf("")
+	//	} else if allocations[1].GetJobID() == "81749c2e708fc2cd18918846" {
+	//		log.Printf("")
+	//	}
+	//}
 	if len(allocations) > 2 {
 		return nil, fmt.Errorf("space sharing only supports two jobs, but received allocations of %d", len(allocations))
 	}
@@ -499,4 +497,22 @@ func (p *DLTBasePredictor) checkAcceleratorMemoryCapacity(ctx *PredictSessionCon
 		}
 	}
 	return nil
+}
+
+func (p *DLTBasePredictor) updateJobStartExecutionTime(ctx *PredictSessionContext, jobAllocation *objects.JobAllocation, value int64) {
+	p.rangeAllTaskAllocations(jobAllocation, func(taskAllocation *objects.TaskAllocation) {
+		ctx.result.UpdateStartExecutionTime(taskAllocation, value)
+	})
+}
+
+func (p *DLTBasePredictor) updateJobFinishTime(ctx *PredictSessionContext, jobAllocation *objects.JobAllocation, value int64) {
+	p.rangeAllTaskAllocations(jobAllocation, func(taskAllocation *objects.TaskAllocation) {
+		ctx.result.UpdateFinishTime(taskAllocation, value)
+	})
+}
+
+func (p *DLTBasePredictor) rangeAllTaskAllocations(jobAllocation *objects.JobAllocation, do func(taskAllocation *objects.TaskAllocation)) {
+	for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+		do(taskAllocation)
+	}
 }

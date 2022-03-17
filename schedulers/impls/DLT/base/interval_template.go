@@ -34,7 +34,7 @@ func (i *IntervalSchedulerTemplate) HandleEvent(event *events.Event) {
 		return
 	}
 	switch event.Data.(type) {
-	case *eventsobjs.RMUpdateJobsEvent, *eventsobjs.RMUpdateAllocationsEvent:
+	case *eventsobjs.RMUpdateJobsEvent, *eventsobjs.RMUpdateAllocationsEvent, *eventsobjs.RMUpdateTimeEvent:
 		if i.syncMode {
 			i.SyncSchedule()
 		} else {

@@ -5,7 +5,9 @@ import (
 	"UNS/pb_gen/objects"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
+	"sort"
 	"sync"
 	"time"
 )
@@ -31,6 +33,7 @@ type View struct {
 	NodeID2Accelerators       map[string][]*objects.Accelerator
 	AcceleratorID2Accelerator map[string]*objects.Accelerator
 	AcceleratorID2NodeID      map[string]string
+	AcceleratorIDs            []string
 }
 
 func Build(partition *objects.Partition) (*Context, error) {
@@ -55,6 +58,7 @@ func (c *Context) refreshView() {
 		NodeID2Accelerators:       make(map[string][]*objects.Accelerator),
 		AcceleratorID2Accelerator: make(map[string]*objects.Accelerator),
 		AcceleratorID2NodeID:      make(map[string]string),
+		AcceleratorIDs:            make([]string, 0),
 	}
 	for _, node := range c.Meta.GetNodes() {
 		c.View.NodeID2Node[node.GetNodeID()] = node
@@ -64,13 +68,15 @@ func (c *Context) refreshView() {
 				accelerators = append(accelerators, accelerator)
 			}
 			//accelerators = append(accelerators, CPUSocket.GetAccelerators()...)
-			for _, accelerator := range accelerators {
+			for _, accelerator := range CPUSocket.GetAccelerators() {
 				c.View.AcceleratorID2Accelerator[accelerator.GetAcceleratorID()] = accelerator
 				c.View.AcceleratorID2NodeID[accelerator.GetAcceleratorID()] = node.GetNodeID()
+				c.View.AcceleratorIDs = append(c.View.AcceleratorIDs, accelerator.GetAcceleratorID())
 			}
 		}
 		c.View.NodeID2Accelerators[node.GetNodeID()] = accelerators
 	}
+	sort.Strings(c.View.AcceleratorIDs)
 }
 
 func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) error {
@@ -128,15 +134,17 @@ func (c *Context) UpdateJobs(eo *eventobjs.RMUpdateJobsEvent) error {
 }
 
 func (c *Context) UpdateTime(eo *eventobjs.RMUpdateTimeEvent) error {
-	c.updateCurrentTime(eo.GetCurrentNanoTime())
+	t := eo.GetCurrentNanoTime()
+	c.Time = &t
 	return nil
 }
 
-func (c *Context) updateCurrentTime(currentNanoTime int64) {
-	if currentNanoTime == 0 {
+func (c *Context) updateCurrentTime(currentNanoTime *wrappers.Int64Value) {
+	if currentNanoTime == nil {
 		return
 	}
-	c.Time = &currentNanoTime
+	v := currentNanoTime.GetValue()
+	c.Time = &v
 }
 
 func (c *Context) Now() int64 {

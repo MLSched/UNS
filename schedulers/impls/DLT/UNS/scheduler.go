@@ -3,12 +3,12 @@ package UNS
 import (
 	"UNS/pb_gen/configs"
 	eventobjs "UNS/pb_gen/events"
+	"UNS/pb_gen/objects"
 	"UNS/predictor"
 	predictorinterfaces "UNS/predictor/interfaces"
 	"UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
-	"context"
 	"log"
 	"math"
 	"time"
@@ -28,10 +28,6 @@ func (s *Scheduler) GetSchedulerID() string {
 	return s.Config.GetSchedulerID()
 }
 
-func (s *Scheduler) StartService() {
-
-}
-
 func Build(configuration interface{}, pusher base.EventPusher, partitionContextAware base.PartitionContextAware) (interfaces.Scheduler, error) {
 	c := configuration.(*configs.UNSSchedulerConfiguration)
 	sche := &Scheduler{
@@ -47,12 +43,47 @@ func Build(configuration interface{}, pusher base.EventPusher, partitionContextA
 }
 
 func (s *Scheduler) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
-	//ctx, cancel := context.WithTimeout(context.Background(), s.MaxLatency)
-	//defer cancel()
-	return nil
+	return s.testSchedule()
 }
 
-func (s *Scheduler) serialSchedule(ctx context.Context) {
+func (s *Scheduler) testSchedule() *eventobjs.SSUpdateAllocationsEvent {
+	pc := s.GetPartitionContext().Clone()
+	// Clone后将时间固定住
+	t := pc.Now()
+	pc.Time = &t
+	//accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
+	newAllocations := make([]*objects.JobAllocation, 0)
+nextJob:
+	for _, job := range pc.GetUnallocatedJobs() {
+		basePredictResult, err := s.Predictor.Predict(pc, pc.GetAllocationsSlice())
+		if err != nil {
+			panic(err)
+		}
+		accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
+		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job)
+		if len(possibleAllocations) == 0 {
+			continue
+		}
+		for _, possibleAllocation := range possibleAllocations {
+			targetAllocation := possibleAllocation
+			pc.UnfinishedJobs[job.GetJobID()] = job
+			pc.Allocations[job.GetJobID()] = targetAllocation
+			pr, err := s.Predictor.Predict(pc, pc.GetAllocationsSlice())
+			if err != nil {
+				panic(err)
+			}
+			if *pr.GetResult(targetAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime() == pc.Now() {
+				newAllocations = append(newAllocations, targetAllocation)
+				continue nextJob
+			}
+			delete(pc.UnfinishedJobs, job.GetJobID())
+			delete(pc.Allocations, job.GetJobID())
+		}
+	}
+	return &eventobjs.SSUpdateAllocationsEvent{NewJobAllocations: newAllocations}
+}
+
+func (s *Scheduler) serialSchedule() {
 	pc := s.GetPartitionContext().Clone()
 	// Clone后将时间固定住
 	t := pc.Now()
