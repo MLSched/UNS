@@ -11,7 +11,7 @@ import (
 )
 
 type Scheduler struct {
-	*base2.IntervalSchedulerTemplate
+	*base2.DLTSchedulerTemplate
 
 	Config *configs.NaiveSchedulerConfiguration
 }
@@ -25,12 +25,12 @@ func Build(configuration interface{}, pusher base2.EventPusher, partitionContext
 	sche := &Scheduler{
 		Config: c,
 	}
-	sche.IntervalSchedulerTemplate = base2.NewIntervalSchedulerTemplate(sche, c.GetIntervalNano(), partitionContextAware, c.GetSyncMode(), pusher)
+	sche.DLTSchedulerTemplate = base2.NewIntervalSchedulerTemplate(sche, c.GetIntervalNano(), partitionContextAware, c.GetSyncMode(), pusher)
 	return sche, nil
 }
 
 func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
-	partitionContext := s.GetPartitionContext().Clone()
+	partitionContext := s.GetPartitionContext().Clone(false)
 	unscheduledJobs := make([]*objects.Job, 0)
 	for _, job := range partitionContext.UnfinishedJobs {
 		if _, ok := partitionContext.Allocations[job.GetJobID()]; !ok {

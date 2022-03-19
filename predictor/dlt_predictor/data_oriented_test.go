@@ -4,16 +4,17 @@ import (
 	"UNS/pb_gen/configs"
 	"UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
+	"UNS/predictor/interfaces"
 	"UNS/schedulers/partition"
 	"UNS/utils"
-	"encoding/json"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"io/ioutil"
 	"math/rand"
 	"testing"
 )
 
-var dataSource = "/Users/purchaser/go/src/UNS/cases/case_test.json"
+var dataSource = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
+var syncConfigPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
 
 func TestDataOrientedCase1(t *testing.T) {
 	rand.Seed(1)
@@ -22,10 +23,10 @@ func TestDataOrientedCase1(t *testing.T) {
 
 	jobs := getJobs(t)
 
-	job1, job2, job3, job4 := jobs[0], jobs[1], jobs[2], jobs[3]
+	job1, job2, job3, job4, job5, job6 := jobs[0], jobs[1], jobs[2], jobs[3], jobs[4], jobs[5]
 	_ = partitionContext.UpdateJobs(&events.RMUpdateJobsEvent{
 		NewJobs: []*objects.Job{
-			job1, job2, job3, job4,
+			job1, job2, job3, job4, job5, job6,
 		},
 	})
 	_ = partitionContext.UpdateAllocations(&events.RMUpdateAllocationsEvent{UpdatedJobAllocations: []*objects.JobAllocation{
@@ -34,21 +35,11 @@ func TestDataOrientedCase1(t *testing.T) {
 			TaskAllocations: []*objects.TaskAllocation{
 				{
 					NodeID:                       "NODE_1",
-					TaskID:                       "JOB_1_TASK_1",
-					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
-					Placeholder:                  true,
+					TaskID:                       job1.GetTaskGroup().GetTasks()[0].GetTaskID(),
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 455572514055759},
 					AcceleratorAllocation: &objects.AcceleratorAllocation{
-						AcceleratorID: "ACCELERATOR_1_2_1",
+						AcceleratorID: "ACCELERATOR_1_1_1",
 					},
-				},
-				{
-					NodeID:                       "NODE_1",
-					TaskID:                       "JOB_1_TASK_2",
-					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
-					AcceleratorAllocation: &objects.AcceleratorAllocation{
-						AcceleratorID: "ACCELERATOR_1_2_2",
-					},
-					Extra: nil,
 				},
 			},
 		},
@@ -57,9 +48,8 @@ func TestDataOrientedCase1(t *testing.T) {
 			TaskAllocations: []*objects.TaskAllocation{
 				{
 					NodeID:                       "NODE_1",
-					TaskID:                       "JOB_2_TASK_1",
-					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
-					Placeholder:                  false,
+					TaskID:                       job2.GetTaskGroup().GetTasks()[0].GetTaskID(),
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 683542914715180},
 					AcceleratorAllocation: &objects.AcceleratorAllocation{
 						AcceleratorID: "ACCELERATOR_1_1_1",
 					},
@@ -70,12 +60,50 @@ func TestDataOrientedCase1(t *testing.T) {
 			JobID: job3.GetJobID(),
 			TaskAllocations: []*objects.TaskAllocation{
 				{
-					NodeID:                       "NODE_2",
-					TaskID:                       "JOB_3_TASK_1",
-					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 1e9},
-					Placeholder:                  false,
+					NodeID:                       "NODE_1",
+					TaskID:                       job3.GetTaskGroup().GetTasks()[0].GetTaskID(),
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 0},
 					AcceleratorAllocation: &objects.AcceleratorAllocation{
-						AcceleratorID: "ACCELERATOR_2_1_1",
+						AcceleratorID: "ACCELERATOR_1_1_1",
+					},
+				},
+			},
+		},
+		{
+			JobID: job4.GetJobID(),
+			TaskAllocations: []*objects.TaskAllocation{
+				{
+					NodeID:                       "NODE_1",
+					TaskID:                       job4.GetTaskGroup().GetTasks()[0].GetTaskID(),
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 543262022306400},
+					AcceleratorAllocation: &objects.AcceleratorAllocation{
+						AcceleratorID: "ACCELERATOR_1_1_1",
+					},
+				},
+			},
+		},
+		{
+			JobID: job5.GetJobID(),
+			TaskAllocations: []*objects.TaskAllocation{
+				{
+					NodeID:                       "NODE_1",
+					TaskID:                       job5.GetTaskGroup().GetTasks()[0].GetTaskID(),
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 4910000000000},
+					AcceleratorAllocation: &objects.AcceleratorAllocation{
+						AcceleratorID: "ACCELERATOR_1_1_1",
+					},
+				},
+			},
+		},
+		{
+			JobID: job6.GetJobID(),
+			TaskAllocations: []*objects.TaskAllocation{
+				{
+					NodeID:                       "NODE_1",
+					TaskID:                       job6.GetTaskGroup().GetTasks()[0].GetTaskID(),
+					StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 153470000000000},
+					AcceleratorAllocation: &objects.AcceleratorAllocation{
+						AcceleratorID: "ACCELERATOR_1_1_2",
 					},
 				},
 			},
@@ -104,7 +132,7 @@ func TestDataOrientedCase1(t *testing.T) {
 	t.Logf("job1, job4 space sharing mini batch duration second = %v", fj1j4Shared)
 
 	// result, err := p.PredictByEndTime(partitionContext, allocations, 2292958*1e7)
-	result, err := p.PredictByEndTime(partitionContext, allocations, 1e15)
+	result, err := p.Predict(partitionContext, allocations)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,86 +143,110 @@ func TestDataOrientedCase1(t *testing.T) {
 
 	r := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_2_1_1"], partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_2_2_1"]}, []*objects.Job{job1})
 	t.Log(float64(r["JOB_1"]) / 1e9)
+
+	result.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+		s, _ := utils.MarshalJsonPB(allocation)
+		t.Log(s)
+		t.Log(*result.GetStartExecutionNanoTime())
+		t.Log(*result.GetFinishNanoTime())
+	})
+
 }
 
 func getJobs(t *testing.T) []*objects.Job {
-	job1TaskGroupDLTExtra := &objects.GangTaskGroupDLTExtra{DLTGangType: objects.DLTGangType_DLTGangTypeDataParallel}
-	s, err := json.Marshal(job1TaskGroupDLTExtra)
-	if err != nil {
-		panic(err)
-	}
-	job1TaskGroupDLTExtraBytes := s
-	job1and4TaskGroupInfo := &objects.TaskGroup_GangTaskGroupInfo{GangTaskGroupInfo: &objects.GangTaskGroup{
-		TaskGroupType: objects.TaskGroupType_taskGroupTypeGang,
-		Extra:         job1TaskGroupDLTExtraBytes,
-	}}
+	//job1TaskGroupDLTExtra := &objects.GangTaskGroupDLTExtra{DLTGangType: objects.DLTGangType_DLTGangTypeDataParallel}
+	//s, err := json.Marshal(job1TaskGroupDLTExtra)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//job1TaskGroupDLTExtraBytes := s
+	//job1and4TaskGroupInfo := &objects.TaskGroup_GangTaskGroupInfo{GangTaskGroupInfo: &objects.GangTaskGroup{
+	//	TaskGroupType: objects.TaskGroupType_taskGroupTypeGang,
+	//	Extra:         job1TaskGroupDLTExtraBytes,
+	//}}
 	job1 := &objects.Job{
-		JobID:                "JOB_1",
-		JobType:              objects.JobType_jobTypeDLT,
-		SubmitTimeNanoSecond: 1e9,
-		TaskGroup: &objects.TaskGroup{
-			TaskGroupType: objects.TaskGroupType_taskGroupTypeGang,
-			Tasks: []*objects.Task{
-				{
-					TaskID: "JOB_1_TASK_1",
-				},
-				{
-					TaskID: "JOB_1_TASK_2",
-				},
-			},
-			TaskGroupInfo: job1and4TaskGroupInfo,
-		},
-	}
-	job2 := &objects.Job{
-		JobID:                "JOB_2",
-		JobType:              objects.JobType_jobTypeDLT,
-		SubmitTimeNanoSecond: 1e9,
+		JobID:   "0763f5964484b5acffb99e89",
+		JobType: objects.JobType_jobTypeDLT,
 		TaskGroup: &objects.TaskGroup{
 			TaskGroupType: objects.TaskGroupType_taskGroupTypeSingle,
 			Tasks: []*objects.Task{
 				{
-					TaskID: "JOB_2_TASK_1",
+					TaskID: "0763f5964484b5acffb99e89_TASK_0",
+				},
+			},
+			TaskGroupInfo: &objects.TaskGroup_SingleTaskGroupInfo{SingleTaskGroupInfo: &objects.SingleTaskGroup{}},
+		},
+	}
+	job2 := &objects.Job{
+		JobID:   "27d29764ca70365e92cb1ccb",
+		JobType: objects.JobType_jobTypeDLT,
+		TaskGroup: &objects.TaskGroup{
+			TaskGroupType: objects.TaskGroupType_taskGroupTypeSingle,
+			Tasks: []*objects.Task{
+				{
+					TaskID: "27d29764ca70365e92cb1ccb_TASK_0",
 				},
 			},
 			TaskGroupInfo: &objects.TaskGroup_SingleTaskGroupInfo{SingleTaskGroupInfo: &objects.SingleTaskGroup{}},
 		},
 	}
 	job3 := &objects.Job{
-		JobID:                "JOB_3",
-		JobType:              objects.JobType_jobTypeDLT,
-		SubmitTimeNanoSecond: 1e9,
+		JobID:   "81749c2e708fc2cd18918846",
+		JobType: objects.JobType_jobTypeDLT,
 		TaskGroup: &objects.TaskGroup{
 			TaskGroupType: objects.TaskGroupType_taskGroupTypeSingle,
 			Tasks: []*objects.Task{
 				{
-					TaskID: "JOB_3_TASK_1",
+					TaskID: "81749c2e708fc2cd18918846_TASK_0",
 				},
 			},
 			TaskGroupInfo: &objects.TaskGroup_SingleTaskGroupInfo{SingleTaskGroupInfo: &objects.SingleTaskGroup{}},
 		},
 	}
 	job4 := &objects.Job{
-		JobID:                "JOB_4",
-		JobType:              objects.JobType_jobTypeDLT,
-		SubmitTimeNanoSecond: 3 * 1e9,
+		JobID:   "10ff84e15b2c42a736f4e3e5",
+		JobType: objects.JobType_jobTypeDLT,
 		TaskGroup: &objects.TaskGroup{
-			TaskGroupType: objects.TaskGroupType_taskGroupTypeGang,
+			TaskGroupType: objects.TaskGroupType_taskGroupTypeSingle,
 			Tasks: []*objects.Task{
 				{
-					TaskID: "JOB_4_TASK_1",
-				},
-				{
-					TaskID: "JOB_4_TASK_2",
+					TaskID: "10ff84e15b2c42a736f4e3e5_TASK_0",
 				},
 			},
-			TaskGroupInfo: job1and4TaskGroupInfo,
+			TaskGroupInfo: &objects.TaskGroup_SingleTaskGroupInfo{SingleTaskGroupInfo: &objects.SingleTaskGroup{}},
 		},
 	}
-	return []*objects.Job{job1, job2, job3, job4}
+	job5 := &objects.Job{
+		JobID:   "6d942b15622d001d9edacb8e",
+		JobType: objects.JobType_jobTypeDLT,
+		TaskGroup: &objects.TaskGroup{
+			TaskGroupType: objects.TaskGroupType_taskGroupTypeSingle,
+			Tasks: []*objects.Task{
+				{
+					TaskID: "6d942b15622d001d9edacb8e_TASK_0",
+				},
+			},
+			TaskGroupInfo: &objects.TaskGroup_SingleTaskGroupInfo{SingleTaskGroupInfo: &objects.SingleTaskGroup{}},
+		},
+	}
+
+	job6 := &objects.Job{
+		JobID:   "51d01202d231f9fae85bceab",
+		JobType: objects.JobType_jobTypeDLT,
+		TaskGroup: &objects.TaskGroup{
+			TaskGroupType: objects.TaskGroupType_taskGroupTypeSingle,
+			Tasks: []*objects.Task{
+				{
+					TaskID: "51d01202d231f9fae85bceab_TASK_0",
+				},
+			},
+			TaskGroupInfo: &objects.TaskGroup_SingleTaskGroupInfo{SingleTaskGroupInfo: &objects.SingleTaskGroup{}},
+		},
+	}
+	return []*objects.Job{job1, job2, job3, job4, job5, job6}
 }
 
 func getPartitionContext(t *testing.T) *partition.Context {
-	GiB := int64(1024 * 1024 * 1024)
 	partitionContext, err := partition.Build(&objects.Partition{
 		PartitionID: "PARTITION_ID",
 		Nodes: []*objects.Node{
@@ -203,22 +255,13 @@ func getPartitionContext(t *testing.T) *partition.Context {
 				CPUSockets: []*objects.CPUSocket{
 					{
 						CPUSocketID: "CPUSOCKET_1_1",
-						Accelerators: []*objects.Accelerator{
-							{
+						Accelerators: map[string]*objects.Accelerator{
+							"ACCELERATOR_1_1_1": {
 								AcceleratorID: "ACCELERATOR_1_1_1",
 								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
-									BriefType: "A100",
+									BriefType: "GTX 2080Ti",
 									AcceleratorMemory: &objects.AcceleratorMemory{
-										BytesCapacity: 16 * GiB,
-									},
-								},
-							},
-							{
-								AcceleratorID: "ACCELERATOR_1_1_2",
-								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
-									BriefType: "A100",
-									AcceleratorMemory: &objects.AcceleratorMemory{
-										BytesCapacity: 16 * GiB,
+										BytesCapacity: 17179869184,
 									},
 								},
 							},
@@ -226,55 +269,13 @@ func getPartitionContext(t *testing.T) *partition.Context {
 					},
 					{
 						CPUSocketID: "CPUSOCKET_1_2",
-						Accelerators: []*objects.Accelerator{
-							{
-								AcceleratorID: "ACCELERATOR_1_2_1",
+						Accelerators: map[string]*objects.Accelerator{
+							"ACCELERATOR_1_1_2": {
+								AcceleratorID: "ACCELERATOR_1_1_2",
 								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
-									BriefType: "V100",
+									BriefType: "GTX 2080Ti",
 									AcceleratorMemory: &objects.AcceleratorMemory{
-										BytesCapacity: 16 * GiB,
-									},
-								},
-							},
-							{
-								AcceleratorID: "ACCELERATOR_1_2_2",
-								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
-									BriefType: "V100",
-									AcceleratorMemory: &objects.AcceleratorMemory{
-										BytesCapacity: 16 * GiB,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			{
-				NodeID: "NODE_2",
-				CPUSockets: []*objects.CPUSocket{
-					{
-						CPUSocketID: "CPUSOCKET_2_1",
-						Accelerators: []*objects.Accelerator{
-							{
-								AcceleratorID: "ACCELERATOR_2_1_1",
-								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
-									BriefType: "GTX 2080",
-									AcceleratorMemory: &objects.AcceleratorMemory{
-										BytesCapacity: 16 * GiB,
-									},
-								},
-							},
-						},
-					},
-					{
-						CPUSocketID: "CPUSOCKET_2_2",
-						Accelerators: []*objects.Accelerator{
-							{
-								AcceleratorID: "ACCELERATOR_2_2_1",
-								AcceleratorMetaInfo: &objects.AcceleratorMetaInfo{
-									BriefType: "V100",
-									AcceleratorMemory: &objects.AcceleratorMemory{
-										BytesCapacity: 16 * GiB,
+										BytesCapacity: 17179869184,
 									},
 								},
 							},

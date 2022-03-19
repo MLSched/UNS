@@ -200,9 +200,13 @@ message TaskAllocation {
   google.protobuf.Int64Value startExecutionTimeNanoSecond = 4;
   // placeholder表示该task分配是具有占位符功能的，即等待需要的资源释放后，再让该task占用它需要的资源。
   bool placeholder = 5;
-  HostMemoryAllocation hostMemoryAllocation = 6;
-  repeated CPUSocketAllocation CPUSocketAllocations = 7;
-  AcceleratorAllocation acceleratorAllocation = 8;
+  // allocationTimeNanoSecond表示这个分配的开始时间。若是single的job，则allocation时间等于start时间
+  // 若是gang的job，当需要等待资源释放时（placeholder），则allocation时间早于start时间。
+  // 若gang的job可以直接运行（资源立刻拥有），则与single情况相同，allocation时间等于start时间。
+  int64 allocationTimeNanoSecond = 6;
+  HostMemoryAllocation hostMemoryAllocation = 7;
+  repeated CPUSocketAllocation CPUSocketAllocations = 8;
+  AcceleratorAllocation acceleratorAllocation = 9;
 
   bytes extra = 255;
 }

@@ -10,6 +10,7 @@ import (
 	"UNS/utils"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 )
 
@@ -125,7 +126,7 @@ func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Pr
 	startExecutionTimeKnownAllocation := make([]*objects.JobAllocation, 0, len(allocations))
 	for _, allocation := range allocations {
 		taskAllocation := p.extractRepresentTaskAllocation(allocation)
-		if taskAllocation.GetStartExecutionTimeNanoSecond() == nil {
+		if taskAllocation.GetStartExecutionTimeNanoSecond() == nil && p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil {
 			// skip allocations with unknown start execution time.
 			continue
 		}
@@ -314,8 +315,10 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 			}
 			runningAllocations = resultRunningAllocations
 		}
-		if newJobStartTime < closestFinishedJobTime {
-			// new job comes in is earlier than other job finishes.
+		if newJobStartTime+100 < closestFinishedJobTime {
+			// 新任务到来要比任务结束的早
+			// 当任务结束与任务开始离得很近时，容易出现舍入误差。
+			// 所以，给快要结束的任务提前结束的机会，约提前100纳秒
 			nextStartTimeIdx++
 			passedDuration := newJobStartTime - currTime
 			passDurationForRunningAllocations(currTime, passedDuration)
@@ -339,6 +342,11 @@ func (p *DLTBasePredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, jo
 
 func (p *DLTBasePredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *PredictSessionContext, allocations []*objects.JobAllocation) (map[string]int64, error) {
 	if len(allocations) > 2 {
+		log.Printf("space sharing failed.")
+		for _, a := range allocations {
+			s, _ := utils.MarshalJsonPB(a)
+			log.Printf("%v", s)
+		}
 		return nil, fmt.Errorf("space sharing only supports two jobs, but received allocations of %d", len(allocations))
 	}
 	getTaskGroupType := func(allocation *objects.JobAllocation) objects.TaskGroupType {

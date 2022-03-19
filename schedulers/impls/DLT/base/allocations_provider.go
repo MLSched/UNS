@@ -6,6 +6,7 @@ import (
 	"UNS/schedulers/partition"
 	"UNS/utils"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"math"
 	"sort"
 	"strings"
 )
@@ -33,7 +34,7 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 	// 从每个accelerator上，考虑最后一个运行的taskAllocation，查看是否存在与它共同运行的可能性
 	result := make([]*objects.JobAllocation, 0)
 	buildJobAllocation := func(accID string, startTime int64) *objects.JobAllocation {
-		return buildJobAllocation(pc, job, []string{accID}, &startTime, false)
+		return buildJobAllocation(pc, job, []string{accID}, &startTime, startTime, false)
 	}
 	finishTime := func(taskAllocation *objects.TaskAllocation) int64 {
 		return *predictResult.GetResult(taskAllocation).GetFinishNanoTime()
@@ -42,7 +43,7 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 		taskAllocations := accID2SortedTaskAllocations[accID]
 		if len(taskAllocations) == 0 {
 			// 没有任务在运行，直接添加
-			result = append(result, buildJobAllocation(accID, pc.Now()))
+			result = append(result, buildJobAllocation(accID, pc.FixedNow()))
 			continue
 		}
 		lastTaskAllocation := taskAllocations[len(taskAllocations)-1]
@@ -54,7 +55,7 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 		if len(taskAllocations) == 1 {
 			// 如果仅有一个任务，并且已知它不是gang的任务，则必定可以与它并行
 			// 挑选两个时间点，分别是从now开始运行，和从它结束后开始运行
-			now := pc.Now()
+			now := pc.FixedNow()
 			result = append(result, buildJobAllocation(accID, now))
 			if lastFinish := finishTime(lastTaskAllocation); lastFinish != now {
 				result = append(result, buildJobAllocation(accID, lastFinish))
@@ -71,32 +72,6 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 			continue
 		}
 	}
-	//for accID, taskAllocations := range accID2SortedTaskAllocations {
-	//	//if len(taskAllocations) == 0 {
-	//	//	// 没有任务在运行，直接添加
-	//	//	result = append(result, buildJobAllocation(accID, pc.Now()))
-	//	//	continue
-	//	//}
-	//	//lastTaskAllocation := taskAllocations[len(taskAllocations)-1]
-	//	//if j := pc.GetUnfinishedJob(lastTaskAllocation.GetJobID()); j.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
-	//	//	// 最后一个Task是gang的，不能与它并行执行，直接放在它的后面。
-	//	//	result = append(result, buildJobAllocation(accID, finishTime(lastTaskAllocation)))
-	//	//	continue
-	//	//}
-	//	//if len(taskAllocations) == 1 {
-	//	//	// 如果仅有一个任务，并且已知它不是gang的任务，则必定可以与它并行
-	//	//	// 挑选两个时间点，分别是从now开始运行，和从它结束后开始运行
-	//	//	result = append(result, buildJobAllocation(accID, pc.Now()))
-	//	//	result = append(result, buildJobAllocation(accID, finishTime(lastTaskAllocation)))
-	//	//	continue
-	//	//} else {
-	//	//	// 如果多于一个任务，则从倒数第二个任务结束开始，可以与最后一个任务并行执行
-	//	//	beforeLast := taskAllocations[len(taskAllocations)-2]
-	//	//	result = append(result, buildJobAllocation(accID, finishTime(beforeLast)))
-	//	//	result = append(result, buildJobAllocation(accID, finishTime(lastTaskAllocation)))
-	//	//	continue
-	//	//}
-	//}
 	return result
 }
 
@@ -107,20 +82,11 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 	// 将同一级别的acc进行排序，使得最早空闲的acc能够排在前面。
 	// 然后每次按照task数量的时间窗口大小，进行滑动遍历。
 	workersCount := len(job.GetTaskGroup().GetTasks())
-	emptyAccIDs := func() map[string]bool {
-		r := make(map[string]bool)
-		for accID, sorted := range accID2SortedTaskAllocations {
-			if len(sorted) == 0 {
-				r[accID] = true
-			}
-		}
-		return r
-	}()
 	getLastTaskFinishTime := func(accID string) int64 {
 		if sorted, ok := accID2SortedTaskAllocations[accID]; ok && len(sorted) > 0 {
 			return *predictResult.GetResult(sorted[len(sorted)-1]).GetFinishNanoTime()
 		}
-		return pc.Now()
+		return pc.FixedNow()
 	}
 	sortAccsByFinishTime := func(accIDs []string) {
 		sorter := &utils.Sorter{
@@ -153,27 +119,40 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 	addNewJobAllocation := func() func(accIDs []string) {
 		attemptedAccIDs := make(map[string]bool)
 		return func(accIDs []string) {
-			// allEmpty表示这些acc是否都未被占用
-			allEmpty := true
-			for _, accID := range accIDs {
-				if _, ok := emptyAccIDs[accID]; !ok {
-					allEmpty = false
-				}
-			}
 			sort.Strings(accIDs)
 			connectedAccIDs := strings.Join(accIDs, "")
 			if _, ok := attemptedAccIDs[connectedAccIDs]; ok {
 				return
 			}
+			earliest, latest := func() (earliest int64, latest int64) {
+				earliest = math.MaxInt64
+				latest = -1
+				for _, accID := range accIDs {
+					as := accID2SortedTaskAllocations[accID]
+					var lastFinishTime int64
+					if len(as) == 0 {
+						lastFinishTime = pc.FixedNow()
+					} else {
+						lastFinishTime = *predictResult.GetResult(as[len(as)-1]).GetFinishNanoTime()
+					}
+					if lastFinishTime < earliest {
+						earliest = lastFinishTime
+					}
+					if lastFinishTime > latest {
+						latest = lastFinishTime
+					}
+				}
+				return earliest, latest
+			}()
 			attemptedAccIDs[connectedAccIDs] = true
 			startTime, placeholder := func() (*int64, bool) {
-				if allEmpty {
-					n := pc.Now()
+				if latest == pc.FixedNow() {
+					n := pc.FixedNow()
 					return &n, false
 				}
 				return nil, true
 			}()
-			na := buildJobAllocation(pc, job, accIDs, startTime, placeholder)
+			na := buildJobAllocation(pc, job, accIDs, startTime, earliest, placeholder)
 			resultAllocations = append(resultAllocations, na)
 		}
 	}()
@@ -283,23 +262,41 @@ func (a *AllocationsProviderImpl) PrepareAccID2SortedTaskAllocations(pc *partiti
 			accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
 
 			finish := getFinishTime(taskAllocation)
-			insertIdx := 0
+			s := result[accID]
+			insertIdx := len(s)
 			for idx, a := range result[accID] {
 				f := getFinishTime(a)
-				if finish > f {
-					insertIdx = idx + 1
+				if finish < f {
+					insertIdx = idx
 					break
 				}
 			}
-			rear := append([]*objects.TaskAllocation{}, result[accID][insertIdx:]...)
-			result[accID] = append(result[accID][:insertIdx], taskAllocation)
-			result[accID] = append(result[accID], rear...)
+			rear := append([]*objects.TaskAllocation{}, s[insertIdx:]...)
+			s = append(s[:insertIdx], taskAllocation)
+			s = append(s, rear...)
+			sorter := &utils.Sorter{
+				LenFunc: func() int {
+					return len(s)
+				},
+				LessFunc: func(i, j int) bool {
+					return getFinishTime(s[i]) < getFinishTime(s[j])
+				},
+				SwapFunc: func(i, j int) {
+					t := s[i]
+					s[i] = s[j]
+					s[j] = t
+				},
+			}
+			if !sort.IsSorted(sorter) {
+				panic("not sorted")
+			}
+			result[accID] = s
 		}
 	}
 	return result
 }
 
-func buildJobAllocation(pc *partition.Context, job *objects.Job, accIDs []string, startTime *int64, placeholder bool) *objects.JobAllocation {
+func buildJobAllocation(pc *partition.Context, job *objects.Job, accIDs []string, startTime *int64, allocationTime int64, placeholder bool) *objects.JobAllocation {
 	var start *wrappers.Int64Value = nil
 	if startTime != nil {
 		start = &wrappers.Int64Value{Value: *startTime}
@@ -310,6 +307,7 @@ func buildJobAllocation(pc *partition.Context, job *objects.Job, accIDs []string
 			JobID:                        job.GetJobID(),
 			TaskID:                       taskID,
 			StartExecutionTimeNanoSecond: start,
+			AllocationTimeNanoSecond:     allocationTime,
 			Placeholder:                  placeholder,
 			AcceleratorAllocation: &objects.AcceleratorAllocation{
 				AcceleratorID: accID,

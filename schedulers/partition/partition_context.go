@@ -154,34 +154,54 @@ func (c *Context) Now() int64 {
 	return *c.Time
 }
 
-func (c *Context) Clone() *Context {
+func (c *Context) FixedNow() int64 {
+	return *c.Time
+}
+
+func (c *Context) Clone(cloneAllocations bool) *Context {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	cloned, _ := Build(c.Meta)
-	for jobID, allocation := range c.Allocations {
-		clonedTaskAllocations := make([]*objects.TaskAllocation, 0, len(allocation.GetTaskAllocations()))
-		for _, taskAllocation := range allocation.GetTaskAllocations() {
-			clonedTaskAllocations = append(clonedTaskAllocations, &objects.TaskAllocation{
-				NodeID:                       taskAllocation.GetNodeID(),
-				TaskID:                       taskAllocation.GetTaskID(),
-				HostMemoryAllocation:         taskAllocation.GetHostMemoryAllocation(),
-				CPUSocketAllocations:         taskAllocation.GetCPUSocketAllocations(),
-				AcceleratorAllocation:        taskAllocation.GetAcceleratorAllocation(),
-				Extra:                        taskAllocation.GetExtra(),
-				StartExecutionTimeNanoSecond: taskAllocation.GetStartExecutionTimeNanoSecond(),
-				Placeholder:                  taskAllocation.GetPlaceholder(),
-			})
+	if cloneAllocations {
+		for jobID, allocation := range c.Allocations {
+			clonedTaskAllocations := make([]*objects.TaskAllocation, 0, len(allocation.GetTaskAllocations()))
+			for _, taskAllocation := range allocation.GetTaskAllocations() {
+				clonedTaskAllocations = append(clonedTaskAllocations, &objects.TaskAllocation{
+					NodeID:                       taskAllocation.GetNodeID(),
+					TaskID:                       taskAllocation.GetTaskID(),
+					HostMemoryAllocation:         taskAllocation.GetHostMemoryAllocation(),
+					CPUSocketAllocations:         taskAllocation.GetCPUSocketAllocations(),
+					AcceleratorAllocation:        taskAllocation.GetAcceleratorAllocation(),
+					Extra:                        taskAllocation.GetExtra(),
+					StartExecutionTimeNanoSecond: taskAllocation.GetStartExecutionTimeNanoSecond(),
+					AllocationTimeNanoSecond:     taskAllocation.GetAllocationTimeNanoSecond(),
+					Placeholder:                  taskAllocation.GetPlaceholder(),
+				})
+			}
+			cloned.Allocations[jobID] = &objects.JobAllocation{
+				JobID:             allocation.GetJobID(),
+				ResourceManagerID: allocation.GetResourceManagerID(),
+				PartitionID:       allocation.GetPartitionID(),
+				TaskAllocations:   clonedTaskAllocations,
+				Extra:             allocation.GetExtra(),
+			}
 		}
-		cloned.Allocations[jobID] = &objects.JobAllocation{
-			JobID:             allocation.GetJobID(),
-			ResourceManagerID: allocation.GetResourceManagerID(),
-			PartitionID:       allocation.GetPartitionID(),
-			TaskAllocations:   allocation.GetTaskAllocations(),
-			Extra:             allocation.GetExtra(),
+	} else {
+		cloned.Allocations = make(map[string]*objects.JobAllocation)
+		for jobID, allocation := range c.Allocations {
+			cloned.Allocations[jobID] = allocation
 		}
 	}
-	cloned.UnfinishedJobs = c.UnfinishedJobs
-	cloned.FinishedJobs = c.FinishedJobs
+	//cloned.UnfinishedJobs = c.UnfinishedJobs
+	cloned.UnfinishedJobs = make(map[string]*objects.Job)
+	for ID, job := range c.UnfinishedJobs {
+		cloned.UnfinishedJobs[ID] = job
+	}
+	//cloned.FinishedJobs = c.FinishedJobs
+	cloned.FinishedJobs = make(map[string]*objects.Job)
+	for ID, job := range c.FinishedJobs {
+		cloned.FinishedJobs[ID] = job
+	}
 	cloned.ExecutionHistoryManager = c.ExecutionHistoryManager.Clone()
 	cloned.Time = c.Time
 	return cloned

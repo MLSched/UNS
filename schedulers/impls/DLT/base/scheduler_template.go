@@ -3,14 +3,18 @@ package base
 import (
 	"UNS/events"
 	eventsobjs "UNS/pb_gen/events"
+	"UNS/pb_gen/objects"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
+	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"time"
 )
 
-type IntervalSchedulerTemplate struct {
+// DLTSchedulerTemplate 支持DLT任务的调度，包含Single和Gang两种类型的job。
+type DLTSchedulerTemplate struct {
 	// syncMode 表示是否使用同步模式。同步模式下所有的消息收发都是同步的。仅在模拟时使用。
 	syncMode     bool
 	intervalNano int64
@@ -29,9 +33,20 @@ type IntervalSchedulerInterface interface {
 	DoSchedule() *eventsobjs.SSUpdateAllocationsEvent
 }
 
-func (i *IntervalSchedulerTemplate) HandleEvent(event *events.Event) {
+func (i *DLTSchedulerTemplate) HandleEvent(event *events.Event) {
 	if ok := i.handleUpdatePartitionContext(event); !ok {
 		return
+	}
+	if eo, ok := event.Data.(*eventsobjs.RMUpdateJobsEvent); ok {
+		for _, job := range eo.GetNewJobs() {
+			if err := i.checkSupportJob(job); err != nil {
+				events.Reply(event, &events.Result{
+					Succeeded: false,
+					Reason:    err.Error(),
+				})
+				return
+			}
+		}
 	}
 	switch event.Data.(type) {
 	case *eventsobjs.RMUpdateJobsEvent, *eventsobjs.RMUpdateAllocationsEvent, *eventsobjs.RMUpdateTimeEvent:
@@ -44,7 +59,32 @@ func (i *IntervalSchedulerTemplate) HandleEvent(event *events.Event) {
 	events.ReplySucceeded(event)
 }
 
-func (i *IntervalSchedulerTemplate) handleUpdatePartitionContext(event *events.Event) (ok bool) {
+func (i *DLTSchedulerTemplate) checkSupportJob(job *objects.Job) error {
+	if job.GetJobType() != objects.JobType_jobTypeDLT {
+		return fmt.Errorf("[DLTSchedulerTemplate] checkSupportJobTypes, only support DLT job, but received %s", job.GetJobType().String())
+	}
+	supportedTaskGroupTypes := map[objects.TaskGroupType]bool{
+		objects.TaskGroupType_taskGroupTypeSingle: true,
+		objects.TaskGroupType_taskGroupTypeGang:   true,
+	}
+	if _, ok := supportedTaskGroupTypes[job.GetTaskGroup().GetTaskGroupType()]; !ok {
+		return fmt.Errorf("[DLTSchedulerTemplate] checkSupportJobTypes, only support single and gang task group types, but received %s", job.GetTaskGroup().GetTaskGroupType().String())
+	}
+	if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
+		e := job.GetTaskGroup().GetGangTaskGroupInfo().GetExtra()
+		extra := &objects.GangTaskGroupDLTExtra{}
+		err := json.Unmarshal(e, extra)
+		if err != nil {
+			return fmt.Errorf("[DLTSchedulerTemplate] checkSupportJobTypes, unmarshal gang task group DLT extra failed, err=[%v]", err)
+		}
+		if extra.GetDLTGangType() != objects.DLTGangType_DLTGangTypeDataParallel {
+			return fmt.Errorf("[DLTSchedulerTemplate] checkSupportJobTypes, only support data parallel gang job, but received %s", extra.GetDLTGangType().String())
+		}
+	}
+	return nil
+}
+
+func (i *DLTSchedulerTemplate) handleUpdatePartitionContext(event *events.Event) (ok bool) {
 	err := UpdatePartitionContext(event, i.GetPartitionContext())
 	if err != nil {
 		events.Reply(event, &events.Result{
@@ -56,18 +96,18 @@ func (i *IntervalSchedulerTemplate) handleUpdatePartitionContext(event *events.E
 	return true
 }
 
-func (i *IntervalSchedulerTemplate) SyncSchedule() {
+func (i *DLTSchedulerTemplate) SyncSchedule() {
 	scheduleFinishChan := make(chan interface{})
 	i.scheduleAble <- scheduleFinishChan
 	<-scheduleFinishChan
 }
 
-func (i *IntervalSchedulerTemplate) AsyncSchedule() {
+func (i *DLTSchedulerTemplate) AsyncSchedule() {
 	i.scheduleAble <- nil
 }
 
-func NewIntervalSchedulerTemplate(intervalScheduler IntervalSchedulerInterface, intervalNano int64, aware PartitionContextAware, syncMode bool, pusher EventPusher) *IntervalSchedulerTemplate {
-	return &IntervalSchedulerTemplate{
+func NewIntervalSchedulerTemplate(intervalScheduler IntervalSchedulerInterface, intervalNano int64, aware PartitionContextAware, syncMode bool, pusher EventPusher) *DLTSchedulerTemplate {
+	return &DLTSchedulerTemplate{
 		syncMode:              syncMode,
 		intervalNano:          intervalNano,
 		scheduleAble:          make(chan chan interface{}, 1024),
@@ -77,9 +117,9 @@ func NewIntervalSchedulerTemplate(intervalScheduler IntervalSchedulerInterface, 
 	}
 }
 
-func (i *IntervalSchedulerTemplate) DoSchedule() {
+func (i *DLTSchedulerTemplate) DoSchedule() {
 	if i.impl == nil {
-		panic("IntervalSchedulerTemplate DoSchedule called, but impl is not set.")
+		panic("DLTSchedulerTemplate DoSchedule called, but impl is not set.")
 	}
 	i.lastScheduledNanoTime = i.GetPartitionContext().Now()
 	updateAllocationsEvent := i.impl.DoSchedule()
@@ -100,7 +140,7 @@ func (i *IntervalSchedulerTemplate) DoSchedule() {
 	}
 }
 
-func (i *IntervalSchedulerTemplate) StartService() {
+func (i *DLTSchedulerTemplate) StartService() {
 	go func() {
 		dur := time.Duration(i.intervalNano) * time.Nanosecond
 		if i.syncMode {
@@ -128,6 +168,6 @@ func (i *IntervalSchedulerTemplate) StartService() {
 	}()
 }
 
-func (i *IntervalSchedulerTemplate) GetPartitionContext() *partition.Context {
+func (i *DLTSchedulerTemplate) GetPartitionContext() *partition.Context {
 	return i.partitionContextAware()
 }
