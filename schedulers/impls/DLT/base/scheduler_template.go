@@ -6,8 +6,10 @@ import (
 	"UNS/pb_gen/objects"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
+	"container/list"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
 	"math"
 	"time"
@@ -158,7 +160,7 @@ func (i *DLTSchedulerTemplate) StartService() {
 			case c := <-i.scheduleAble:
 				i.DoSchedule()
 				scheduleCount++
-				log.Printf("Interval Scheduler, DoSchedule by scheduleAble channel triggered, count = %d\n", scheduleCount)
+				log.Printf("Interval Scheduler, DoSchedule by scheduleAble channel finished, count = %d\n", scheduleCount)
 				timer.Reset(dur)
 				if c != nil {
 					c <- true
@@ -170,4 +172,110 @@ func (i *DLTSchedulerTemplate) StartService() {
 
 func (i *DLTSchedulerTemplate) GetPartitionContext() *partition.Context {
 	return i.partitionContextAware()
+}
+
+// RelatedJobAllocations 获取一个jobAllocation所占用的acc的其他jobAllocation，若其他jobAllocation占用了更多的acc，则迭代以上过程
+// 举例：job1占用了acc1，acc2，job2占用了acc2，acc3，job3占用了acc4，acc5：则最终，获得job1的relatedJobAllocations会返回job1, job2。
+func (i *DLTSchedulerTemplate) RelatedJobAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, jobAllocation *objects.JobAllocation) []*objects.JobAllocation {
+	visitedAccIDs := make(map[string]bool)
+	isVisitedAccID := func(accID string) bool {
+		_, ok := visitedAccIDs[accID]
+		return ok
+	}
+	visitedJobAllocations := make(map[string]*objects.JobAllocation)
+	isVisitedJobAllocation := func(jobAllocation *objects.JobAllocation) bool {
+		_, ok := visitedJobAllocations[jobAllocation.GetJobID()]
+		return ok
+	}
+	jobAllocationsQueue := list.New()
+	jobAllocationsQueue.PushBack(jobAllocation)
+	for jobAllocationsQueue.Len() > 0 {
+		f := jobAllocationsQueue.Remove(jobAllocationsQueue.Front()).(*objects.JobAllocation)
+		if isVisitedJobAllocation(f) {
+			continue
+		}
+		visitedJobAllocations[f.GetJobID()] = f
+		unseenAccIDs := make([]string, 0)
+		for _, taskAllocation := range f.GetTaskAllocations() {
+			accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
+			if isVisitedAccID(accID) {
+				continue
+			}
+			unseenAccIDs = append(unseenAccIDs, accID)
+		}
+		for _, unseenAccID := range unseenAccIDs {
+			for _, taskAllocation := range accID2SortedTaskAllocations[unseenAccID] {
+				jobAllocation := pc.Allocations[taskAllocation.GetJobID()]
+				if isVisitedJobAllocation(jobAllocation) {
+					continue
+				}
+				jobAllocationsQueue.PushBack(jobAllocation)
+			}
+		}
+		for _, accID := range unseenAccIDs {
+			visitedAccIDs[accID] = true
+		}
+	}
+	result := make([]*objects.JobAllocation, 0, len(visitedJobAllocations))
+	for _, a := range visitedJobAllocations {
+		result = append(result, a)
+	}
+	return result
+}
+
+func (i *DLTSchedulerTemplate) TempAllocJob(pc *partition.Context, jobAllocation *objects.JobAllocation) (cancel func()) {
+	pc.Allocations[jobAllocation.GetJobID()] = jobAllocation
+	return func() {
+		delete(pc.Allocations, jobAllocation.GetJobID())
+	}
+}
+
+func (i *DLTSchedulerTemplate) IfHasUnallocated(pc *partition.Context) bool {
+	unallocatedJobs := pc.GetUnallocatedJobs()
+	if len(unallocatedJobs) == 0 {
+		return false
+	}
+	unallocatedAcceleratorIDs := pc.GetUnallocatedAcceleratorIDs()
+	if len(unallocatedAcceleratorIDs) == 0 {
+		return false
+	}
+	return true
+}
+
+func (i *DLTSchedulerTemplate) AllocateAbleJob(pc *partition.Context, jobAllocation *objects.JobAllocation) bool {
+	if i.AllocationTime(jobAllocation) == pc.FixedNow() {
+		return true
+	}
+	return false
+}
+
+func (i *DLTSchedulerTemplate) AllocationTime(jobAllocation *objects.JobAllocation) int64 {
+	return jobAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond()
+}
+
+func (i *DLTSchedulerTemplate) FilterScheduleAbleJobAllocations(predictPC *partition.Context, currPC *partition.Context) []*objects.JobAllocation {
+	newJobAllocations := make(map[string]*objects.JobAllocation)
+	for jobID, jobAllocation := range predictPC.Allocations {
+		newJobAllocations[jobID] = jobAllocation
+	}
+	for jobID := range currPC.Allocations {
+		delete(newJobAllocations, jobID)
+	}
+	result := make([]*objects.JobAllocation, 0, len(newJobAllocations))
+	var earliestUnableToAllocateTime int64 = math.MaxInt64
+	for _, jobAllocation := range newJobAllocations {
+		if i.AllocateAbleJob(currPC, jobAllocation) {
+			result = append(result, jobAllocation)
+		} else if t := i.AllocationTime(jobAllocation); t < earliestUnableToAllocateTime {
+			earliestUnableToAllocateTime = t
+		}
+	}
+	return result
+}
+
+func (i *DLTSchedulerTemplate) MarkGangJobStartTime(jobAllocation *objects.JobAllocation, startTime int64) {
+	// 为gang类型的job修正开始时间
+	for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+		taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: startTime}
+	}
 }

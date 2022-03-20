@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"hash/crc32"
 	"io/ioutil"
 	"log"
 	"math"
@@ -32,7 +33,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 2000
+var jobCount = 100
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -43,12 +44,17 @@ var minSpaceSharingPenaltyDistribution = []float64{1, 1.5}
 var maxSpaceSharingPenaltyDistribution = []float64{2, 5}
 
 //var submitTimeScaleFactor = float64(0.01)
-var submitTimeScaleFactor = float64(10)
+
+//var submitTimeScaleFactor = float64(10)
+//var submitTimeScaleFactor = float64(5)
+var submitTimeScaleFactor = float64(3)
 
 //var jobExecutionTimeScaleFactor = float64(0.00001)
+
 var jobExecutionTimeScaleFactor = float64(1)
 
 //var syncMode = false
+
 var syncMode = true
 
 var deadlineProb = 0.3
@@ -89,34 +95,62 @@ var consolidationLevel2PenaltyDistributions = map[configs.ConsolidationLevel][]f
 	configs.ConsolidationLevel_DiffCPUSocket: {1.1, 1.5},
 	configs.ConsolidationLevel_DiffNode:      {1.3, 1.8},
 }
+var consolidationLevels = []configs.ConsolidationLevel{configs.ConsolidationLevel_NVLink, configs.ConsolidationLevel_SameCPUSocket, configs.ConsolidationLevel_DiffCPUSocket, configs.ConsolidationLevel_DiffNode}
 
 var gpuMemoryCostDistributions = []int64{int64(0.5 * float64(GiB)), int64(8 * GiB)}
 
 var instance2Count = map[*Instance]int64{
 	NewInstance(map[int64][]string{
-		0: {GTX2080Ti, GTX2080Ti},
-		1: {GTX2080Ti, GTX2080Ti},
+		0: {GTX2080Ti},
 	}): 16,
+	NewInstance(map[int64][]string{
+		0: {GTX2080Ti, GTX2080Ti},
+	}): 8,
+	NewInstance(map[int64][]string{
+		0: {A100, A100},
+		1: {A100, A100},
+	}): 4,
 	NewInstance(map[int64][]string{
 		0: {GTX2080Ti, GTX2080Ti, GTX2080Ti, GTX2080Ti},
 		1: {V100, V100, V100, V100},
-	}): 16,
+	}): 4,
 	NewInstance(map[int64][]string{
 		0: {V100, V100, V100, V100},
 		1: {V100, V100, V100, V100},
-	}): 32,
+	}): 4,
 	NewInstance(map[int64][]string{
 		0: {A100, A100, A100, A100},
 		1: {A100, A100, A100, A100},
 		2: {A100, A100, A100, A100},
 		3: {A100, A100, A100, A100},
-	}): 32,
+	}): 2,
 }
 
 var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
 	partitionID: {
 		SchedulerType: configs.SchedulerType_schedulerTypeNaive,
 		Configuration: &configs.SchedulerConfiguration_NaiveSchedulerConfiguration{NaiveSchedulerConfiguration: &configs.NaiveSchedulerConfiguration{
+			SchedulerID:       schedulerID,
+			ResourceManagerID: resourceManagerID,
+			PartitionID:       partitionID,
+			IntervalNano:      1e16,
+			SyncMode:          syncMode,
+			PredictorConfiguration: &configs.PredictorConfiguration{
+				PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+				Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+					DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+						DataSourcePath: predictorDataPath,
+					},
+				},
+			},
+		}},
+	},
+}}
+
+var sjfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+	partitionID: {
+		SchedulerType: configs.SchedulerType_schedulerTypeSJF,
+		Configuration: &configs.SchedulerConfiguration_SjfSchedulerConfiguration{SjfSchedulerConfiguration: &configs.SJFSchedulerConfiguration{
 			SchedulerID:       schedulerID,
 			ResourceManagerID: resourceManagerID,
 			PartitionID:       partitionID,
@@ -158,6 +192,8 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 //var schedulerConfiguration = naiveSchedulerConfiguration
 
 var schedulerConfiguration = unsSchedulerConfiguration
+
+//var schedulerConfiguration = sjfSchedulerConfiguration
 
 func init() {
 	rand.Seed(1)
@@ -270,7 +306,8 @@ func (g *CaseGenerator) PreprocessTaskTable(header []string, records [][]string)
 			record[gpuTypeIdx] = "V100"
 		}
 		if gpuType == "MISC" {
-			record[gpuTypeIdx] = gpuTypes[rand.Intn(len(gpuTypes))]
+			c := int(crc32.ChecksumIEEE([]byte(record[0])))
+			record[gpuTypeIdx] = gpuTypes[c%len(gpuTypes)]
 		}
 		return false
 	}
@@ -315,12 +352,15 @@ func (g *CaseGenerator) PreprocessTaskTable(header []string, records [][]string)
 	}
 	resultRecords := make([][]string, 0, len(records))
 	filterCount := make(map[string]int)
+	filterNames := make([]string, 0, len(filters))
 	for filterName := range filters {
 		filterCount[filterName] = 0
+		filterNames = append(filterNames, filterName)
 	}
 nextRecord:
 	for _, record := range records {
-		for filterName, filter := range filters {
+		for _, filterName := range filterNames {
+			filter := filters[filterName]
 			if filter(record) {
 				filterCount[filterName] += 1
 				continue nextRecord
@@ -342,7 +382,7 @@ nextRecord:
 			resultRecords[j] = t
 		},
 	}
-	sort.Sort(sorter)
+	sort.Stable(sorter)
 	return header, resultRecords
 }
 
@@ -394,6 +434,10 @@ func (g *CaseGenerator) MergeTaskAndJob(taskHeader []string, taskRecords [][]str
 }
 
 func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords [][]string) (map[string]*configs.DLTJobData, []*objects.Job) {
+	rand.Seed(1)
+	for i := 0; i < 10; i++ {
+		log.Println(rand.Float64())
+	}
 	mergedRecords = mergedRecords[:jobCount]
 	//mergedHeader := []string{
 	//	"jobID",
@@ -418,6 +462,7 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 		min := float64(miniBatchDurationNanoSecondDistribution[0])
 		max := float64(miniBatchDurationNanoSecondDistribution[1])
 		miniBatchDurationNanoSecond := int64(g.randomUniform([]float64{min, max}))
+		log.Println(miniBatchDurationNanoSecond)
 		totalMiniBatches := int64(executionDurationSecond * 1e9 / float64(miniBatchDurationNanoSecond))
 		if totalMiniBatches < 10 {
 			totalMiniBatches = 10
@@ -467,20 +512,27 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 			},
 			Deadline: g.generateDeadline(submitTimeNanoSecond, executionDurationNanoSecond),
 		}
+		AcceleratorType2MiniBatchDurationNanoSecond := g.generateGPUType2MiniBatchDurationNanoSecond(GPUType, miniBatchDurationNanoSecond)
+		MaxSpaceSharingPenalty := float32(g.randomUniform(maxSpaceSharingPenaltyDistribution))
+		MinSpaceSharingPenalty := float32(g.randomUniform(minSpaceSharingPenaltyDistribution))
+		ConsolidationLevel2Penalties := g.generateConsolidationLevel2Penalties()
+		MaximumAcceleratorMemoryCostBytes := int64(g.randomUniform([]float64{float64(gpuMemoryCostDistributions[0]), float64(gpuMemoryCostDistributions[1])}))
 		return &configs.DLTJobData{
 			Job:              job,
 			TotalMiniBatches: totalMiniBatches,
-			AcceleratorType2MiniBatchDurationNanoSecond: g.generateGPUType2MiniBatchDurationNanoSecond(GPUType, miniBatchDurationNanoSecond),
-			MaxSpaceSharingPenalty:                      float32(g.randomUniform(maxSpaceSharingPenaltyDistribution)),
-			MinSpaceSharingPenalty:                      float32(g.randomUniform(minSpaceSharingPenaltyDistribution)),
-			ConsolidationLevel2Penalties:                g.generateConsolidationLevel2Penalties(),
-			MaximumAcceleratorMemoryCostBytes:           int64(g.randomUniform([]float64{float64(gpuMemoryCostDistributions[0]), float64(gpuMemoryCostDistributions[1])})),
+			AcceleratorType2MiniBatchDurationNanoSecond: AcceleratorType2MiniBatchDurationNanoSecond,
+			MaxSpaceSharingPenalty:                      MaxSpaceSharingPenalty,
+			MinSpaceSharingPenalty:                      MinSpaceSharingPenalty,
+			ConsolidationLevel2Penalties:                ConsolidationLevel2Penalties,
+			MaximumAcceleratorMemoryCostBytes:           MaximumAcceleratorMemoryCostBytes,
 		}
 	}
 	data := make(map[string]*configs.DLTJobData)
 	gangJobsCount := 0
 	for _, record := range mergedRecords {
 		d := generatorJob(record)
+		s, _ := utils.MarshalJsonPB(d)
+		log.Printf("%v", s)
 		data[d.GetJob().GetJobID()] = d
 		if d.GetJob().GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
 			gangJobsCount++
@@ -508,9 +560,13 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 
 func (g *CaseGenerator) generateConsolidationLevel2Penalties() map[int64]float32 {
 	result := make(map[int64]float32)
-	for cl, dis := range consolidationLevel2PenaltyDistributions {
-		result[int64(cl.Number())] = float32(g.randomUniform(dis))
+	for _, level := range consolidationLevels {
+		dis := consolidationLevel2PenaltyDistributions[level]
+		result[int64(level.Number())] = float32(g.randomUniform(dis))
 	}
+	//for cl, dis := range consolidationLevel2PenaltyDistributions {
+	//	result[int64(cl.Number())] = float32(g.randomUniform(dis))
+	//}
 	return result
 }
 
@@ -579,6 +635,17 @@ func (g *CaseGenerator) GenerateCluster() *objects.Cluster {
 			partition.Nodes = append(partition.Nodes, node)
 		}
 	}
+	accType2Count := make(map[string]int)
+	for _, partition := range cluster.Partitions {
+		for _, node := range partition.GetNodes() {
+			for _, socket := range node.GetCPUSockets() {
+				for _, acc := range socket.GetAccelerators() {
+					accType2Count[acc.GetAcceleratorMetaInfo().GetBriefType()]++
+				}
+			}
+		}
+	}
+	log.Printf("acceleratorTypeToCount: %+v", accType2Count)
 	return cluster
 }
 

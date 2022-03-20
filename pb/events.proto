@@ -47,4 +47,7 @@ message RMUpdateTimeEvent {
 // 调度器向资源管理器提议新的任务分配
 message SSUpdateAllocationsEvent {
   repeated JobAllocation newJobAllocations = 1;
+
+  // 模拟器专用：下次调度的时间
+  int64 nextScheduleTime = 255;
 }

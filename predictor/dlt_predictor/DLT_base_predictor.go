@@ -315,10 +315,10 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 			}
 			runningAllocations = resultRunningAllocations
 		}
-		if newJobStartTime+100 < closestFinishedJobTime {
+		if newJobStartTime+1e9 < closestFinishedJobTime {
 			// 新任务到来要比任务结束的早
 			// 当任务结束与任务开始离得很近时，容易出现舍入误差。
-			// 所以，给快要结束的任务提前结束的机会，约提前100纳秒
+			// 所以，给快要结束的任务提前结束的机会，提前1秒
 			nextStartTimeIdx++
 			passedDuration := newJobStartTime - currTime
 			passDurationForRunningAllocations(currTime, passedDuration)
@@ -347,7 +347,9 @@ func (p *DLTBasePredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *Predi
 			s, _ := utils.MarshalJsonPB(a)
 			log.Printf("%v", s)
 		}
-		return nil, fmt.Errorf("space sharing only supports two jobs, but received allocations of %d", len(allocations))
+		reason := fmt.Sprintf("space sharing only supports two jobs, but received allocations of %d", len(allocations))
+		//return interfaces.NonPlaceholderUnsetStartTimeError.Set(reason)
+		return nil, interfaces.SpaceSharingMoreThanTwoError.Set(reason)
 	}
 	getTaskGroupType := func(allocation *objects.JobAllocation) objects.TaskGroupType {
 		return p.getTaskGroup(ctx, allocation.GetJobID()).GetTaskGroupType()
@@ -362,13 +364,16 @@ func (p *DLTBasePredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *Predi
 	taskGroupType := getTaskGroupType(allocations[0])
 	for _, allocation := range allocations {
 		if taskGroupType != getTaskGroupType(allocation) {
-			return nil, fmt.Errorf("only supports same type of task group type space sharing")
+			reason := fmt.Sprintf("only supports same type of task group type space sharing")
+			return nil, interfaces.SpaceSharingDiffTaskTypeError.Set(reason)
+			//return nil, fmt.Errorf("only supports same type of task group type space sharing")
 		}
 	}
 	acceleratorIDs := p.getAllocatedAcceleratorIDs(ctx, allocations[0])
 	for _, allocation := range allocations {
 		if !utils.StringSliceEquals(acceleratorIDs, p.getAllocatedAcceleratorIDs(ctx, allocation)) {
-			return nil, fmt.Errorf("only supports same acceleratorIDs space sharing")
+			reason := fmt.Sprintf("only supports same acceleratorIDs space sharing")
+			return nil, interfaces.SpaceSharingDiffAccIDError.Set(reason)
 		}
 	}
 	if err := p.checkAcceleratorMemoryCapacity(ctx, acceleratorIDs, getJobIDs(allocations)); err != nil {
@@ -394,10 +399,12 @@ func (p *DLTBasePredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *Predi
 		if gangType == objects.DLTGangType_DLTGangTypeDataParallel {
 			return p.impl.getDataParallelTasksSpaceSharingMiniBatchDuration(ctx, acceleratorIDs, getJobIDs(allocations)), nil
 		} else {
-			return nil, fmt.Errorf("unsupported DLT gang type %s", gangType)
+			reason := fmt.Sprintf("unsupported DLT gang type %s", gangType)
+			return nil, interfaces.UnsupportedDLTGangTypeError.Set(reason)
 		}
 	} else {
-		return nil, fmt.Errorf("unsupported task group type %s", taskGroupType)
+		reason := fmt.Sprintf("unsupported task group type %s", taskGroupType)
+		return nil, interfaces.UnsupportedTaskGroupTypeError.Set(reason)
 	}
 }
 
@@ -486,7 +493,9 @@ func (p *DLTBasePredictor) checkAcceleratorMemoryCapacity(ctx *PredictSessionCon
 		for _, jobID := range jobIDs {
 			bytes := p.impl.getMaximumAcceleratorMemoryCostBytes(ctx, jobID)
 			if bytes > remainingBytes {
-				return fmt.Errorf("DLTBasePredictor checkAcceleratorMemoryCapacity accelerator memory not enough, accelerator type is %s", t)
+				reason := fmt.Sprintf("DLTBasePredictor checkAcceleratorMemoryCapacity accelerator memory not enough, accelerator type is %s", t)
+				log.Printf(reason)
+				return interfaces.SpaceSharingOutOfMemoryError.Set(reason)
 			}
 			remainingBytes -= bytes
 		}

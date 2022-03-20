@@ -19,7 +19,7 @@ func (c *Calculator) CalIncrementally(pc *partition.Context, allocationsPredictR
 	s := prevStub.(*Stub)
 	c.updateStub(pc, allocationsPredictResult, s)
 	avgJCT := c.calculateAvgJCT(s)
-	return interfaces2.Benefit(avgJCT), s
+	return c.avgJCT2Benefit(avgJCT), s
 }
 
 func (c *Calculator) Cal(pc *partition.Context, allocationsPredictResult interfaces.PredictResult) (benefit interfaces2.Benefit, stub interface{}) {
@@ -27,7 +27,7 @@ func (c *Calculator) Cal(pc *partition.Context, allocationsPredictResult interfa
 
 	c.updateStub(pc, allocationsPredictResult, s)
 	avgJCT := c.calculateAvgJCT(s)
-	return interfaces2.Benefit(avgJCT), s
+	return c.avgJCT2Benefit(avgJCT), s
 }
 
 func (c *Calculator) updateStub(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, stub *Stub) {
@@ -49,4 +49,8 @@ func (c *Calculator) calculateAvgJCT(stub *Stub) float64 {
 	}
 	avgJCT := float64(totalJCT) / float64(len(stub.JobID2JCT))
 	return avgJCT
+}
+
+func (c *Calculator) avgJCT2Benefit(avgJCT float64) interfaces2.Benefit {
+	return interfaces2.Benefit(-avgJCT)
 }

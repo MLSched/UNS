@@ -103,7 +103,6 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 					return accIDs[i] < accIDs[j]
 				}
 				return false
-				//return getLastTaskFinishTime(accs[i]) < getLastTaskFinishTime(accs[j])
 			},
 			SwapFunc: func(i, j int) {
 				t := accIDs[i]
@@ -112,7 +111,7 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 			},
 		}
 		if !sort.IsSorted(sorter) {
-			sort.Sort(sorter)
+			sort.Stable(sorter)
 		}
 	}
 	resultAllocations := make([]*objects.JobAllocation, 0)

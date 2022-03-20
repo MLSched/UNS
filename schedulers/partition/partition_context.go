@@ -235,3 +235,16 @@ func (c *Context) GetUnallocatedJobs() map[string]*objects.Job {
 	}
 	return jobs
 }
+
+func (c *Context) GetUnallocatedAcceleratorIDs() map[string]bool {
+	totalAcceleratorIDs := make(map[string]bool)
+	for accID := range c.View.AcceleratorID2Accelerator {
+		totalAcceleratorIDs[accID] = true
+	}
+	for _, jobAllocation := range c.Allocations {
+		for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+			delete(totalAcceleratorIDs, taskAllocation.GetAcceleratorAllocation().GetAcceleratorID())
+		}
+	}
+	return totalAcceleratorIDs
+}

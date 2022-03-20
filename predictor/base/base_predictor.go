@@ -38,26 +38,21 @@ func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocation
 		if !p.SupportJobTypes[job.GetJobType()] {
 			reason := fmt.Sprintf("Base prerequisiteCheck failed, encounter unsupported job type. jobID = %s, jobType = %s", job.GetJobID(), job.GetJobType())
 			log.Printf(reason)
-			return fmt.Errorf(reason)
+			return interfaces.UnsupportedJobTypeError.Set(reason)
 		}
 		if !p.SupportTaskGroupTypes[job.GetTaskGroup().GetTaskGroupType()] {
 			reason := fmt.Sprintf("Base prerequisiteCheck failed, encounter unsupported task group type. jobID = %s, jobType = %s, taskGroupType = %s",
 				job.GetJobID(), job.GetJobType(), job.GetTaskGroup().GetTaskGroupType())
 			log.Printf(reason)
-			return fmt.Errorf(reason)
+			return interfaces.UnsupportedTaskGroupTypeError.Set(reason)
+			//return interfaces.UnsupportedTaskGroupTypeError(fmt.Errorf(reason))
 		}
 		for _, taskAllocation := range allocation.GetTaskAllocations() {
 			if taskAllocation.GetStartExecutionTimeNanoSecond() == nil && !taskAllocation.GetPlaceholder() {
 				reason := fmt.Sprintf("a task's start execution time is unset and it is not a placeholder")
 				log.Printf(reason)
-				return fmt.Errorf(reason)
+				return interfaces.NonPlaceholderUnsetStartTimeError.Set(reason)
 			}
-			//if err := p.ValidateExecutionRanges(taskAllocation.GetExecutionRanges()); err != nil {
-			//	reason := fmt.Sprintf("Base prerequisiteCheck failed, validate execution ranges failed. jobID = %s, jobType = %s, taskGroupType = %s, taskID = %s, err = %s",
-			//		job.GetJobID(), job.GetJobType(), job.GetTaskGroup().GetTaskGroupType(), taskAllocation.GetTaskID(), err.Error())
-			//	log.Printf(reason)
-			//	return fmt.Errorf(reason)
-			//}
 		}
 	}
 	return nil
