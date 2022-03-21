@@ -139,7 +139,11 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 			metrics.Analyse(s.partitionContext)
 			return
 		}
-		log.Printf("simulation submitted unfinished jobs %d, unallocated jobs %d, finished jobs %d, total jobs %d.", len(s.partitionContext.UnfinishedJobs), len(s.partitionContext.GetUnallocatedJobs()), len(s.partitionContext.FinishedJobs), len(s.getJobs()))
+		log.Printf("simulation submitted unfinished jobs %d, unallocated jobs %d, unallocated accs %d, finished jobs %d, total jobs %d.",
+			len(s.partitionContext.UnfinishedJobs),
+			len(s.partitionContext.GetUnallocatedJobs()),
+			len(s.partitionContext.GetUnallocatedAcceleratorIDs()),
+			len(s.partitionContext.FinishedJobs), len(s.getJobs()))
 		//time.Sleep(10 * time.Millisecond)
 	}
 }
@@ -208,6 +212,9 @@ func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCal
 				panic(err)
 			}
 			log.Printf("simulateClosestFinishAllocation callback called, closest to finish allocations = %+v, current nano time = %d", closest2FinishAllocations, finishTime)
+			if len(finishedJobIDs) == 1 && finishedJobIDs[0] == "6d942b15622d001d9edacb8e" {
+				log.Printf("")
+			}
 			s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
 				UpdatedJobAllocations: newStartedPlaceholderAllocations,
 				FinishedJobIDs:        finishedJobIDs,

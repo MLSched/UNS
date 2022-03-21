@@ -12,24 +12,32 @@ import (
 )
 
 type AllocationsProvider interface {
-	GetPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job) []*objects.JobAllocation
+	GetPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideType ProvideType) []*objects.JobAllocation
 	// PrepareAccID2SortedTaskAllocations 在一个predictResult下，计算出每个加速器上，所有的jobAllocation的一个排序，该排序按照每个任务的结束时间进行排序。
 	PrepareAccID2SortedTaskAllocations(pc *partition.Context, predictResult interfaces.PredictResult) map[string][]*objects.TaskAllocation
 }
+
+type ProvideType int
+
+const (
+	ProvideTypeTotal          ProvideType = 0
+	ProvideTypeOnlyUnoccupied ProvideType = 1
+	//ProvideTypeOnlyNonSpaceSharing ProvideType = 2
+)
 
 type AllocationsProviderImpl struct {
 	MaxGangAllocations int
 }
 
-func (a *AllocationsProviderImpl) GetPossibleAllocations(pc *partition.Context, accID2SortedJobAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job) []*objects.JobAllocation {
-	m := map[objects.TaskGroupType]func(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job) []*objects.JobAllocation{
+func (a *AllocationsProviderImpl) GetPossibleAllocations(pc *partition.Context, accID2SortedJobAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideType ProvideType) []*objects.JobAllocation {
+	m := map[objects.TaskGroupType]func(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideType ProvideType) []*objects.JobAllocation{
 		objects.TaskGroupType_taskGroupTypeSingle: a.GetSingleTaskJobPossibleAllocations,
 		objects.TaskGroupType_taskGroupTypeGang:   a.GetGangJobPossibleAllocations,
 	}
-	return m[job.GetTaskGroup().GetTaskGroupType()](pc, accID2SortedJobAllocations, predictResult, job)
+	return m[job.GetTaskGroup().GetTaskGroupType()](pc, accID2SortedJobAllocations, predictResult, job, provideType)
 }
 
-func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job) []*objects.JobAllocation {
+func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideType ProvideType) []*objects.JobAllocation {
 	// 筛选出AcceleratorID，使得他们上面最多只有一个job在运行，并且运行的不是GangJob
 	// 从每个accelerator上，考虑最后一个运行的taskAllocation，查看是否存在与它共同运行的可能性
 	result := make([]*objects.JobAllocation, 0)
@@ -41,6 +49,9 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 	}
 	for _, accID := range pc.View.AcceleratorIDs {
 		taskAllocations := accID2SortedTaskAllocations[accID]
+		if provideType == ProvideTypeOnlyUnoccupied && len(taskAllocations) != 0 {
+			continue
+		}
 		if len(taskAllocations) == 0 {
 			// 没有任务在运行，直接添加
 			result = append(result, buildJobAllocation(accID, pc.FixedNow()))
@@ -75,7 +86,7 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 	return result
 }
 
-func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job) []*objects.JobAllocation {
+func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideType ProvideType) []*objects.JobAllocation {
 	// gang job不允许与其他任务并发运行
 	// 需要遍历同一类型的acc，且数量要等于该任务的task数量。
 	// 按照consolidation的级别，从最紧密开始遍历。
@@ -151,6 +162,9 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 				}
 				return nil, true
 			}()
+			if provideType == ProvideTypeOnlyUnoccupied && (startTime == nil || *startTime != pc.FixedNow()) {
+				return
+			}
 			na := buildJobAllocation(pc, job, accIDs, startTime, earliest, placeholder)
 			resultAllocations = append(resultAllocations, na)
 		}

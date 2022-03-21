@@ -17,14 +17,22 @@ type Stub struct {
 
 func (c *Calculator) CalIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit interfaces2.Benefit, stub interface{}) {
 	s := prevStub.(*Stub)
+	s = c.cloneStub(s)
 	c.updateStub(pc, allocationsPredictResult, s)
 	avgJCT := c.calculateAvgJCT(s)
 	return c.avgJCT2Benefit(avgJCT), s
 }
 
+func (c *Calculator) cloneStub(stub *Stub) *Stub {
+	s := &Stub{JobID2JCT: make(map[string]int64)}
+	for jobID, JCT := range stub.JobID2JCT {
+		s.JobID2JCT[jobID] = JCT
+	}
+	return s
+}
+
 func (c *Calculator) Cal(pc *partition.Context, allocationsPredictResult interfaces.PredictResult) (benefit interfaces2.Benefit, stub interface{}) {
 	s := &Stub{JobID2JCT: make(map[string]int64)}
-
 	c.updateStub(pc, allocationsPredictResult, s)
 	avgJCT := c.calculateAvgJCT(s)
 	return c.avgJCT2Benefit(avgJCT), s

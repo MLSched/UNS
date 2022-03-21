@@ -33,20 +33,22 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 500
+var jobCount = 300
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
-	V100:      {1.78, 2.42},
-	GTX2080Ti: {2.36, 3.42},
+	V100:      {1.5, 2.1},
+	GTX2080Ti: {2.2, 2.9},
 }
-var minSpaceSharingPenaltyDistribution = []float64{1, 1.5}
-var maxSpaceSharingPenaltyDistribution = []float64{2, 5}
+var minSpaceSharingPenaltyDistribution = []float64{1, 1.3}
+var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 
 //var submitTimeScaleFactor = float64(0.01)
 
 //var submitTimeScaleFactor = float64(10)
-var submitTimeScaleFactor = float64(5)
+var submitTimeScaleFactor = float64(7.5)
+
+//var submitTimeScaleFactor = float64(0)
 
 //var submitTimeScaleFactor = float64(3)
 
@@ -92,39 +94,45 @@ var GPUType2Meta = map[string]*objects.AcceleratorMetaInfo{
 
 var consolidationLevel2PenaltyDistributions = map[configs.ConsolidationLevel][]float64{
 	configs.ConsolidationLevel_NVLink:        {1, 1.05},
-	configs.ConsolidationLevel_SameCPUSocket: {1, 1.2},
-	configs.ConsolidationLevel_DiffCPUSocket: {1.1, 1.5},
-	configs.ConsolidationLevel_DiffNode:      {1.3, 1.8},
+	configs.ConsolidationLevel_SameCPUSocket: {1, 1.1},
+	configs.ConsolidationLevel_DiffCPUSocket: {1.1, 1.3},
+	configs.ConsolidationLevel_DiffNode:      {1.1, 1.6},
 }
 var consolidationLevels = []configs.ConsolidationLevel{configs.ConsolidationLevel_NVLink, configs.ConsolidationLevel_SameCPUSocket, configs.ConsolidationLevel_DiffCPUSocket, configs.ConsolidationLevel_DiffNode}
 
 var gpuMemoryCostDistributions = []int64{int64(0.5 * float64(GiB)), int64(8 * GiB)}
 
 var instance2Count = map[*Instance]int64{
-	NewInstance(map[int64][]string{
-		0: {GTX2080Ti},
-	}): 16,
+	//NewInstance(map[int64][]string{
+	//	0: {GTX2080Ti},
+	//}): 4,
+	//NewInstance(map[int64][]string{
+	//	0: {V100},
+	//}): 4,
+	//NewInstance(map[int64][]string{
+	//	0: {A100},
+	//}): 4,
 	NewInstance(map[int64][]string{
 		0: {GTX2080Ti, GTX2080Ti},
-	}): 8,
+	}): 2,
+	NewInstance(map[int64][]string{
+		0: {GTX2080Ti, GTX2080Ti},
+		1: {V100, V100},
+	}): 2,
+	NewInstance(map[int64][]string{
+		0: {V100, V100},
+		1: {V100, V100},
+	}): 2,
+	NewInstance(map[int64][]string{
+		0: {V100, V100, A100, A100},
+	}): 4,
 	NewInstance(map[int64][]string{
 		0: {A100, A100},
 		1: {A100, A100},
-	}): 4,
-	NewInstance(map[int64][]string{
-		0: {GTX2080Ti, GTX2080Ti, GTX2080Ti, GTX2080Ti},
-		1: {V100, V100, V100, V100},
-	}): 4,
-	NewInstance(map[int64][]string{
-		0: {V100, V100, V100, V100},
-		1: {V100, V100, V100, V100},
-	}): 4,
+	}): 2,
 	NewInstance(map[int64][]string{
 		0: {A100, A100, A100, A100},
-		1: {A100, A100, A100, A100},
-		2: {A100, A100, A100, A100},
-		3: {A100, A100, A100, A100},
-	}): 2,
+	}): 1,
 }
 
 var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
@@ -197,7 +205,7 @@ var schedulerConfiguration = unsSchedulerConfiguration
 //var schedulerConfiguration = sjfSchedulerConfiguration
 
 func init() {
-	rand.Seed(1)
+	rand.Seed(3)
 }
 
 func main() {

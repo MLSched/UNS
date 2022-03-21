@@ -15,7 +15,7 @@ type AllocContext struct {
 	NewJobAllocations            []*objects.JobAllocation
 	NewJobAllocationsFingerPrint string
 	Benefit                      benefitsinterfaces.Benefit
-	Score                        score.Score
+	Score                        score.JobAllocationsScore
 	PredictResult                predictorinterfaces.PredictResult
 	BenefitStub                  interface{}
 	ScoreStub                    interface{}
@@ -25,6 +25,6 @@ func (j *AllocContext) GetBenefit() benefitsinterfaces.Benefit {
 	return j.Benefit
 }
 
-func (j *AllocContext) GetScore() score.Score {
+func (j *AllocContext) GetScore() score.JobAllocationsScore {
 	return j.Score
 }
