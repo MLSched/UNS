@@ -33,6 +33,7 @@ type View struct {
 	NodeID2Accelerators       map[string][]*objects.Accelerator
 	AcceleratorID2Accelerator map[string]*objects.Accelerator
 	AcceleratorID2NodeID      map[string]string
+	AcceleratorID2SocketID    map[string]string
 	AcceleratorIDs            []string
 }
 
@@ -58,6 +59,7 @@ func (c *Context) refreshView() {
 		NodeID2Accelerators:       make(map[string][]*objects.Accelerator),
 		AcceleratorID2Accelerator: make(map[string]*objects.Accelerator),
 		AcceleratorID2NodeID:      make(map[string]string),
+		AcceleratorID2SocketID:    make(map[string]string),
 		AcceleratorIDs:            make([]string, 0),
 	}
 	for _, node := range c.Meta.GetNodes() {
@@ -71,6 +73,7 @@ func (c *Context) refreshView() {
 			for _, accelerator := range CPUSocket.GetAccelerators() {
 				c.View.AcceleratorID2Accelerator[accelerator.GetAcceleratorID()] = accelerator
 				c.View.AcceleratorID2NodeID[accelerator.GetAcceleratorID()] = node.GetNodeID()
+				c.View.AcceleratorID2SocketID[accelerator.GetAcceleratorID()] = CPUSocket.GetCPUSocketID()
 				c.View.AcceleratorIDs = append(c.View.AcceleratorIDs, accelerator.GetAcceleratorID())
 			}
 		}

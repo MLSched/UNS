@@ -33,7 +33,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 100
+var jobCount = 500
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -46,8 +46,9 @@ var maxSpaceSharingPenaltyDistribution = []float64{2, 5}
 //var submitTimeScaleFactor = float64(0.01)
 
 //var submitTimeScaleFactor = float64(10)
-//var submitTimeScaleFactor = float64(5)
-var submitTimeScaleFactor = float64(3)
+var submitTimeScaleFactor = float64(5)
+
+//var submitTimeScaleFactor = float64(3)
 
 //var jobExecutionTimeScaleFactor = float64(0.00001)
 

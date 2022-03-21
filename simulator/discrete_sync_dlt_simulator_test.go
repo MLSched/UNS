@@ -11,7 +11,7 @@ import (
 
 var syncConfigPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
 var logDir = "/Users/purchaser/go/src/UNS/logs"
-var enableLog = false
+var enableLog = true
 
 func init() {
 	if enableLog {
