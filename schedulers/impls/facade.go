@@ -17,6 +17,7 @@ var factories = map[configs.SchedulerType]Factory{
 	configs.SchedulerType_schedulerTypeNaive: naive.Build,
 	configs.SchedulerType_schedulerTypeUNS:   UNS.Build,
 	configs.SchedulerType_schedulerTypeSJF:   queue_based.BuildSJF,
+	configs.SchedulerType_schedulerTypeEDF:   queue_based.BuildEDF,
 }
 
 func Build(schedulerBuildParams *base.SchedulerBuildParams) (interfaces.Scheduler, error) {

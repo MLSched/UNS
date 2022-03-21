@@ -212,9 +212,6 @@ func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCal
 				panic(err)
 			}
 			log.Printf("simulateClosestFinishAllocation callback called, closest to finish allocations = %+v, current nano time = %d", closest2FinishAllocations, finishTime)
-			if len(finishedJobIDs) == 1 && finishedJobIDs[0] == "6d942b15622d001d9edacb8e" {
-				log.Printf("")
-			}
 			s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
 				UpdatedJobAllocations: newStartedPlaceholderAllocations,
 				FinishedJobIDs:        finishedJobIDs,

@@ -33,7 +33,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 300
+var jobCount = 100
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -46,7 +46,7 @@ var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 //var submitTimeScaleFactor = float64(0.01)
 
 //var submitTimeScaleFactor = float64(10)
-var submitTimeScaleFactor = float64(7.5)
+var submitTimeScaleFactor = float64(5)
 
 //var submitTimeScaleFactor = float64(0)
 
@@ -60,8 +60,8 @@ var jobExecutionTimeScaleFactor = float64(1)
 
 var syncMode = true
 
-var deadlineProb = 0.3
-var deadlineDistribution = []float64{1.2, 3}
+var deadlineProb = float64(1)
+var deadlineDistribution = []float64{1.2, 1.5}
 
 const (
 	A100      = "A100"
@@ -177,6 +177,27 @@ var sjfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 	},
 }}
 
+var edfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+	partitionID: {
+		SchedulerType: configs.SchedulerType_schedulerTypeEDF,
+		Configuration: &configs.SchedulerConfiguration_EdfSchedulerConfiguration{EdfSchedulerConfiguration: &configs.EDFSchedulerConfiguration{
+			SchedulerID:       schedulerID,
+			ResourceManagerID: resourceManagerID,
+			PartitionID:       partitionID,
+			IntervalNano:      1e16,
+			SyncMode:          syncMode,
+			PredictorConfiguration: &configs.PredictorConfiguration{
+				PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+				Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+					DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+						DataSourcePath: predictorDataPath,
+					},
+				},
+			},
+		}},
+	},
+}}
+
 var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
 	partitionID: {
 		SchedulerType: configs.SchedulerType_schedulerTypeUNS,
@@ -200,9 +221,11 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 
 //var schedulerConfiguration = naiveSchedulerConfiguration
 
-var schedulerConfiguration = unsSchedulerConfiguration
+//var schedulerConfiguration = unsSchedulerConfiguration
 
 //var schedulerConfiguration = sjfSchedulerConfiguration
+
+var schedulerConfiguration = edfSchedulerConfiguration
 
 func init() {
 	rand.Seed(3)
@@ -556,6 +579,9 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 		}
 		for _, d := range data {
 			d.GetJob().SubmitTimeNanoSecond -= minSubmitTime
+			if d.GetJob().GetDeadline() != 0 {
+				d.GetJob().Deadline -= minSubmitTime
+			}
 		}
 	}
 	normalizeSubmitTime(data)

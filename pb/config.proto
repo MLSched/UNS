@@ -25,6 +25,7 @@ message SchedulerConfiguration {
     NaiveSchedulerConfiguration naiveSchedulerConfiguration = 2;
     UNSSchedulerConfiguration unsSchedulerConfiguration = 3;
     SJFSchedulerConfiguration sjfSchedulerConfiguration = 4;
+    EDFSchedulerConfiguration edfSchedulerConfiguration = 5;
   }
 }
 
@@ -33,6 +34,7 @@ enum SchedulerType {
   schedulerTypeNaive = 0;
   schedulerTypeUNS = 1;
   schedulerTypeSJF = 2;
+  schedulerTypeEDF = 3;
 }
 
 message NaiveSchedulerConfiguration {
@@ -45,6 +47,15 @@ message NaiveSchedulerConfiguration {
 }
 
 message SJFSchedulerConfiguration {
+  string SchedulerID = 1;
+  string resourceManagerID = 2;
+  string partitionID = 3;
+  int64 intervalNano = 4;
+  bool syncMode = 5;
+  PredictorConfiguration predictorConfiguration = 6;
+}
+
+message EDFSchedulerConfiguration {
   string SchedulerID = 1;
   string resourceManagerID = 2;
   string partitionID = 3;
