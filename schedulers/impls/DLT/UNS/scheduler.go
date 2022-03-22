@@ -52,8 +52,8 @@ func Build(configuration interface{}, pusher base.EventPusher, partitionContextA
 		AllocationsProvider: &base.AllocationsProviderImpl{
 			MaxGangAllocations: math.MaxInt64,
 		},
-		//BenefitsCalculator: benefits.NewJCTCalculator(),
-		BenefitsCalculator: benefits.NewDDLCalculator(),
+		BenefitsCalculator: benefits.NewJCTCalculator(),
+		//BenefitsCalculator: benefits.NewDDLCalculator(),
 		BenefitsSampler:    sampler.NewIncrementalSampler(50, 30, 5),
 		ScoreCalculator:    score.NewConsolidationScoreCalculator(),
 		MaxRound:           10,
