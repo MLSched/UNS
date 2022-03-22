@@ -135,7 +135,7 @@ var instance2Count = map[*Instance]int64{
 	//}): 1,
 	NewInstance(map[int64][]string{
 		0: {A100, A100, A100, A100},
-	}): 240,
+	}): 1,
 }
 
 var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
