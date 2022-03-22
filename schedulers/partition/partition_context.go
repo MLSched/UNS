@@ -100,6 +100,9 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 		delete(c.UnfinishedJobs, finishedJobID)
 		c.FinishedJobs[finishedJobID] = j
 	}
+	for _, unallocatedJobID := range eo.UnallocatedJobIDs {
+		delete(c.Allocations, unallocatedJobID)
+	}
 	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {
 		jobID := updatedJobAllocation.GetJobID()
 		c.Allocations[jobID] = updatedJobAllocation

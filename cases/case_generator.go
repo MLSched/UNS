@@ -25,11 +25,11 @@ var schedulerID = "SCHEDULER_ID"
 
 var dataDir = "/Users/purchaser/datasets/ali-cluster/cluster-trace-gpu-v2020/data"
 
-//var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/async_predictor_data.json"
-//var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/async_simulator_configuration.json"
+var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/async_predictor_data.json"
+var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/async_simulator_configuration.json"
 
-var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
-var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
+//var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
+//var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
@@ -43,22 +43,22 @@ var GPUEfficiencyRatio = map[string][]float64{
 var minSpaceSharingPenaltyDistribution = []float64{1, 1.3}
 var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 
-//var submitTimeScaleFactor = float64(0.01)
+var submitTimeScaleFactor = float64(0.01)
 
 //var submitTimeScaleFactor = float64(10)
-var submitTimeScaleFactor = float64(5)
+//var submitTimeScaleFactor = float64(5)
 
 //var submitTimeScaleFactor = float64(0)
 
 //var submitTimeScaleFactor = float64(3)
 
-//var jobExecutionTimeScaleFactor = float64(0.00001)
+var jobExecutionTimeScaleFactor = float64(0.00001)
 
-var jobExecutionTimeScaleFactor = float64(1)
+//var jobExecutionTimeScaleFactor = float64(1)
 
-//var syncMode = false
+var syncMode = false
 
-var syncMode = true
+//var syncMode = true
 
 var deadlineProb = float64(1)
 var deadlineDistribution = []float64{1.2, 1.5}
@@ -223,13 +223,13 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 	},
 }}
 
-//var schedulerConfiguration = naiveSchedulerConfiguration
+var schedulerConfiguration = naiveSchedulerConfiguration
 
 //var schedulerConfiguration = unsSchedulerConfiguration
 
 //var schedulerConfiguration = sjfSchedulerConfiguration
 
-var schedulerConfiguration = edfSchedulerConfiguration
+//var schedulerConfiguration = edfSchedulerConfiguration
 
 func init() {
 	rand.Seed(3)

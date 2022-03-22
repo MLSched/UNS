@@ -20,7 +20,8 @@ message RMRegisterResourceManagerEvent {
 message RMUpdateAllocationsEvent {
   repeated JobAllocation updatedJobAllocations = 1;
   repeated string finishedJobIDs = 2;
-  repeated JobExecutionHistory jobExecutionHistories = 3;
+  repeated string unallocatedJobIDs = 3;
+  repeated JobExecutionHistory jobExecutionHistories = 4;
 
   // 模拟器专用：更新时间
   google.protobuf.Int64Value currentNanoTime = 255;
