@@ -124,6 +124,9 @@ func (s *ContinuousAsyncDLTSimulator) checkFinishedJobs() {
 			predictResults, err := s.predictor.Predict(s.partitionContext, s.partitionContext.GetAllocationsSlice())
 			log.Printf("Check finished jobs, now %s", time.Unix(0, now).String())
 			printPredictResults(predictResults, true)
+			if err != nil {
+				log.Println(err)
+			}
 			fastFail(err)
 			jobExecutionHistories := make([]*objects.JobExecutionHistory, 0)
 			newlyStartedAllocations := make([]*objects.JobAllocation, 0)
@@ -153,6 +156,7 @@ func (s *ContinuousAsyncDLTSimulator) checkFinishedJobs() {
 			if len(newlyStartedAllocations) == 0 && len(finishedJobIDs) == 0 && len(jobExecutionHistories) == 0 {
 				return
 			}
+			log.Printf("simulator newlyStartedAllocations = %v, finishedJobIDs = %v", newlyStartedAllocations, finishedJobIDs)
 			ev := &eventobjs.RMUpdateAllocationsEvent{
 				UpdatedJobAllocations: newlyStartedAllocations,
 				FinishedJobIDs:        finishedJobIDs,
@@ -247,51 +251,57 @@ func (s *ContinuousAsyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSU
 		}
 		// 对调度器给予的分配，进行过滤
 		allocations := eo.NewJobAllocations
-		filteredAllocations := make([]*objects.JobAllocation, 0, len(allocations))
-		now := s.partitionContext.Now()
-	nextAlloc:
+		nonPlaceholders := make([]*objects.JobAllocation, 0, len(allocations))
+		placeholders := make([]*objects.JobAllocation, 0, len(allocations))
 		for _, allocation := range allocations {
 			if allocation.GetTaskAllocations()[0].GetPlaceholder() {
-				// 过滤掉placeholder的任务
-				filteredAllocations = append(filteredAllocations, allocation)
-				continue
+				placeholders = append(placeholders, allocation)
+			} else {
+				nonPlaceholders = append(nonPlaceholders, allocation)
 			}
-			if s.partitionContext.Allocations[allocation.GetJobID()] != nil {
-				reason := fmt.Sprintf("simulator ignores allocation of jobID = %s since it is already allocated", allocation.GetJobID())
-				log.Println(reason)
-				continue nextAlloc
-			}
-			//for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(allocation) {
-			//	if occupiedAcceleratorIDs[acceleratorID] == true {
-			//		//panic(fmt.Sprintf("simulator ignores allocation of jobID = %s, acceleratorID = %s is already occupied", allocation.GetJobID(), acceleratorID))
-			//		log.Printf("simulator ignores allocation of jobID = %s, acceleratorID = %s is already occupied", allocation.GetJobID(), acceleratorID)
-			//		continue nextAlloc
-			//	}
-			//}
-			for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(allocation) {
-				occupiedAcceleratorIDs[acceleratorID] = true
-			}
-			for _, taskAllocation := range allocation.GetTaskAllocations() {
-				taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: now}
-			}
-			filteredAllocations = append(filteredAllocations, allocation)
 		}
-
-	nextFiltered:
-		for _, allocation := range filteredAllocations {
-			// 检查placeholder的allocation，它需要的资源是否已经空闲了
-			if !allocation.GetTaskAllocations()[0].GetPlaceholder() {
-				continue
+		filteredAllocations := make([]*objects.JobAllocation, 0, len(allocations))
+		now := s.partitionContext.Now()
+	nextNonPlaceholderAlloc:
+		for _, nonPlaceholderAllocation := range nonPlaceholders {
+			if s.partitionContext.Allocations[nonPlaceholderAllocation.GetJobID()] != nil {
+				reason := fmt.Sprintf("simulator ignores allocation of jobID = %s since it is already allocated", nonPlaceholderAllocation.GetJobID())
+				log.Println(reason)
+				continue nextNonPlaceholderAlloc
 			}
-			acceleratorIDs := pb_gen.GetAllocatedAcceleratorIDs(allocation)
-			for _, acceleratorID := range acceleratorIDs {
-				if occupiedAcceleratorIDs[acceleratorID] {
-					continue nextFiltered
+			// 这里的条件判断应该会更复杂，我这里写的比较简单，暂时没有考虑SpaceSharing。
+			// 实际实现应该考虑占用同一Accelerator的任务是否可以同时运行，再拒绝掉不可以运行的jobAllocation
+			for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(nonPlaceholderAllocation) {
+				if occupiedAcceleratorIDs[acceleratorID] == true {
+					log.Printf("simulator ignores allocation of jobID = %s, acceleratorID = %s is already occupied", nonPlaceholderAllocation.GetJobID(), acceleratorID)
+					continue nextNonPlaceholderAlloc
 				}
 			}
-			for _, taskAllocation := range allocation.GetTaskAllocations() {
+			for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(nonPlaceholderAllocation) {
+				occupiedAcceleratorIDs[acceleratorID] = true
+			}
+			for _, taskAllocation := range nonPlaceholderAllocation.GetTaskAllocations() {
 				taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: now}
 			}
+			filteredAllocations = append(filteredAllocations, nonPlaceholderAllocation)
+		}
+
+	nextPlaceholderAlloc:
+		for _, placeholderAllocation := range placeholders {
+			// 检查placeholder的allocation，它需要的资源是否已经空闲了
+			// 我这里实际上没有做资源预留，并没有起到placeholder的作用，只是简单检查了当前资源是否完全足够
+			// 实际需要一些更复杂的实现
+			acceleratorIDs := pb_gen.GetAllocatedAcceleratorIDs(placeholderAllocation)
+			for _, acceleratorID := range acceleratorIDs {
+				if occupiedAcceleratorIDs[acceleratorID] {
+					log.Printf("simulator ignores placeholder allocation of jobID = %s, acceleratorID = %s is already occupied", placeholderAllocation.GetJobID(), acceleratorID)
+					continue nextPlaceholderAlloc
+				}
+			}
+			for _, taskAllocation := range placeholderAllocation.GetTaskAllocations() {
+				taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: now}
+			}
+			filteredAllocations = append(filteredAllocations, placeholderAllocation)
 		}
 
 		filteredJobIDs := make([]string, 0, len(filteredAllocations))

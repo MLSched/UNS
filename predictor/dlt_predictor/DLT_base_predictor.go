@@ -57,7 +57,16 @@ func (p *DLTBasePredictor) PrerequisiteCheck(partitionContext *partition.Context
 
 // Predict 预测全部allocations的开始时间和结束时间。由于只支持Single和Gang类型的时间预测，所以预测结果仅包含单一数字。
 func (p *DLTBasePredictor) Predict(partitionContext *partition.Context, allocations []*objects.JobAllocation) (interfaces.PredictResult, error) {
-	return p.PredictByEndTime(partitionContext, allocations, math.MaxInt64)
+	r, err := p.PredictByEndTime(partitionContext, allocations, math.MaxInt64)
+	if err != nil {
+		return nil, err
+	}
+	r.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+		if result.GetFinishNanoTime() == nil {
+			panic("incomplete predict result")
+		}
+	})
+	return r, nil
 }
 
 func (p *DLTBasePredictor) PredictByEndTime(partitionContext *partition.Context, allocations []*objects.JobAllocation, endNanoTime int64) (interfaces.PredictResult, error) {
@@ -132,9 +141,6 @@ func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Pr
 		}
 		if p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil {
 			p.updateJobStartExecutionTime(ctx, allocation, taskAllocation.GetStartExecutionTimeNanoSecond().GetValue())
-			//p.rangeAllTaskAllocations(allocation, func(taskAllocation *objects.TaskAllocation) {
-			//	ctx.result.UpdateStartExecutionTime(taskAllocation, taskAllocation.GetStartExecutionTimeNanoSecond().GetValue())
-			//})
 		}
 		startExecutionTimeKnownAllocation = append(startExecutionTimeKnownAllocation, allocation)
 	}
@@ -144,7 +150,6 @@ func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Pr
 	}
 	for allocation, finishTime := range r {
 		p.updateJobFinishTime(ctx, allocation, finishTime)
-		//ctx.result.UpdateFinishTime(p.extractRepresentTaskAllocation(allocation), finishTime)
 	}
 	return nil
 }
