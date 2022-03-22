@@ -28,7 +28,19 @@ func BuildSJF(configuration interface{}, pusher base2.EventPusher, partitionCont
 		Config: c,
 	}
 	var err error
-	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(sche, c.PredictorConfiguration, pusher, partitionContextAware, c.GetIntervalNano(), c.GetSyncMode())
+	provideMode := base2.ProvideTypeDefault
+	if c.GetNonSpaceSharing() {
+		provideMode = base2.ProvideTypeOnlyNonSpaceSharing
+	}
+	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(&QueueBasedSchedulerParam{
+		Impl:                   sche,
+		PredictorConfiguration: c.PredictorConfiguration,
+		Pusher:                 pusher,
+		PartitionContextAware:  partitionContextAware,
+		IntervalNano:           c.GetIntervalNano(),
+		SyncMode:               c.GetSyncMode(),
+		AllocationProvideMode:  provideMode,
+	})
 	if err != nil {
 		return nil, err
 	}

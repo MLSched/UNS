@@ -16,9 +16,9 @@ import (
 type QueueBasedSchedulerTemplate struct {
 	*base2.DLTSchedulerTemplate
 
-	Predictor           interfaces2.Predictor
-	AllocationsProvider base2.AllocationsProvider
-	Config              *configs.SJFSchedulerConfiguration
+	Predictor             interfaces2.Predictor
+	AllocationsProvider   base2.AllocationsProvider
+	AllocationProvideMode base2.ProvideType
 
 	impl QueueBasedSchedulerInterface
 }
@@ -29,20 +29,26 @@ type QueueBasedSchedulerInterface interface {
 	GetJobAllocationScore(param *JobAllocationScorerParam) JobAllocationScore
 }
 
-func BuildTemplate(Impl QueueBasedSchedulerInterface,
-	predictorConfiguration *configs.PredictorConfiguration,
-	pusher base2.EventPusher,
-	partitionContextAware base2.PartitionContextAware,
-	intervalNano int64,
-	syncMode bool) (*QueueBasedSchedulerTemplate, error) {
+type QueueBasedSchedulerParam struct {
+	Impl                   QueueBasedSchedulerInterface
+	PredictorConfiguration *configs.PredictorConfiguration
+	Pusher                 base2.EventPusher
+	PartitionContextAware  base2.PartitionContextAware
+	IntervalNano           int64
+	SyncMode               bool
+	AllocationProvideMode  base2.ProvideType
+}
+
+func BuildTemplate(param *QueueBasedSchedulerParam) (*QueueBasedSchedulerTemplate, error) {
 	sche := &QueueBasedSchedulerTemplate{
-		Predictor: predictor.BuildPredictor(predictorConfiguration),
+		Predictor: predictor.BuildPredictor(param.PredictorConfiguration),
 		AllocationsProvider: &base2.AllocationsProviderImpl{
 			MaxGangAllocations: math.MaxInt64,
 		},
-		impl: Impl,
+		impl:                  param.Impl,
+		AllocationProvideMode: param.AllocationProvideMode,
 	}
-	sche.DLTSchedulerTemplate = base2.NewIntervalSchedulerTemplate(sche, intervalNano, partitionContextAware, syncMode, pusher)
+	sche.DLTSchedulerTemplate = base2.NewIntervalSchedulerTemplate(sche, param.IntervalNano, param.PartitionContextAware, param.SyncMode, param.Pusher)
 	return sche, nil
 }
 
@@ -68,7 +74,7 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 			return nil
 		}
 		accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
-		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, base2.ProvideTypeTotal)
+		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, s.AllocationProvideMode)
 		var bestScore *JobAllocationScore = nil
 		var bestJobAllocation *objects.JobAllocation = nil
 		for _, possibleAllocation := range possibleAllocations {

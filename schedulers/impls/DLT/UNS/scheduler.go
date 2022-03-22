@@ -30,13 +30,14 @@ type Scheduler struct {
 	Predictor           predictorinterfaces.Predictor
 	AllocationsProvider base.AllocationsProvider
 
-	BenefitsCalculator benefitsinterfaces.Calculator
-	BenefitsSampler    sampler.Sampler
-	ScoreCalculator    score.Calculator
-	MaximumSameBenefit int
-	MaxLatency         time.Duration
-	MaxRound           int
-	GreedyFallback     bool
+	BenefitsCalculator        benefitsinterfaces.Calculator
+	BenefitsSampler           sampler.Sampler
+	ScoreCalculator           score.Calculator
+	MaximumSameBenefit        int
+	MaxLatency                time.Duration
+	MaxRound                  int
+	GreedyFallback            bool
+	allocationProvideTypeMode base.ProvideType
 }
 
 func (s *Scheduler) GetSchedulerID() string {
@@ -47,7 +48,7 @@ func Build(configuration interface{}, pusher base.EventPusher, partitionContextA
 	c := configuration.(*configs.UNSSchedulerConfiguration)
 	sche := &Scheduler{
 		Config:    c,
-		Predictor: predictor.BuildPredictor(c.PredictorConfiguration),
+		Predictor: predictor.BuildPredictor(c.GetPredictorConfiguration()),
 		AllocationsProvider: &base.AllocationsProviderImpl{
 			MaxGangAllocations: math.MaxInt64,
 		},
@@ -59,6 +60,10 @@ func Build(configuration interface{}, pusher base.EventPusher, partitionContextA
 		MaximumSameBenefit: 1,
 		MaxLatency:         time.Second,
 		GreedyFallback:     false,
+	}
+	sche.allocationProvideTypeMode = base.ProvideTypeDefault
+	if c.GetNonSpaceSharing() {
+		sche.allocationProvideTypeMode |= base.ProvideTypeOnlyNonSpaceSharing
 	}
 	sche.DLTSchedulerTemplate = base.NewIntervalSchedulerTemplate(sche, c.GetIntervalNano(), partitionContextAware, c.GetSyncMode(), pusher)
 	return sche, nil
@@ -157,9 +162,9 @@ func (s *Scheduler) genJobAllocationsFingerPrint(jobAllocations []*objects.JobAl
 }
 
 func (s *Scheduler) parallelSchedule(pc *partition.Context, greedyOccupation bool) []*objects.JobAllocation {
-	provideType := base.ProvideTypeTotal
+	provideTypeMode := s.allocationProvideTypeMode
 	if greedyOccupation {
-		provideType = base.ProvideTypeOnlyUnoccupied
+		provideTypeMode |= base.ProvideTypeOnlyUnoccupied
 	}
 	unallocatedJobs := pc.GetUnallocatedJobs()
 	// Clone后将时间固定住
@@ -183,7 +188,7 @@ func (s *Scheduler) parallelSchedule(pc *partition.Context, greedyOccupation boo
 		for _, ac := range acs {
 			ac := ac
 			go func() {
-				r := s.predictPCBenefits(ac, provideType)
+				r := s.predictPCBenefits(ac, provideTypeMode)
 				mu.Lock()
 				defer mu.Unlock()
 				withBenefits = append(withBenefits, r...)
@@ -293,7 +298,7 @@ func (s *Scheduler) checkScheduleAble(pc *partition.Context) bool {
 	return true
 }
 
-func (s *Scheduler) predictPCBenefits(ac *types.AllocContext, provideType base.ProvideType) []*types.AllocContext {
+func (s *Scheduler) predictPCBenefits(ac *types.AllocContext, provideTypeMode base.ProvideType) []*types.AllocContext {
 	pc := ac.PC
 	acs := make([]*types.AllocContext, 0)
 	basePredictResult := ac.PredictResult
@@ -301,7 +306,6 @@ func (s *Scheduler) predictPCBenefits(ac *types.AllocContext, provideType base.P
 	if basePredictResult == nil {
 		basePredictResult, err = s.Predictor.Predict(pc, pc.GetAllocationsSlice())
 		if err != nil {
-			log.Printf("total")
 			for _, m := range pc.GetAllocationsSlice() {
 				st, _ := utils.MarshalJsonPB(m)
 				log.Printf("%s", st)
@@ -309,23 +313,16 @@ func (s *Scheduler) predictPCBenefits(ac *types.AllocContext, provideType base.P
 			reason := fmt.Sprintf("[UNS Scheduler] Predict basePredictResult failed, which should not happened since this prediction is guaranteed to be success, err=%v", err)
 			log.Println(reason)
 			panic(reason)
-			//continue
 		}
 	}
-	baseBenefitsStub := ac.BenefitStub
-	if baseBenefitsStub == nil {
-		_, baseBenefitsStub = s.BenefitsCalculator.Cal(pc, basePredictResult)
-	}
-	baseScoreStub := ac.ScoreStub
-	if baseScoreStub == nil {
-		_, baseScoreStub = s.ScoreCalculator.GetScore(pc, pc.GetAllocationsSlice())
-	}
+	_, baseBenefitsStub := s.BenefitsCalculator.Cal(pc, basePredictResult)
+	_, baseScoreStub := s.ScoreCalculator.GetScore(pc, pc.GetAllocationsSlice())
 	jobs := pc.GetUnallocatedJobs()
 	jobIDs := s.getSortedJobIDs(jobs)
 	accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
 	for _, jobID := range jobIDs {
 		job := jobs[jobID]
-		possibleJobAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, provideType)
+		possibleJobAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, provideTypeMode)
 		for _, jobAllocation := range possibleJobAllocations {
 			// 对于每个可能的分配，临时得将该分配结果赋予给partitionContext。
 			cancelAlloc := s.TempAllocJob(pc, jobAllocation)
@@ -339,7 +336,7 @@ func (s *Scheduler) predictPCBenefits(ac *types.AllocContext, provideType base.P
 			if err != nil {
 				log.Printf("[UNS Scheduler] predict failed, err=[%v]", err)
 				if predictorinterfaces.IsSpaceSharingOutOfMemoryError(err) {
-					// 忽略内存溢出造成的问题
+					// 忽略显存溢出造成的问题
 					continue
 				}
 				for _, m := range pc.GetAllocationsSlice() {
@@ -366,8 +363,6 @@ func (s *Scheduler) predictPCBenefits(ac *types.AllocContext, provideType base.P
 				NewJobAllocationsFingerPrint: s.genJobAllocationsFingerPrint(newJobAllocations),
 				Benefit:                      benefit,
 				Score:                        jobAllocationsScore,
-				//PredictResult:                basePredictResult.Combine(partialPredictResult),
-				//BenefitStub:                         stub,
 			})
 			cancelAlloc()
 		}

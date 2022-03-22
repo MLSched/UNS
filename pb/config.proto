@@ -44,6 +44,7 @@ message NaiveSchedulerConfiguration {
   int64 intervalNano = 4;
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
 }
 
 message SJFSchedulerConfiguration {
@@ -53,6 +54,7 @@ message SJFSchedulerConfiguration {
   int64 intervalNano = 4;
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
 }
 
 message EDFSchedulerConfiguration {
@@ -62,6 +64,7 @@ message EDFSchedulerConfiguration {
   int64 intervalNano = 4;
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
 }
 
 message UNSSchedulerConfiguration {
@@ -71,6 +74,7 @@ message UNSSchedulerConfiguration {
   int64 intervalNano = 4;
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
 }
 
 // 任务执行时间预测器的配置
@@ -105,11 +109,19 @@ message DLTPredictorDataOrientedDataFormat {
 message DLTJobData {
   Job job = 1;
   int64 totalMiniBatches = 2;
-  map<string, int64> acceleratorType2MiniBatchDurationNanoSecond = 3;
-  float minSpaceSharingPenalty = 4;
-  float maxSpaceSharingPenalty = 5;
-  map<int64, float> consolidationLevel2Penalties = 6;
-  int64 maximumAcceleratorMemoryCostBytes = 7;
+  message AcceleratorType2MiniBatchDurationNanoSecond {
+    map<string, int64> AccType2Duration = 1;
+  }
+  // acceleratorType2MiniBatchDuration 表示单独运行时的每个accType上的mini-batch运行时间
+  AcceleratorType2MiniBatchDurationNanoSecond acceleratorType2MiniBatchDuration = 3;
+  // spaceSharingMiniBatchDurations map<string, ...> key表示与它space sharing的jobID，当不为nil时，替代penalty生成方式。
+  map<string, AcceleratorType2MiniBatchDurationNanoSecond> spaceSharingMiniBatchDurations = 4;
+  float minSpaceSharingPenalty = 5;
+  float maxSpaceSharingPenalty = 6;
+  // consolidationLevel2MiniBatchDurations 当具体给定时，替代penalty生成方式
+  map<int64, AcceleratorType2MiniBatchDurationNanoSecond> consolidationLevel2MiniBatchDurations = 7;
+  map<int64, float> consolidationLevel2Penalties = 8;
+  int64 maximumAcceleratorMemoryCostBytes = 9;
 }
 
 enum ConsolidationLevel {

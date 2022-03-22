@@ -115,7 +115,7 @@ func TestDataOrientedCase1(t *testing.T) {
 	}
 
 	for _, allocation := range allocations {
-		t.Logf("job ID = %s, total mini batches = %d, solely mini batch duration second = %f", allocation.GetJobID(), p.getJobTotalMiniBatches(nil, allocation.GetJobID()), float64(p.getMiniBatchDurationNanoSecond(nil, partitionContext.GetUnfinishedJob(allocation.GetJobID()), partitionContext.View.AcceleratorID2Accelerator[allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID()].GetAcceleratorMetaInfo().GetBriefType()))/1e9)
+		t.Logf("job ID = %s, total mini batches = %d, solely mini batch duration second = %f", allocation.GetJobID(), p.getJobTotalMiniBatches(nil, allocation.GetJobID()), float64(p.getMiniBatchDurationNanoSecond(nil, allocation.GetJobID(), partitionContext.View.AcceleratorID2Accelerator[allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID()].GetAcceleratorMetaInfo().GetBriefType()))/1e9)
 	}
 	j2j3Shared := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_1_2_1"]}, []*objects.Job{job2, job3})
 	fj2j3Shared := make(map[string]float64)
@@ -301,11 +301,11 @@ func TestDataOrientedPredictorDataFormat(t *testing.T) {
 	job1DLTData := &configs.DLTJobData{
 		Job:              jobs[0],
 		TotalMiniBatches: 1000,
-		AcceleratorType2MiniBatchDurationNanoSecond: map[string]int64{
+		AcceleratorType2MiniBatchDuration: &configs.DLTJobData_AcceleratorType2MiniBatchDurationNanoSecond{AccType2Duration: map[string]int64{
 			"GTX 2080": 1e9,
 			"A100":     0.7 * 1e9,
 			"V100":     0.5 * 1e9,
-		},
+		}},
 		MinSpaceSharingPenalty: 1.1,
 		MaxSpaceSharingPenalty: 3.,
 		ConsolidationLevel2Penalties: map[int64]float32{
@@ -319,11 +319,11 @@ func TestDataOrientedPredictorDataFormat(t *testing.T) {
 	job2DLTData := &configs.DLTJobData{
 		Job:              jobs[1],
 		TotalMiniBatches: 1000,
-		AcceleratorType2MiniBatchDurationNanoSecond: map[string]int64{
+		AcceleratorType2MiniBatchDuration: &configs.DLTJobData_AcceleratorType2MiniBatchDurationNanoSecond{AccType2Duration: map[string]int64{
 			"GTX 2080": 2 * 1e9,
 			"A100":     1e9,
 			"V100":     0.5 * 1e9,
-		},
+		}},
 		MinSpaceSharingPenalty: 1.1,
 		MaxSpaceSharingPenalty: 3.,
 		ConsolidationLevel2Penalties: map[int64]float32{
@@ -337,11 +337,11 @@ func TestDataOrientedPredictorDataFormat(t *testing.T) {
 	job3DLTData := &configs.DLTJobData{
 		Job:              jobs[2],
 		TotalMiniBatches: 1000,
-		AcceleratorType2MiniBatchDurationNanoSecond: map[string]int64{
+		AcceleratorType2MiniBatchDuration: &configs.DLTJobData_AcceleratorType2MiniBatchDurationNanoSecond{AccType2Duration: map[string]int64{
 			"GTX 2080": 2.7 * 1e9,
 			"A100":     1e9,
 			"V100":     0.3 * 1e9,
-		},
+		}},
 		MinSpaceSharingPenalty: 1.1,
 		MaxSpaceSharingPenalty: 3.,
 		ConsolidationLevel2Penalties: map[int64]float32{
@@ -355,11 +355,11 @@ func TestDataOrientedPredictorDataFormat(t *testing.T) {
 	job4DLTData := &configs.DLTJobData{
 		Job:              jobs[3],
 		TotalMiniBatches: 1000,
-		AcceleratorType2MiniBatchDurationNanoSecond: map[string]int64{
+		AcceleratorType2MiniBatchDuration: &configs.DLTJobData_AcceleratorType2MiniBatchDurationNanoSecond{AccType2Duration: map[string]int64{
 			"GTX 2080": 1e9,
 			"A100":     0.9 * 1e9,
 			"V100":     0.3 * 1e9,
-		},
+		}},
 		MinSpaceSharingPenalty: 1.1,
 		MaxSpaceSharingPenalty: 3.,
 		ConsolidationLevel2Penalties: map[int64]float32{

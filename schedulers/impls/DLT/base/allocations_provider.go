@@ -20,9 +20,9 @@ type AllocationsProvider interface {
 type ProvideType int
 
 const (
-	ProvideTypeTotal          ProvideType = 0
-	ProvideTypeOnlyUnoccupied ProvideType = 1
-	//ProvideTypeOnlyNonSpaceSharing ProvideType = 2
+	ProvideTypeDefault             ProvideType = 0
+	ProvideTypeOnlyUnoccupied      ProvideType = 0x0000_0010
+	ProvideTypeOnlyNonSpaceSharing ProvideType = 0x0000_0100
 )
 
 type AllocationsProviderImpl struct {
@@ -37,7 +37,11 @@ func (a *AllocationsProviderImpl) GetPossibleAllocations(pc *partition.Context, 
 	return m[job.GetTaskGroup().GetTaskGroupType()](pc, accID2SortedJobAllocations, predictResult, job, provideType)
 }
 
-func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideType ProvideType) []*objects.JobAllocation {
+func (a *AllocationsProviderImpl) isProvideTypeMode(mode ProvideType, provideType ProvideType) bool {
+	return mode&provideType != 0
+}
+
+func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideTypeMode ProvideType) []*objects.JobAllocation {
 	// 筛选出AcceleratorID，使得他们上面最多只有一个job在运行，并且运行的不是GangJob
 	// 从每个accelerator上，考虑最后一个运行的taskAllocation，查看是否存在与它共同运行的可能性
 	result := make([]*objects.JobAllocation, 0)
@@ -49,7 +53,7 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 	}
 	for _, accID := range pc.View.AcceleratorIDs {
 		taskAllocations := accID2SortedTaskAllocations[accID]
-		if provideType == ProvideTypeOnlyUnoccupied && len(taskAllocations) != 0 {
+		if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyUnoccupied) && len(taskAllocations) != 0 {
 			continue
 		}
 		if len(taskAllocations) == 0 {
@@ -61,6 +65,11 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 		if j := pc.GetUnfinishedJob(lastTaskAllocation.GetJobID()); j.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
 			// 最后一个Task是gang的，不能与它并行执行，直接放在它的后面。
 			result = append(result, buildJobAllocation(accID, finishTime(lastTaskAllocation)))
+			continue
+		}
+		if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyNonSpaceSharing) {
+			t := finishTime(lastTaskAllocation)
+			result = append(result, buildJobAllocation(accID, t))
 			continue
 		}
 		if len(taskAllocations) == 1 {
@@ -86,7 +95,7 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 	return result
 }
 
-func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideType ProvideType) []*objects.JobAllocation {
+func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideTypeMode ProvideType) []*objects.JobAllocation {
 	// gang job不允许与其他任务并发运行
 	// 需要遍历同一类型的acc，且数量要等于该任务的task数量。
 	// 按照consolidation的级别，从最紧密开始遍历。
@@ -162,7 +171,7 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 				}
 				return nil, true
 			}()
-			if provideType == ProvideTypeOnlyUnoccupied && (startTime == nil || *startTime != pc.FixedNow()) {
+			if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyUnoccupied) && (startTime == nil || *startTime != pc.FixedNow()) {
 				return
 			}
 			na := buildJobAllocation(pc, job, accIDs, startTime, earliest, placeholder)
@@ -192,8 +201,6 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 		sort.Strings(nodeIDs)
 		for _, nodeID := range nodeIDs {
 			socket2accs := nodeID2Socket2Accs[nodeID]
-			//}
-			//for _, socket2accs := range nodeID2Socket2Accs {
 			// 首先从最紧密的排布开始选取
 			sameNodeAccIDs := make([]string, 0)
 			sockets := make([]string, 0, len(socket2accs))
@@ -203,8 +210,6 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 			sort.Strings(sockets)
 			for _, socket := range sockets {
 				accs := socket2accs[socket]
-				//}
-				//for _, accs := range socket2accs {
 				sameNodeAccIDs = append(sameNodeAccIDs, accs...)
 				if len(accs) < workersCount {
 					continue
@@ -287,22 +292,27 @@ func (a *AllocationsProviderImpl) PrepareAccID2SortedTaskAllocations(pc *partiti
 			rear := append([]*objects.TaskAllocation{}, s[insertIdx:]...)
 			s = append(s[:insertIdx], taskAllocation)
 			s = append(s, rear...)
-			sorter := &utils.Sorter{
-				LenFunc: func() int {
-					return len(s)
-				},
-				LessFunc: func(i, j int) bool {
-					return getFinishTime(s[i]) < getFinishTime(s[j])
-				},
-				SwapFunc: func(i, j int) {
-					t := s[i]
-					s[i] = s[j]
-					s[j] = t
-				},
-			}
-			if !sort.IsSorted(sorter) {
+			if !sort.SliceIsSorted(s, func(i, j int) bool {
+				return getFinishTime(s[i]) < getFinishTime(s[j])
+			}) {
 				panic("not sorted")
 			}
+			//sorter := &utils.Sorter{
+			//	LenFunc: func() int {
+			//		return len(s)
+			//	},
+			//	LessFunc: func(i, j int) bool {
+			//		return getFinishTime(s[i]) < getFinishTime(s[j])
+			//	},
+			//	SwapFunc: func(i, j int) {
+			//		t := s[i]
+			//		s[i] = s[j]
+			//		s[j] = t
+			//	},
+			//}
+			//if !sort.IsSorted(sorter) {
+			//	panic("not sorted")
+			//}
 			result[accID] = s
 		}
 	}

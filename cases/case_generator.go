@@ -152,6 +152,7 @@ var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2S
 					},
 				},
 			},
+			NonSpaceSharing: false,
 		}},
 	},
 }}
@@ -173,6 +174,7 @@ var sjfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 					},
 				},
 			},
+			NonSpaceSharing: false,
 		}},
 	},
 }}
@@ -194,6 +196,7 @@ var edfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 					},
 				},
 			},
+			NonSpaceSharing: false,
 		}},
 	},
 }}
@@ -215,6 +218,7 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 					},
 				},
 			},
+			NonSpaceSharing: false,
 		}},
 	},
 }}
@@ -550,13 +554,15 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 		ConsolidationLevel2Penalties := g.generateConsolidationLevel2Penalties()
 		MaximumAcceleratorMemoryCostBytes := int64(g.randomUniform([]float64{float64(gpuMemoryCostDistributions[0]), float64(gpuMemoryCostDistributions[1])}))
 		return &configs.DLTJobData{
-			Job:              job,
-			TotalMiniBatches: totalMiniBatches,
-			AcceleratorType2MiniBatchDurationNanoSecond: AcceleratorType2MiniBatchDurationNanoSecond,
-			MaxSpaceSharingPenalty:                      MaxSpaceSharingPenalty,
-			MinSpaceSharingPenalty:                      MinSpaceSharingPenalty,
-			ConsolidationLevel2Penalties:                ConsolidationLevel2Penalties,
-			MaximumAcceleratorMemoryCostBytes:           MaximumAcceleratorMemoryCostBytes,
+			Job:                                   job,
+			TotalMiniBatches:                      totalMiniBatches,
+			AcceleratorType2MiniBatchDuration:     &configs.DLTJobData_AcceleratorType2MiniBatchDurationNanoSecond{AccType2Duration: AcceleratorType2MiniBatchDurationNanoSecond},
+			SpaceSharingMiniBatchDurations:        map[string]*configs.DLTJobData_AcceleratorType2MiniBatchDurationNanoSecond{},
+			MaxSpaceSharingPenalty:                MaxSpaceSharingPenalty,
+			MinSpaceSharingPenalty:                MinSpaceSharingPenalty,
+			ConsolidationLevel2Penalties:          ConsolidationLevel2Penalties,
+			ConsolidationLevel2MiniBatchDurations: map[int64]*configs.DLTJobData_AcceleratorType2MiniBatchDurationNanoSecond{},
+			MaximumAcceleratorMemoryCostBytes:     MaximumAcceleratorMemoryCostBytes,
 		}
 	}
 	data := make(map[string]*configs.DLTJobData)

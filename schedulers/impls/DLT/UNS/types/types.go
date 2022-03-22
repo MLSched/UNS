@@ -17,8 +17,6 @@ type AllocContext struct {
 	Benefit                      benefitsinterfaces.Benefit
 	Score                        score.JobAllocationsScore
 	PredictResult                predictorinterfaces.PredictResult
-	BenefitStub                  interface{}
-	ScoreStub                    interface{}
 }
 
 func (j *AllocContext) GetBenefit() benefitsinterfaces.Benefit {
