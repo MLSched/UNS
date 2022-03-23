@@ -17,17 +17,18 @@ type Stub struct {
 
 func (c *Calculator) CalIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit interfaces2.Benefit, stub interface{}) {
 	s := prevStub.(*Stub)
-	s = c.cloneStub(s)
+	s = c.CloneStub(s).(*Stub)
 	c.updateStub(pc, allocationsPredictResult, s)
 	totalVioDeadline := c.calculateTotalVioDeadline(s)
 	return c.toBenefit(totalVioDeadline, c.startInstantlyCount(s)), s
 }
 
-func (c *Calculator) cloneStub(stub *Stub) *Stub {
+func (c *Calculator) CloneStub(stub interface{}) interface{} {
 	s := &Stub{JobID2VioDeadline: make(map[string]int64), StartInstantly: make(map[string]bool)}
-	for jobID, JCT := range stub.JobID2VioDeadline {
+	oStub := stub.(*Stub)
+	for jobID, JCT := range oStub.JobID2VioDeadline {
 		s.JobID2VioDeadline[jobID] = JCT
-		s.StartInstantly[jobID] = stub.StartInstantly[jobID]
+		s.StartInstantly[jobID] = oStub.StartInstantly[jobID]
 	}
 	return s
 }
@@ -53,6 +54,9 @@ func (c *Calculator) updateStub(pc *partition.Context, allocationsPredictResult 
 			return
 		}
 		vioDeadline := finishTime - job.GetDeadline()
+		if vioDeadline <= 0 {
+			return
+		}
 		stub.JobID2VioDeadline[job.GetJobID()] = vioDeadline
 	})
 }

@@ -74,7 +74,7 @@ func (p *DataOrientedPredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *
 		return map[string]int64{jobIDs[0]: p.getMiniBatchDurationNanoSecond(ctx, jobs[0].GetJobID(), accelerators[0].GetAcceleratorMetaInfo().GetBriefType())}
 	}
 	if len(jobIDs) != 2 {
-		panic("getSpaceSharingMiniBatchDurationNanoSecond jobIDs len must be 1 or 2.")
+		panic("getSpaceSharingMiniBatchDuration jobIDs len must be 1 or 2.")
 	}
 	acceleratorType := accelerators[0].GetAcceleratorMetaInfo().GetBriefType()
 	if result := p.getSpecifiedSpaceSharingMiniBatchDuration(ctx, acceleratorType, jobIDs); len(result) == len(jobs) {

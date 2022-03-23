@@ -1,65 +1,62 @@
-package JCT
+package makespan
 
 import (
 	"UNS/pb_gen/objects"
 	"UNS/predictor/interfaces"
 	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"UNS/schedulers/partition"
-	"log"
 )
 
 type Calculator struct {
 }
 
 type Stub struct {
-	JobID2JCT map[string]int64
+	JobID2FinishTime map[string]int64
 }
 
 func (c *Calculator) CalIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit interfaces2.Benefit, stub interface{}) {
 	s := prevStub.(*Stub)
 	s = c.CloneStub(s).(*Stub)
 	c.updateStub(pc, allocationsPredictResult, s)
-	avgJCT := c.calculateAvgJCT(s)
-	return c.avgJCT2Benefit(avgJCT), s
+	makeSpan := c.calculateMakeSpan(s)
+	return c.makeSpan2Benefit(makeSpan), s
 }
 
 func (c *Calculator) CloneStub(stub interface{}) interface{} {
-	s := &Stub{JobID2JCT: make(map[string]int64)}
+	s := &Stub{JobID2FinishTime: make(map[string]int64)}
 	oStub := stub.(*Stub)
-	for jobID, JCT := range oStub.JobID2JCT {
-		s.JobID2JCT[jobID] = JCT
+	for jobID, finishTime := range oStub.JobID2FinishTime {
+		s.JobID2FinishTime[jobID] = finishTime
 	}
 	return s
 }
 
 func (c *Calculator) Cal(pc *partition.Context, allocationsPredictResult interfaces.PredictResult) (benefit interfaces2.Benefit, stub interface{}) {
-	s := &Stub{JobID2JCT: make(map[string]int64)}
+	s := &Stub{JobID2FinishTime: make(map[string]int64)}
 	c.updateStub(pc, allocationsPredictResult, s)
-	avgJCT := c.calculateAvgJCT(s)
-	return c.avgJCT2Benefit(avgJCT), s
+	makeSpan := c.calculateMakeSpan(s)
+	return c.makeSpan2Benefit(makeSpan), s
 }
 
 func (c *Calculator) updateStub(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, stub *Stub) {
 	allocationsPredictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
 		job := pc.GetUnfinishedJob(allocation.GetJobID())
-		submitTime := job.GetSubmitTimeNanoSecond()
-		if result.GetFinishNanoTime() == nil {
-			log.Printf("")
-		}
 		finishTime := *result.GetFinishNanoTime()
-		stub.JobID2JCT[job.GetJobID()] = finishTime - submitTime
+		stub.JobID2FinishTime[job.GetJobID()] = finishTime
 	})
 }
 
-func (c *Calculator) calculateAvgJCT(stub *Stub) float64 {
-	totalJCT := int64(0)
-	for _, JCT := range stub.JobID2JCT {
-		totalJCT += JCT
+// calculateMakeSpan MakeSpan定义为：所有任务最终全部完成时，最大的任务完成时间。
+func (c *Calculator) calculateMakeSpan(stub *Stub) float64 {
+	maximumFinishTime := int64(-1)
+	for _, finishTime := range stub.JobID2FinishTime {
+		if finishTime > maximumFinishTime {
+			maximumFinishTime = finishTime
+		}
 	}
-	avgJCT := float64(totalJCT) / float64(len(stub.JobID2JCT))
-	return avgJCT
+	return float64(maximumFinishTime)
 }
 
-func (c *Calculator) avgJCT2Benefit(avgJCT float64) interfaces2.Benefit {
-	return interfaces2.Benefit(-avgJCT)
+func (c *Calculator) makeSpan2Benefit(makeSpan float64) interfaces2.Benefit {
+	return interfaces2.Benefit(-makeSpan)
 }

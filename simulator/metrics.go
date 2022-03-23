@@ -9,6 +9,7 @@ import (
 type Metrics struct {
 	FinishedJobs             map[string]*objects.Job
 	AvgJCT                   float64
+	MakeSpan                 int64
 	TotalVioDeadlineDuration int64
 	TotalVioDeadlineCount    int64
 	TotalWithDeadlineCount   int64
@@ -18,6 +19,7 @@ func (m *Metrics) Analyse(pc *partition.Context) {
 	m.FinishedJobs = pc.FinishedJobs
 	m.CalAvgJCT(pc.ExecutionHistoryManager)
 	m.CalTotalVioDeadline(pc.ExecutionHistoryManager)
+	m.CalMakeSpan(pc.ExecutionHistoryManager)
 	m.Print()
 }
 
@@ -33,6 +35,17 @@ func (m *Metrics) CalAvgJCT(eh *partition.ExecutionHistoryManager) {
 	avgJCT := float64(totalJCT) / float64(len(m.FinishedJobs))
 	//log.Printf("avgJCT: %f", avgJCT)
 	m.AvgJCT = avgJCT
+}
+
+func (m *Metrics) CalMakeSpan(eh *partition.ExecutionHistoryManager) {
+	maximumFinishTime := int64(0)
+	eh.Range(func(history *objects.JobExecutionHistory) {
+		finish := history.GetTaskExecutionHistories()[0].GetStartExecutionTimeNanoSecond() + history.GetTaskExecutionHistories()[0].GetDurationNanoSecond()
+		if finish > maximumFinishTime {
+			maximumFinishTime = finish
+		}
+	})
+	m.MakeSpan = maximumFinishTime
 }
 
 func (m *Metrics) CalTotalVioDeadline(eh *partition.ExecutionHistoryManager) {
@@ -64,4 +77,5 @@ func (m *Metrics) Print() {
 	log.Printf("Total With Deadline Count: %d", m.TotalWithDeadlineCount)
 	log.Printf("Total Vio Deadline Duration: %d", m.TotalVioDeadlineDuration)
 	log.Printf("Total Vio Deadline Count: %d", m.TotalVioDeadlineCount)
+	log.Printf("MakeSpan: %d", m.MakeSpan)
 }

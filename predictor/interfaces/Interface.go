@@ -46,12 +46,13 @@ type ErrorType int
 const (
 	UnsupportedJobType           ErrorType = 0
 	UnsupportedTaskGroupType     ErrorType = 1
-	NonPlaceholderUnsetStartTime ErrorType = 1
-	SpaceSharingOutOfMemory      ErrorType = 1
-	SpaceSharingMoreThanTwo      ErrorType = 1
-	SpaceSharingDiffTaskType     ErrorType = 1
-	SpaceSharingDiffAccID        ErrorType = 1
-	UnsupportedDLTGangType       ErrorType = 1
+	NonPlaceholderUnsetStartTime ErrorType = 2
+	SpaceSharingOutOfMemory      ErrorType = 3
+	SpaceSharingMoreThanTwo      ErrorType = 4
+	SpaceSharingDiffTaskType     ErrorType = 5
+	SpaceSharingDiffAccID        ErrorType = 6
+	UnsupportedDLTGangType       ErrorType = 7
+	MultiSpanNodesGangTasks      ErrorType = 7
 )
 
 var UnsupportedJobTypeError = BuildError(UnsupportedJobType)
@@ -62,6 +63,7 @@ var SpaceSharingMoreThanTwoError = BuildError(SpaceSharingMoreThanTwo)
 var SpaceSharingDiffTaskTypeError = BuildError(SpaceSharingDiffTaskType)
 var SpaceSharingDiffAccIDError = BuildError(SpaceSharingDiffAccID)
 var UnsupportedDLTGangTypeError = BuildError(UnsupportedDLTGangType)
+var MultiSpanNodesGangTasksError = BuildError(MultiSpanNodesGangTasks)
 
 func CheckErrorType(err error, errorType ErrorType) bool {
 	if e, ok := err.(*Error); ok {
@@ -72,4 +74,8 @@ func CheckErrorType(err error, errorType ErrorType) bool {
 
 func IsSpaceSharingOutOfMemoryError(err error) bool {
 	return CheckErrorType(err, SpaceSharingOutOfMemory)
+}
+
+func IsMultiSpanNodesGangTasksError(err error) bool {
+	return CheckErrorType(err, MultiSpanNodesGangTasks)
 }

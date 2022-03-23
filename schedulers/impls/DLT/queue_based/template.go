@@ -74,18 +74,22 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 			return nil
 		}
 		accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
+		nodeID2TaskAllocations := s.GetNodeID2TaskAllocations(pc)
 		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, s.AllocationProvideMode)
 		var bestScore *JobAllocationScore = nil
 		var bestJobAllocation *objects.JobAllocation = nil
 		for _, possibleAllocation := range possibleAllocations {
 			cancel := s.TempAllocJob(pc, possibleAllocation)
-			pr, err := s.Predictor.Predict(pc, s.RelatedJobAllocations(pc, accID2SortedTaskAllocations, possibleAllocation))
+			pr, err := s.Predictor.Predict(pc, s.RelatedJobAllocationsByNodes(pc, nodeID2TaskAllocations, possibleAllocation))
+			if err != nil {
+				if interfaces2.IsMultiSpanNodesGangTasksError(err) || interfaces2.IsSpaceSharingOutOfMemoryError(err) {
+					continue
+				}
+				log.Printf("[Queue Based Scheduler] predict failed inside, err=%v", err)
+				continue
+			}
 			if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
 				s.MarkGangJobStartTime(possibleAllocation, *pr.GetResult(possibleAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime())
-			}
-			if err != nil {
-				log.Printf("[SJF Scheduler] predict failed inside, err=%v", err)
-				continue
 			}
 			score := s.impl.GetJobAllocationScore(&JobAllocationScorerParam{
 				PC:            pc,
@@ -106,7 +110,7 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 		unallocatedJobs = pc.GetUnallocatedJobs()
 	}
 
-	newJobAllocations := s.FilterScheduleAbleJobAllocations(pc, originalPC)
+	newJobAllocations := s.FilterScheduleAbleJobAllocations(s.GetNewJobAllocations(pc, originalPC), originalPC)
 	return &eventobjs.SSUpdateAllocationsEvent{NewJobAllocations: newJobAllocations}
 }
 

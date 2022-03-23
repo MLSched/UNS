@@ -223,6 +223,55 @@ func (i *DLTSchedulerTemplate) RelatedJobAllocations(pc *partition.Context, accI
 	return result
 }
 
+// RelatedJobAllocationsByNodes 获取一个jobAllocation所在节点的其他jobAllocation，若其他jobAllocation占用了更多的节点，则迭代以上过程
+// 举例：job1占用了node1，node2，job2占用了node2，node3，job3占用了node4，node5：则最终，获得job1的relatedJobAllocations会返回job1, job2。
+func (i *DLTSchedulerTemplate) RelatedJobAllocationsByNodes(pc *partition.Context, nodeID2TaskAllocations map[string][]*objects.TaskAllocation, jobAllocation *objects.JobAllocation) []*objects.JobAllocation {
+	visitedNodeIDs := make(map[string]bool)
+	isVisitedNodeID := func(nodeID string) bool {
+		_, ok := visitedNodeIDs[nodeID]
+		return ok
+	}
+	visitedJobAllocations := make(map[string]*objects.JobAllocation)
+	isVisitedJobAllocation := func(jobAllocation *objects.JobAllocation) bool {
+		_, ok := visitedJobAllocations[jobAllocation.GetJobID()]
+		return ok
+	}
+	jobAllocationsQueue := list.New()
+	jobAllocationsQueue.PushBack(jobAllocation)
+	for jobAllocationsQueue.Len() > 0 {
+		f := jobAllocationsQueue.Remove(jobAllocationsQueue.Front()).(*objects.JobAllocation)
+		if isVisitedJobAllocation(f) {
+			continue
+		}
+		visitedJobAllocations[f.GetJobID()] = f
+		unseenNodeIDs := make([]string, 0)
+		for _, taskAllocation := range f.GetTaskAllocations() {
+			nodeID := taskAllocation.GetNodeID()
+			if isVisitedNodeID(nodeID) {
+				continue
+			}
+			unseenNodeIDs = append(unseenNodeIDs, nodeID)
+		}
+		for _, unseenNodeID := range unseenNodeIDs {
+			for _, taskAllocation := range nodeID2TaskAllocations[unseenNodeID] {
+				jobAllocation := pc.Allocations[taskAllocation.GetJobID()]
+				if isVisitedJobAllocation(jobAllocation) {
+					continue
+				}
+				jobAllocationsQueue.PushBack(jobAllocation)
+			}
+		}
+		for _, accID := range unseenNodeIDs {
+			visitedNodeIDs[accID] = true
+		}
+	}
+	result := make([]*objects.JobAllocation, 0, len(visitedJobAllocations))
+	for _, a := range visitedJobAllocations {
+		result = append(result, a)
+	}
+	return result
+}
+
 func (i *DLTSchedulerTemplate) TempAllocJob(pc *partition.Context, jobAllocation *objects.JobAllocation) (cancel func()) {
 	pc.Allocations[jobAllocation.GetJobID()] = jobAllocation
 	return func() {
@@ -253,14 +302,7 @@ func (i *DLTSchedulerTemplate) AllocationTime(jobAllocation *objects.JobAllocati
 	return jobAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond()
 }
 
-func (i *DLTSchedulerTemplate) FilterScheduleAbleJobAllocations(predictPC *partition.Context, currPC *partition.Context) []*objects.JobAllocation {
-	newJobAllocations := make(map[string]*objects.JobAllocation)
-	for jobID, jobAllocation := range predictPC.Allocations {
-		newJobAllocations[jobID] = jobAllocation
-	}
-	for jobID := range currPC.Allocations {
-		delete(newJobAllocations, jobID)
-	}
+func (i *DLTSchedulerTemplate) FilterScheduleAbleJobAllocations(newJobAllocations []*objects.JobAllocation, currPC *partition.Context) []*objects.JobAllocation {
 	result := make([]*objects.JobAllocation, 0, len(newJobAllocations))
 	var earliestUnableToAllocateTime int64 = math.MaxInt64
 	for _, jobAllocation := range newJobAllocations {
@@ -278,4 +320,33 @@ func (i *DLTSchedulerTemplate) MarkGangJobStartTime(jobAllocation *objects.JobAl
 	for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
 		taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: startTime}
 	}
+}
+
+func (i *DLTSchedulerTemplate) GetNewJobAllocations(newPC *partition.Context, currPC *partition.Context) []*objects.JobAllocation {
+	newJobAllocations := make(map[string]*objects.JobAllocation)
+	for jobID, jobAllocation := range newPC.Allocations {
+		newJobAllocations[jobID] = jobAllocation
+	}
+	for jobID := range currPC.Allocations {
+		delete(newJobAllocations, jobID)
+	}
+	result := make([]*objects.JobAllocation, 0, len(newJobAllocations))
+	for _, jobAllocation := range newJobAllocations {
+		result = append(result, jobAllocation)
+	}
+	return result
+}
+
+func (i *DLTSchedulerTemplate) GetNodeID2TaskAllocations(pc *partition.Context) map[string][]*objects.TaskAllocation {
+	result := make(map[string][]*objects.TaskAllocation)
+	for _, jobAllocation := range pc.GetAllocationsSlice() {
+		for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+			nodeID := taskAllocation.GetNodeID()
+			if _, ok := result[nodeID]; !ok {
+				result[nodeID] = make([]*objects.TaskAllocation, 0)
+			}
+			result[nodeID] = append(result[nodeID], taskAllocation)
+		}
+	}
+	return result
 }

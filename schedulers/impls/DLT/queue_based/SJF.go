@@ -3,6 +3,7 @@ package queue_based
 import (
 	"UNS/pb_gen/configs"
 	"UNS/pb_gen/objects"
+	interfaces2 "UNS/predictor/interfaces"
 	base2 "UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
@@ -67,17 +68,21 @@ func (s *SJFScheduler) PrioritySort(pc *partition.Context, jobs map[string]*obje
 		go func() {
 			cloned := pc.Clone(false)
 			accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(cloned, basePredictResult)
+			nodeID2TaskAllocations := s.GetNodeID2TaskAllocations(pc)
 			possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, base2.ProvideTypeOnlyUnoccupied)
 			shortestJCT := int64(math.MaxInt64)
 			for _, possibleAllocation := range possibleAllocations {
 				cancel := s.TempAllocJob(cloned, possibleAllocation)
-				pr, err := s.Predictor.Predict(pc, s.RelatedJobAllocations(cloned, accID2SortedTaskAllocations, possibleAllocation))
-				if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
-					s.MarkGangJobStartTime(possibleAllocation, *pr.GetResult(possibleAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime())
-				}
+				pr, err := s.Predictor.Predict(pc, s.RelatedJobAllocationsByNodes(cloned, nodeID2TaskAllocations, possibleAllocation))
 				if err != nil {
+					if interfaces2.IsMultiSpanNodesGangTasksError(err) || interfaces2.IsSpaceSharingOutOfMemoryError(err) {
+						continue
+					}
 					log.Printf("[SJF Scheduler] predict failed inside, err=%v", err)
 					continue
+				}
+				if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
+					s.MarkGangJobStartTime(possibleAllocation, *pr.GetResult(possibleAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime())
 				}
 				r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
 				job := pc.GetUnfinishedJob(possibleAllocation.GetJobID())

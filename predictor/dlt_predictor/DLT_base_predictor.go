@@ -269,12 +269,15 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 	}
 	for len(result) != len(allocations) {
 		jobID2MiniBatchDuration := make(map[string]int64)
+		if err := p.checkRunningAllocations(ctx, runningAllocations); err != nil {
+			return nil, err
+		}
 		for _, runningAllocation := range runningAllocations {
 			if _, ok := jobID2MiniBatchDuration[runningAllocation.GetJobID()]; ok {
 				continue
 			}
 			spaceSharedRunningAllocations := getSpaceSharedAllocations(runningAllocation)
-			r, err := p.getSpaceSharingMiniBatchDurationNanoSecond(ctx, spaceSharedRunningAllocations)
+			r, err := p.getSpaceSharingMiniBatchDuration(ctx, spaceSharedRunningAllocations)
 			if err != nil {
 				return nil, err
 			}
@@ -345,7 +348,7 @@ func (p *DLTBasePredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, jo
 	panic("template method.")
 }
 
-func (p *DLTBasePredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *PredictSessionContext, allocations []*objects.JobAllocation) (map[string]int64, error) {
+func (p *DLTBasePredictor) getSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, allocations []*objects.JobAllocation) (map[string]int64, error) {
 	if len(allocations) > 2 {
 		log.Printf("space sharing failed.")
 		for _, a := range allocations {
@@ -524,4 +527,33 @@ func (p *DLTBasePredictor) rangeAllTaskAllocations(jobAllocation *objects.JobAll
 	for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
 		do(taskAllocation)
 	}
+}
+
+// checkRunningAllocations 检查同时运行的allocation是否合法。
+// 目前主要检查的是：若当有分布式的allocation，且它们占用了不止一个节点时，
+// 则不允许它们共享同一个节点：理由是，当多个分布式任务占用同一个节点时，它们的网络带宽会造成arbitrary的性能下降
+func (p *DLTBasePredictor) checkRunningAllocations(ctx *PredictSessionContext, runningAllocations map[string]*objects.JobAllocation) error {
+	spanNodesAllocationsNodeIDs := make(map[string]bool, 0)
+	for _, allocation := range runningAllocations {
+		if len(allocation.GetTaskAllocations()) <= 1 {
+			continue
+		}
+		nodeIDs := make(map[string]bool)
+		for _, taskAllocation := range allocation.GetTaskAllocations() {
+			nodeIDs[taskAllocation.GetNodeID()] = true
+		}
+		if len(nodeIDs) <= 1 {
+			// 忽略仅在一个节点内的分布式任务
+			continue
+		}
+		for nodeID := range nodeIDs {
+			if spanNodesAllocationsNodeIDs[nodeID] {
+				// 当该节点已经被spanNodesAllocationsNodeIDs记录过时，则表明当前的任务与之前的任务共享了节点，不允许这样的分配发生.
+				reason := fmt.Sprintf("DLTBasePredictor finds multiple jobs which span multiple nodes sharing the same node.")
+				return interfaces.MultiSpanNodesGangTasksError.Set(reason)
+			}
+			spanNodesAllocationsNodeIDs[nodeID] = true
+		}
+	}
+	return nil
 }

@@ -72,7 +72,7 @@ func (p *RandomPredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *Predic
 		return map[string]int64{jobIDs[0]: p.getMiniBatchDurationNanoSecond(ctx, jobs[0], accelerators[0].GetAcceleratorMetaInfo().GetBriefType())}
 	}
 	if len(jobIDs) != 2 {
-		panic("getSpaceSharingMiniBatchDurationNanoSecond jobIDs len must be 1 or 2.")
+		panic("getSpaceSharingMiniBatchDuration jobIDs len must be 1 or 2.")
 	}
 	nonSpaceSharingDurationSecond := make(map[string]int64)
 	for _, job := range jobs {

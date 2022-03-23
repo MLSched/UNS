@@ -33,7 +33,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 1000
+var jobCount = 100
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -50,7 +50,7 @@ var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 
 //var submitTimeScaleFactor = float64(0)
 
-var submitTimeScaleFactor = float64(0.5)
+var submitTimeScaleFactor = float64(2.5)
 
 //var jobExecutionTimeScaleFactor = float64(0.00001)
 
@@ -125,7 +125,7 @@ var instance2Count = map[*Instance]int64{
 	}): 2,
 	NewInstance(map[int64][]string{
 		0: {V100, V100, A100, A100},
-	}): 4,
+	}): 2,
 	NewInstance(map[int64][]string{
 		0: {A100, A100},
 		1: {A100, A100},
@@ -135,7 +135,7 @@ var instance2Count = map[*Instance]int64{
 	//}): 1,
 	NewInstance(map[int64][]string{
 		0: {A100, A100, A100, A100},
-	}): 1,
+	}): 2,
 }
 
 var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
