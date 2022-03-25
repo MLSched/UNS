@@ -9,6 +9,7 @@ import (
 	"UNS/schedulers/partition"
 	"UNS/utils"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -89,6 +90,34 @@ func (p *DLTBasePredictor) PredictByEndTime(partitionContext *partition.Context,
 		}
 	}
 
+	return ctx.result, nil
+}
+
+func (p *DLTBasePredictor) PredictSolely(partitionContext *partition.Context, allocations []*objects.JobAllocation) (interfaces.PredictResult, error) {
+	ctx := p.buildPredictSessionContext(partitionContext, allocations, math.MaxInt64)
+	for _, jobAllocation := range allocations {
+		start := jobAllocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond()
+		if start == nil {
+			return nil, errors.New("DLT Predictor PredictSolely needs start time to be specified")
+		}
+		p.updateJobStartExecutionTime(ctx, jobAllocation, start.GetValue())
+	}
+	for _, jobAllocation := range allocations {
+		miniBatchDurations, err := p.getSpaceSharingMiniBatchDuration(ctx, []*objects.JobAllocation{jobAllocation})
+		if err != nil {
+			return nil, err
+		}
+		miniBatchDuration := miniBatchDurations[jobAllocation.GetJobID()]
+		totalMiniBatch := p.impl.getJobTotalMiniBatches(ctx, jobAllocation.GetJobID())
+		totalDuration := totalMiniBatch * miniBatchDuration
+		finishTime := *ctx.result.GetResult(jobAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime() + totalDuration
+		p.updateJobFinishTime(ctx, jobAllocation, finishTime)
+	}
+	ctx.result.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+		if result.GetFinishNanoTime() == nil {
+			panic("incomplete predict result")
+		}
+	})
 	return ctx.result, nil
 }
 

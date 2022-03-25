@@ -29,10 +29,10 @@ func BuildSJF(configuration interface{}, pusher base2.EventPusher, partitionCont
 		Config: c,
 	}
 	var err error
-	provideMode := base2.ProvideTypeDefault
-	if c.GetNonSpaceSharing() {
-		provideMode = base2.ProvideTypeOnlyNonSpaceSharing
-	}
+	provideMode := base2.ProvideTypeDefault | base2.ProvideTypeOnlyNonSpaceSharing
+	//if c.GetNonSpaceSharing() {
+	//	provideMode = base2.ProvideTypeOnlyNonSpaceSharing
+	//}
 	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(&QueueBasedSchedulerParam{
 		Impl:                   sche,
 		PredictorConfiguration: c.PredictorConfiguration,

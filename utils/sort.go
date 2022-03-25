@@ -93,3 +93,31 @@ func (f *Int64Sorter) Swap(i, j int) {
 	f.Data[i] = f.Data[j]
 	f.Data[j] = t
 }
+
+type HeapSorter struct {
+	LenFunc  func() int
+	LessFunc func(i, j int) bool
+	SwapFunc func(i, j int)
+	PushFunc func(x interface{})
+	PopFunc  func() interface{}
+}
+
+func (b HeapSorter) Len() int {
+	return b.LenFunc()
+}
+
+func (b HeapSorter) Less(i, j int) bool {
+	return b.LessFunc(i, j)
+}
+
+func (b HeapSorter) Swap(i, j int) {
+	b.SwapFunc(i, j)
+}
+
+func (b HeapSorter) Push(x interface{}) {
+	b.PushFunc(x)
+}
+
+func (b HeapSorter) Pop() interface{} {
+	return b.PopFunc()
+}

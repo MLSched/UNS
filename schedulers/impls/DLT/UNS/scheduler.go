@@ -67,10 +67,10 @@ func Build(configuration interface{}, pusher base.EventPusher, partitionContextA
 		//	benefits.NewJCTCalculator(): 1,
 		//	benefits.NewDDLCalculator(): 1e20,
 		//}),
-		BenefitsCalculator: benefits.NewJCTCalculator(),
-		//BenefitsCalculator: benefits.NewDDLCalculator(),
-		BenefitsSampler: sampler.NewIncrementalSampler(20, 10, 2),
-		//BenefitsSampler:    sampler.NewFixExponentSampler(20),
+		//BenefitsCalculator: benefits.NewJCTCalculator(),
+		BenefitsCalculator: benefits.NewDDLCalculator(),
+		//BenefitsSampler: sampler.NewIncrementalSampler(10, 8, 2),
+		BenefitsSampler:    sampler.NewFixExponentSampler(10),
 		ScoreCalculator:    score.NewConsolidationScoreCalculator(),
 		MaxRound:           5,
 		MaximumSameBenefit: 1,
@@ -78,6 +78,7 @@ func Build(configuration interface{}, pusher base.EventPusher, partitionContextA
 		//MaxLatency:       1e9 * time.Second,
 		FallbackMode: LinearPrediction,
 		//FallbackMode: LoopAllocation,
+		//ResourceEfficientMode: true,
 	}
 	sche.allocationProvideTypeMode = base.ProvideTypeDefault
 	if c.GetNonSpaceSharing() {

@@ -26,10 +26,10 @@ func BuildEDF(configuration interface{}, pusher base2.EventPusher, partitionCont
 		Config: c,
 	}
 	var err error
-	provideMode := base2.ProvideTypeDefault
-	if c.GetNonSpaceSharing() {
-		provideMode = base2.ProvideTypeOnlyNonSpaceSharing
-	}
+	provideMode := base2.ProvideTypeDefault | base2.ProvideTypeOnlyNonSpaceSharing
+	//if c.GetNonSpaceSharing() {
+	//	provideMode = base2.ProvideTypeOnlyNonSpaceSharing
+	//}
 	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(&QueueBasedSchedulerParam{
 		Impl:                   sche,
 		PredictorConfiguration: c.PredictorConfiguration,
@@ -70,15 +70,15 @@ func (s *EDFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) Jo
 	possibleAllocation := param.JobAllocation
 	pr := param.PredictResult
 	pc := param.PC
-	//if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
-	//	return JobAllocationScore(math.Inf(-1))
-	//}
+	if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
+		return JobAllocationScore(math.Inf(-1))
+	}
 	r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
 	job := pc.GetUnfinishedJob(possibleAllocation.GetJobID())
 	finishTime := *r.GetFinishNanoTime()
-	if job.GetDeadline() == 0 {
-		return -JobAllocationScore(math.Inf(-1))
-	}
+	//if job.GetDeadline() == math.MaxInt64 {
+	//	return -JobAllocationScore(math.Inf(-1))
+	//}
 	vioDeadline := finishTime - job.GetDeadline()
 	return -JobAllocationScore(vioDeadline)
 }

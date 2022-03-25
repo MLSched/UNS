@@ -50,7 +50,7 @@ var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 
 //var submitTimeScaleFactor = float64(0)
 
-var submitTimeScaleFactor = float64(5)
+var submitTimeScaleFactor = float64(10)
 
 //var jobExecutionTimeScaleFactor = float64(0.00001)
 
@@ -60,8 +60,10 @@ var jobExecutionTimeScaleFactor = float64(1)
 //
 var syncMode = true
 
-var deadlineProb = float64(1)
+var deadlineProb = float64(0.5)
 var deadlineDistribution = []float64{1.2, 1.5}
+
+var onlySingleTaskJob = true
 
 const (
 	A100      = "A100"
@@ -160,6 +162,28 @@ var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2S
 	},
 }}
 
+var hydraSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+	partitionID: {
+		SchedulerType: configs.SchedulerType_schedulerTypeHydra,
+		Configuration: &configs.SchedulerConfiguration_HydraSchedulerConfiguration{HydraSchedulerConfiguration: &configs.HydraSchedulerConfiguration{
+			SchedulerID:       schedulerID,
+			ResourceManagerID: resourceManagerID,
+			PartitionID:       partitionID,
+			IntervalNano:      1e16,
+			SyncMode:          syncMode,
+			PredictorConfiguration: &configs.PredictorConfiguration{
+				PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+				Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+					DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+						DataSourcePath: predictorDataPath,
+					},
+				},
+			},
+			NonSpaceSharing: false,
+		}},
+	},
+}}
+
 var sjfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
 	partitionID: {
 		SchedulerType: configs.SchedulerType_schedulerTypeSJF,
@@ -228,11 +252,13 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 
 //var schedulerConfiguration = naiveSchedulerConfiguration
 
-var schedulerConfiguration = unsSchedulerConfiguration
+//var schedulerConfiguration = unsSchedulerConfiguration
+
+//var schedulerConfiguration = hydraSchedulerConfiguration
 
 //var schedulerConfiguration = sjfSchedulerConfiguration
 
-//var schedulerConfiguration = edfSchedulerConfiguration
+var schedulerConfiguration = edfSchedulerConfiguration
 
 func init() {
 	rand.Seed(3)
@@ -362,11 +388,10 @@ func (g *CaseGenerator) PreprocessTaskTable(header []string, records [][]string)
 		} else {
 			planGPUInt64 = planGPUInt64 / 100
 		}
-		if planGPUInt64 > 1 {
-			// log.Printf("planGPUInt64 > 1\n")
+		if onlySingleTaskJob && planGPUInt64 > 1 {
+			return true
 		}
 		record[planGPUIdx] = strconv.FormatInt(planGPUInt64, 10)
-		//record[planGPUIdx] = strconv.FormatInt(, 10)
 		return false
 	}
 	filterStartEndTime := func(record []string) bool {
@@ -696,7 +721,7 @@ func (g *CaseGenerator) GenerateCluster() *objects.Cluster {
 
 func (g *CaseGenerator) generateDeadline(submitNanoTime int64, executionDurationNanoTime int64) int64 {
 	if rand.Float64() > deadlineProb {
-		return 0
+		return math.MaxInt64
 	}
 	factor := g.randomUniform(deadlineDistribution)
 	return submitNanoTime + int64(float64(executionDurationNanoTime)*factor)

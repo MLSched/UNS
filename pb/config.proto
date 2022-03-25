@@ -26,6 +26,7 @@ message SchedulerConfiguration {
     UNSSchedulerConfiguration unsSchedulerConfiguration = 3;
     SJFSchedulerConfiguration sjfSchedulerConfiguration = 4;
     EDFSchedulerConfiguration edfSchedulerConfiguration = 5;
+    HydraSchedulerConfiguration hydraSchedulerConfiguration = 6;
   }
 }
 
@@ -35,6 +36,7 @@ enum SchedulerType {
   schedulerTypeUNS = 1;
   schedulerTypeSJF = 2;
   schedulerTypeEDF = 3;
+  schedulerTypeHydra = 4;
 }
 
 message NaiveSchedulerConfiguration {
@@ -58,6 +60,16 @@ message SJFSchedulerConfiguration {
 }
 
 message EDFSchedulerConfiguration {
+  string SchedulerID = 1;
+  string resourceManagerID = 2;
+  string partitionID = 3;
+  int64 intervalNano = 4;
+  bool syncMode = 5;
+  PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
+}
+
+message HydraSchedulerConfiguration {
   string SchedulerID = 1;
   string resourceManagerID = 2;
   string partitionID = 3;

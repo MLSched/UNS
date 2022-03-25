@@ -5,6 +5,7 @@ import (
 	"UNS/pb_gen/configs"
 	"UNS/schedulers/impls/DLT/UNS"
 	"UNS/schedulers/impls/DLT/base"
+	"UNS/schedulers/impls/DLT/hydra"
 	"UNS/schedulers/impls/DLT/naive"
 	"UNS/schedulers/impls/DLT/queue_based"
 	"UNS/schedulers/interfaces"
@@ -18,6 +19,7 @@ var factories = map[configs.SchedulerType]Factory{
 	configs.SchedulerType_schedulerTypeUNS:   UNS.Build,
 	configs.SchedulerType_schedulerTypeSJF:   queue_based.BuildSJF,
 	configs.SchedulerType_schedulerTypeEDF:   queue_based.BuildEDF,
+	configs.SchedulerType_schedulerTypeHydra: hydra.Build,
 }
 
 func Build(schedulerBuildParams *base.SchedulerBuildParams) (interfaces.Scheduler, error) {

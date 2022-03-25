@@ -29,6 +29,8 @@ type DLTSchedulerTemplate struct {
 	impl                  IntervalSchedulerInterface
 	partitionContextAware PartitionContextAware
 	eventPusher           EventPusher
+
+	supportTaskGroupTypes []objects.TaskGroupType
 }
 
 type IntervalSchedulerInterface interface {
@@ -62,13 +64,17 @@ func (i *DLTSchedulerTemplate) HandleEvent(event *events.Event) {
 	events.ReplySucceeded(event)
 }
 
+func (i *DLTSchedulerTemplate) SetSupportTaskGroupTypes(taskGroupTypes []objects.TaskGroupType) {
+	i.supportTaskGroupTypes = taskGroupTypes
+}
+
 func (i *DLTSchedulerTemplate) checkSupportJob(job *objects.Job) error {
 	if job.GetJobType() != objects.JobType_jobTypeDLT {
 		return fmt.Errorf("[DLTSchedulerTemplate] checkSupportJobTypes, only support DLT job, but received %s", job.GetJobType().String())
 	}
-	supportedTaskGroupTypes := map[objects.TaskGroupType]bool{
-		objects.TaskGroupType_taskGroupTypeSingle: true,
-		objects.TaskGroupType_taskGroupTypeGang:   true,
+	supportedTaskGroupTypes := map[objects.TaskGroupType]bool{}
+	for _, t := range i.supportTaskGroupTypes {
+		supportedTaskGroupTypes[t] = true
 	}
 	if _, ok := supportedTaskGroupTypes[job.GetTaskGroup().GetTaskGroupType()]; !ok {
 		return fmt.Errorf("[DLTSchedulerTemplate] checkSupportJobTypes, only support single and gang task group types, but received %s", job.GetTaskGroup().GetTaskGroupType().String())
@@ -117,6 +123,7 @@ func NewIntervalSchedulerTemplate(intervalScheduler IntervalSchedulerInterface, 
 		impl:                  intervalScheduler,
 		partitionContextAware: aware,
 		eventPusher:           pusher,
+		supportTaskGroupTypes: []objects.TaskGroupType{objects.TaskGroupType_taskGroupTypeSingle, objects.TaskGroupType_taskGroupTypeGang},
 	}
 }
 
