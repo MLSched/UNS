@@ -65,3 +65,7 @@ func (m *ExecutionHistoryManager) Range(traverse func(history *objects.JobExecut
 		traverse(eh)
 	}
 }
+
+func (m *ExecutionHistoryManager) GetAll() map[string]*objects.JobExecutionHistory {
+	return m.jobID2ExecutionHistory
+}

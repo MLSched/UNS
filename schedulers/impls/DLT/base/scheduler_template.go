@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
 	"math"
+	"sort"
 	"time"
 )
 
@@ -174,54 +175,54 @@ func (i *DLTSchedulerTemplate) GetPartitionContext() *partition.Context {
 	return i.partitionContextAware()
 }
 
-// RelatedJobAllocations 获取一个jobAllocation所占用的acc的其他jobAllocation，若其他jobAllocation占用了更多的acc，则迭代以上过程
-// 举例：job1占用了acc1，acc2，job2占用了acc2，acc3，job3占用了acc4，acc5：则最终，获得job1的relatedJobAllocations会返回job1, job2。
-func (i *DLTSchedulerTemplate) RelatedJobAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, jobAllocation *objects.JobAllocation) []*objects.JobAllocation {
-	visitedAccIDs := make(map[string]bool)
-	isVisitedAccID := func(accID string) bool {
-		_, ok := visitedAccIDs[accID]
-		return ok
-	}
-	visitedJobAllocations := make(map[string]*objects.JobAllocation)
-	isVisitedJobAllocation := func(jobAllocation *objects.JobAllocation) bool {
-		_, ok := visitedJobAllocations[jobAllocation.GetJobID()]
-		return ok
-	}
-	jobAllocationsQueue := list.New()
-	jobAllocationsQueue.PushBack(jobAllocation)
-	for jobAllocationsQueue.Len() > 0 {
-		f := jobAllocationsQueue.Remove(jobAllocationsQueue.Front()).(*objects.JobAllocation)
-		if isVisitedJobAllocation(f) {
-			continue
-		}
-		visitedJobAllocations[f.GetJobID()] = f
-		unseenAccIDs := make([]string, 0)
-		for _, taskAllocation := range f.GetTaskAllocations() {
-			accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
-			if isVisitedAccID(accID) {
-				continue
-			}
-			unseenAccIDs = append(unseenAccIDs, accID)
-		}
-		for _, unseenAccID := range unseenAccIDs {
-			for _, taskAllocation := range accID2SortedTaskAllocations[unseenAccID] {
-				jobAllocation := pc.Allocations[taskAllocation.GetJobID()]
-				if isVisitedJobAllocation(jobAllocation) {
-					continue
-				}
-				jobAllocationsQueue.PushBack(jobAllocation)
-			}
-		}
-		for _, accID := range unseenAccIDs {
-			visitedAccIDs[accID] = true
-		}
-	}
-	result := make([]*objects.JobAllocation, 0, len(visitedJobAllocations))
-	for _, a := range visitedJobAllocations {
-		result = append(result, a)
-	}
-	return result
-}
+//// RelatedJobAllocations 获取一个jobAllocation所占用的acc的其他jobAllocation，若其他jobAllocation占用了更多的acc，则迭代以上过程
+//// 举例：job1占用了acc1，acc2，job2占用了acc2，acc3，job3占用了acc4，acc5：则最终，获得job1的relatedJobAllocations会返回job1, job2。
+//func (i *DLTSchedulerTemplate) RelatedJobAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, jobAllocation *objects.JobAllocation) []*objects.JobAllocation {
+//	visitedAccIDs := make(map[string]bool)
+//	isVisitedAccID := func(accID string) bool {
+//		_, ok := visitedAccIDs[accID]
+//		return ok
+//	}
+//	visitedJobAllocations := make(map[string]*objects.JobAllocation)
+//	isVisitedJobAllocation := func(jobAllocation *objects.JobAllocation) bool {
+//		_, ok := visitedJobAllocations[jobAllocation.GetJobID()]
+//		return ok
+//	}
+//	jobAllocationsQueue := list.New()
+//	jobAllocationsQueue.PushBack(jobAllocation)
+//	for jobAllocationsQueue.Len() > 0 {
+//		f := jobAllocationsQueue.Remove(jobAllocationsQueue.Front()).(*objects.JobAllocation)
+//		if isVisitedJobAllocation(f) {
+//			continue
+//		}
+//		visitedJobAllocations[f.GetJobID()] = f
+//		unseenAccIDs := make([]string, 0)
+//		for _, taskAllocation := range f.GetTaskAllocations() {
+//			accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
+//			if isVisitedAccID(accID) {
+//				continue
+//			}
+//			unseenAccIDs = append(unseenAccIDs, accID)
+//		}
+//		for _, unseenAccID := range unseenAccIDs {
+//			for _, taskAllocation := range accID2SortedTaskAllocations[unseenAccID] {
+//				jobAllocation := pc.Allocations[taskAllocation.GetJobID()]
+//				if isVisitedJobAllocation(jobAllocation) {
+//					continue
+//				}
+//				jobAllocationsQueue.PushBack(jobAllocation)
+//			}
+//		}
+//		for _, accID := range unseenAccIDs {
+//			visitedAccIDs[accID] = true
+//		}
+//	}
+//	result := make([]*objects.JobAllocation, 0, len(visitedJobAllocations))
+//	for _, a := range visitedJobAllocations {
+//		result = append(result, a)
+//	}
+//	return result
+//}
 
 // RelatedJobAllocationsByNodes 获取一个jobAllocation所在节点的其他jobAllocation，若其他jobAllocation占用了更多的节点，则迭代以上过程
 // 举例：job1占用了node1，node2，job2占用了node2，node3，job3占用了node4，node5：则最终，获得job1的relatedJobAllocations会返回job1, job2。
@@ -303,13 +304,46 @@ func (i *DLTSchedulerTemplate) AllocationTime(jobAllocation *objects.JobAllocati
 }
 
 func (i *DLTSchedulerTemplate) FilterScheduleAbleJobAllocations(newJobAllocations []*objects.JobAllocation, currPC *partition.Context) []*objects.JobAllocation {
-	result := make([]*objects.JobAllocation, 0, len(newJobAllocations))
-	var earliestUnableToAllocateTime int64 = math.MaxInt64
+	accID2SortedNewJobAllocations := make(map[string][]*objects.JobAllocation)
 	for _, jobAllocation := range newJobAllocations {
-		if i.AllocateAbleJob(currPC, jobAllocation) {
+		for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+			accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
+			if _, ok := accID2SortedNewJobAllocations[accID]; !ok {
+				accID2SortedNewJobAllocations[accID] = make([]*objects.JobAllocation, 0)
+			}
+			accID2SortedNewJobAllocations[accID] = append(accID2SortedNewJobAllocations[accID], jobAllocation)
+		}
+	}
+	for _, allocations := range accID2SortedNewJobAllocations {
+		sort.SliceStable(allocations, func(i, j int) bool {
+			return allocations[i].GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond().GetValue() < allocations[j].GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond().GetValue()
+		})
+	}
+	result := make([]*objects.JobAllocation, 0, len(newJobAllocations))
+nextJobAllocation:
+	for _, jobAllocation := range newJobAllocations {
+		if i.AllocationTime(jobAllocation) == currPC.FixedNow() {
+			if jobAllocation.GetTaskAllocations()[0].GetPlaceholder() {
+				// 如果是placeholder类型的，那么在它前面不能也有新的任务分配是placeholder的，否则placeholder产生嵌套，即是无法当前立刻分配的。
+				for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+					accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
+					previousContainsPlaceholder := false
+					for _, allocation := range accID2SortedNewJobAllocations[accID] {
+						if allocation == jobAllocation {
+							break
+						}
+						if allocation.GetTaskAllocations()[0].GetPlaceholder() {
+							previousContainsPlaceholder = true
+						}
+					}
+					if previousContainsPlaceholder {
+						// 一个placeholder类型的任务开始前，已经有一个placeholder任务，则代表这两个任务都是当前的partitionContext下无法立即开始的任务，
+						// 而在算法中已经标注了startTime，则根据此startTime排序后，前面的placeholder任务具有更高的优先级，当前的任务在本次调度中直接忽略
+						continue nextJobAllocation
+					}
+				}
+			}
 			result = append(result, jobAllocation)
-		} else if t := i.AllocationTime(jobAllocation); t < earliestUnableToAllocateTime {
-			earliestUnableToAllocateTime = t
 		}
 	}
 	return result

@@ -70,6 +70,9 @@ func (s *EDFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) Jo
 	possibleAllocation := param.JobAllocation
 	pr := param.PredictResult
 	pc := param.PC
+	//if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
+	//	return JobAllocationScore(math.Inf(-1))
+	//}
 	r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
 	job := pc.GetUnfinishedJob(possibleAllocation.GetJobID())
 	finishTime := *r.GetFinishNanoTime()

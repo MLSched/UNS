@@ -219,6 +219,16 @@ func (c *Context) GetUnfinishedJob(jobID string) *objects.Job {
 	return c.UnfinishedJobs[jobID]
 }
 
+func (c *Context) GetJob(jobID string) *objects.Job {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if j, ok := c.UnfinishedJobs[jobID]; ok {
+		return j
+	} else {
+		return c.FinishedJobs[jobID]
+	}
+}
+
 func (c *Context) GetAllocationsSlice() []*objects.JobAllocation {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -253,4 +263,8 @@ func (c *Context) GetUnallocatedAcceleratorIDs() map[string]bool {
 		}
 	}
 	return totalAcceleratorIDs
+}
+
+func (c *Context) GetJobExecutionHistories() map[string]*objects.JobExecutionHistory {
+	return c.ExecutionHistoryManager.GetAll()
 }

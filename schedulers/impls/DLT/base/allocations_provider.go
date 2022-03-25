@@ -23,6 +23,7 @@ const (
 	ProvideTypeDefault             ProvideType = 0
 	ProvideTypeOnlyUnoccupied      ProvideType = 0x0000_0010
 	ProvideTypeOnlyNonSpaceSharing ProvideType = 0x0000_0100
+	ProvideTypeImmediateAllocation ProvideType = 0x0000_1000
 )
 
 type AllocationsProviderImpl struct {
@@ -44,9 +45,21 @@ func (a *AllocationsProviderImpl) isProvideTypeMode(mode ProvideType, provideTyp
 func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partition.Context, accID2SortedTaskAllocations map[string][]*objects.TaskAllocation, predictResult interfaces.PredictResult, job *objects.Job, provideTypeMode ProvideType) []*objects.JobAllocation {
 	// 筛选出AcceleratorID，使得他们上面最多只有一个job在运行，并且运行的不是GangJob
 	// 从每个accelerator上，考虑最后一个运行的taskAllocation，查看是否存在与它共同运行的可能性
+	//if job.GetJobID() == "2d91199618980980723f3d89" {
+	//	log.Printf("")
+	//}
 	result := make([]*objects.JobAllocation, 0)
 	buildJobAllocation := func(accID string, startTime int64) *objects.JobAllocation {
 		return buildJobAllocation(pc, job, []string{accID}, &startTime, startTime, false)
+	}
+	addJobAllocation := func(accID string, startTime int64) {
+		//if startTime == 144799731434604 {
+		//	log.Printf("")
+		//}
+		if a.isProvideTypeMode(provideTypeMode, ProvideTypeImmediateAllocation) && startTime != pc.FixedNow() {
+			return
+		}
+		result = append(result, buildJobAllocation(accID, startTime))
 	}
 	finishTime := func(taskAllocation *objects.TaskAllocation) int64 {
 		return *predictResult.GetResult(taskAllocation).GetFinishNanoTime()
@@ -58,36 +71,43 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(pc *partit
 		}
 		if len(taskAllocations) == 0 {
 			// 没有任务在运行，直接添加
-			result = append(result, buildJobAllocation(accID, pc.FixedNow()))
+			addJobAllocation(accID, pc.FixedNow())
+			//result = append(result, buildJobAllocation(accID, pc.FixedNow()))
 			continue
 		}
 		lastTaskAllocation := taskAllocations[len(taskAllocations)-1]
 		if j := pc.GetUnfinishedJob(lastTaskAllocation.GetJobID()); j.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
 			// 最后一个Task是gang的，不能与它并行执行，直接放在它的后面。
-			result = append(result, buildJobAllocation(accID, finishTime(lastTaskAllocation)))
+			addJobAllocation(accID, finishTime(lastTaskAllocation))
+			//result = append(result, buildJobAllocation(accID, finishTime(lastTaskAllocation)))
 			continue
 		}
 		if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyNonSpaceSharing) {
 			t := finishTime(lastTaskAllocation)
-			result = append(result, buildJobAllocation(accID, t))
+			addJobAllocation(accID, t)
+			//result = append(result, buildJobAllocation(accID, t))
 			continue
 		}
 		if len(taskAllocations) == 1 {
 			// 如果仅有一个任务，并且已知它不是gang的任务，则必定可以与它并行
 			// 挑选两个时间点，分别是从now开始运行，和从它结束后开始运行
 			now := pc.FixedNow()
-			result = append(result, buildJobAllocation(accID, now))
+			addJobAllocation(accID, now)
+			//result = append(result, buildJobAllocation(accID, now))
 			if lastFinish := finishTime(lastTaskAllocation); lastFinish != now {
-				result = append(result, buildJobAllocation(accID, lastFinish))
+				addJobAllocation(accID, lastFinish)
+				//result = append(result, buildJobAllocation(accID, lastFinish))
 			}
 			continue
 		} else {
 			// 如果多于一个任务，则从倒数第二个任务结束开始，可以与最后一个任务并行执行
 			beforeLast := taskAllocations[len(taskAllocations)-2]
 			beforeLastFinishTime := finishTime(beforeLast)
-			result = append(result, buildJobAllocation(accID, beforeLastFinishTime))
+			addJobAllocation(accID, beforeLastFinishTime)
+			//result = append(result, buildJobAllocation(accID, beforeLastFinishTime))
 			if lastFinish := finishTime(lastTaskAllocation); lastFinish != beforeLastFinishTime {
-				result = append(result, buildJobAllocation(accID, lastFinish))
+				addJobAllocation(accID, lastFinish)
+				//result = append(result, buildJobAllocation(accID, lastFinish))
 			}
 			continue
 		}
@@ -143,7 +163,7 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 			if _, ok := attemptedAccIDs[connectedAccIDs]; ok {
 				return
 			}
-			earliest, latest := func() (earliest int64, latest int64) {
+			allocationTime, latest := func() (earliest int64, latest int64) {
 				earliest = math.MaxInt64
 				latest = -1
 				for _, accID := range accIDs {
@@ -174,7 +194,10 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(pc *partition.Co
 			if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyUnoccupied) && (startTime == nil || *startTime != pc.FixedNow()) {
 				return
 			}
-			na := buildJobAllocation(pc, job, accIDs, startTime, earliest, placeholder)
+			if a.isProvideTypeMode(provideTypeMode, ProvideTypeImmediateAllocation) && (allocationTime != pc.FixedNow()) {
+				return
+			}
+			na := buildJobAllocation(pc, job, accIDs, startTime, allocationTime, placeholder)
 			resultAllocations = append(resultAllocations, na)
 		}
 	}()

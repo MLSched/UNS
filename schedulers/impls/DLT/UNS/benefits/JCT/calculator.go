@@ -2,25 +2,35 @@ package JCT
 
 import (
 	"UNS/pb_gen/objects"
-	"UNS/predictor/interfaces"
+	"UNS/schedulers/impls/DLT/UNS/benefits/base"
 	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"UNS/schedulers/partition"
-	"log"
 )
 
 type Calculator struct {
+	*base.CalculatorCommon
+}
+
+func NewCalculator() *Calculator {
+	common := &base.CalculatorCommon{}
+	c := &Calculator{}
+	common.Impl = c
+	c.CalculatorCommon = common
+	return c
 }
 
 type Stub struct {
 	JobID2JCT map[string]int64
 }
 
-func (c *Calculator) CalIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit interfaces2.Benefit, stub interface{}) {
-	s := prevStub.(*Stub)
-	s = c.CloneStub(s).(*Stub)
-	c.updateStub(pc, allocationsPredictResult, s)
-	avgJCT := c.calculateAvgJCT(s)
-	return c.avgJCT2Benefit(avgJCT), s
+//func (c *Calculator) ByPredictIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit interfaces2.Benefit, stub interface{}) {
+//	return c.Cal(pc, prevStub, func() map[string]*base.BenefitCalculationContext {
+//		return c.ExtractContextByPredict(pc, allocationsPredictResult)
+//	})
+//}
+
+func (c *Calculator) ByHistory(pc *partition.Context, histories map[string]*objects.JobExecutionHistory) (benefit interfaces2.Benefit, stub interface{}) {
+	return 0, nil
 }
 
 func (c *Calculator) CloneStub(stub interface{}) interface{} {
@@ -32,24 +42,60 @@ func (c *Calculator) CloneStub(stub interface{}) interface{} {
 	return s
 }
 
-func (c *Calculator) Cal(pc *partition.Context, allocationsPredictResult interfaces.PredictResult) (benefit interfaces2.Benefit, stub interface{}) {
-	s := &Stub{JobID2JCT: make(map[string]int64)}
-	c.updateStub(pc, allocationsPredictResult, s)
-	avgJCT := c.calculateAvgJCT(s)
-	return c.avgJCT2Benefit(avgJCT), s
+//func (c *Calculator) ByPredict(pc *partition.Context, allocationsPredictResult interfaces.PredictResult) (benefit interfaces2.Benefit, stub interface{}) {
+//	return c.Cal(pc, nil, func() map[string]*base.BenefitCalculationContext {
+//		return c.ExtractContextByPredict(pc, allocationsPredictResult)
+//	})
+//}
+
+//func (c *Calculator) updateStubByPredict(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, stub *Stub) {
+//	if allocationsPredictResult == nil {
+//		return
+//	}
+//	allocationsPredictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+//		job := pc.GetUnfinishedJob(allocation.GetJobID())
+//		submitTime := job.GetSubmitTimeNanoSecond()
+//		finishTime := *result.GetFinishNanoTime()
+//		stub.JobID2JCT[job.GetJobID()] = finishTime - submitTime
+//	})
+//}
+
+func (c *Calculator) UpdateStub(pc *partition.Context, contexts map[string]*base.BenefitCalculationContext, stub interface{}) {
+	s := stub.(*Stub)
+	for _, ctx := range contexts {
+		job := ctx.Job
+		submitTime := job.GetSubmitTimeNanoSecond()
+		finishTime := ctx.FinishTime
+		s.JobID2JCT[job.GetJobID()] = finishTime - submitTime
+	}
 }
 
-func (c *Calculator) updateStub(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, stub *Stub) {
-	allocationsPredictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
-		job := pc.GetUnfinishedJob(allocation.GetJobID())
-		submitTime := job.GetSubmitTimeNanoSecond()
-		if result.GetFinishNanoTime() == nil {
-			log.Printf("")
-		}
-		finishTime := *result.GetFinishNanoTime()
-		stub.JobID2JCT[job.GetJobID()] = finishTime - submitTime
-	})
-}
+//func (c *Calculator) updateStubByHistory(pc *partition.Context, histories map[string]*objects.JobExecutionHistory, stub *Stub) {
+//	if histories == nil {
+//		return
+//	}
+//	jobID2JCT := make(map[string]int64)
+//	for _, history := range histories {
+//		for _, taskHistory := range history.GetTaskExecutionHistories() {
+//			if !taskHistory.GetFinished() {
+//				continue
+//			}
+//			if _, ok := jobID2JCT[taskHistory.GetJobID()]; ok {
+//				continue
+//			}
+//			job := pc.GetJob(taskHistory.GetJobID())
+//			if job == nil {
+//				continue
+//			}
+//			submitTime := job.GetSubmitTimeNanoSecond()
+//			finishTime := taskHistory.GetStartExecutionTimeNanoSecond() + taskHistory.GetDurationNanoSecond()
+//			jobID2JCT[job.GetJobID()] = finishTime - submitTime
+//		}
+//	}
+//	for jobID, JCT := range jobID2JCT {
+//		stub.JobID2JCT[jobID] = JCT
+//	}
+//}
 
 func (c *Calculator) calculateAvgJCT(stub *Stub) float64 {
 	totalJCT := int64(0)
@@ -62,4 +108,19 @@ func (c *Calculator) calculateAvgJCT(stub *Stub) float64 {
 
 func (c *Calculator) avgJCT2Benefit(avgJCT float64) interfaces2.Benefit {
 	return interfaces2.Benefit(-avgJCT)
+}
+
+//func (c *Calculator) ByHistory(pc *partition.Context, histories map[string]*objects.JobExecutionHistory) (benefit interfaces2.Benefit, stub interface{}) {
+//	return c.Cal(pc, nil, func() map[string]*base.BenefitCalculationContext {
+//		return c.ExtractContextByHistory(pc, histories)
+//	})
+//}
+
+func (c *Calculator) NewStub() interface{} {
+	return &Stub{JobID2JCT: make(map[string]int64)}
+}
+
+func (c *Calculator) Calculate(prevStub interface{}) interfaces2.Benefit {
+	avgJCT := c.calculateAvgJCT(prevStub.(*Stub))
+	return c.avgJCT2Benefit(avgJCT)
 }

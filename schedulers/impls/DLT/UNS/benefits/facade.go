@@ -9,19 +9,17 @@ import (
 )
 
 func NewJCTCalculator() interfaces.Calculator {
-	return &JCT.Calculator{}
+	return JCT.NewCalculator()
 }
 
 func NewDDLCalculator() interfaces.Calculator {
-	return &DDL.Calculator{}
+	return DDL.NewCalculator()
 }
 
 func NewMakeSpanCalculator() interfaces.Calculator {
-	return &makespan.Calculator{}
+	return makespan.NewCalculator()
 }
 
 func NewCompositeCalculator(calculator2Coefficient map[interfaces.Calculator]float64) interfaces.Calculator {
-	return &composite.Calculator{
-		Calculator2Coefficient: calculator2Coefficient,
-	}
+	return composite.NewCalculator()
 }

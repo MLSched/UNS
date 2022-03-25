@@ -139,6 +139,14 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 			metrics.Analyse(s.partitionContext)
 			return
 		}
+		//if len(s.partitionContext.GetUnallocatedAcceleratorIDs()) > 0 && len(s.partitionContext.GetUnallocatedJobs()) > 0 {
+		//	for jobID := range s.partitionContext.GetUnallocatedJobs() {
+		//		log.Printf("unallocate job %s", jobID)
+		//	}
+		//	for accID := range s.partitionContext.GetUnallocatedAcceleratorIDs() {
+		//		log.Printf("unallocate accID %s", accID)
+		//	}
+		//}
 		log.Printf("simulation submitted unfinished jobs %d, unallocated jobs %d, unallocated accs %d, finished jobs %d, total jobs %d.",
 			len(s.partitionContext.UnfinishedJobs),
 			len(s.partitionContext.GetUnallocatedJobs()),

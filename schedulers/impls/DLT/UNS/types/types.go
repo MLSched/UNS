@@ -15,6 +15,7 @@ type AllocContext struct {
 	NewJobAllocations            []*objects.JobAllocation
 	NewJobAllocationsFingerPrint string
 	Benefit                      benefitsinterfaces.Benefit
+	BenefitStub                  interface{}
 	Score                        score.JobAllocationsScore
 	PredictResult                predictorinterfaces.PredictResult
 }

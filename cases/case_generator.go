@@ -33,7 +33,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 100
+var jobCount = 500
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -50,7 +50,7 @@ var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 
 //var submitTimeScaleFactor = float64(0)
 
-var submitTimeScaleFactor = float64(2.5)
+var submitTimeScaleFactor = float64(5)
 
 //var jobExecutionTimeScaleFactor = float64(0.00001)
 
@@ -366,6 +366,7 @@ func (g *CaseGenerator) PreprocessTaskTable(header []string, records [][]string)
 			// log.Printf("planGPUInt64 > 1\n")
 		}
 		record[planGPUIdx] = strconv.FormatInt(planGPUInt64, 10)
+		//record[planGPUIdx] = strconv.FormatInt(, 10)
 		return false
 	}
 	filterStartEndTime := func(record []string) bool {

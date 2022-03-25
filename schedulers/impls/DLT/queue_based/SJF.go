@@ -117,8 +117,7 @@ func (s *SJFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) Jo
 	pr := param.PredictResult
 	pc := param.PC
 	r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
-	//start := possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond()
-	//if start != pc.FixedNow() {
+	//if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
 	//	return JobAllocationScore(math.Inf(-1))
 	//}
 	job := pc.GetUnfinishedJob(possibleAllocation.GetJobID())

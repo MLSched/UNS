@@ -53,6 +53,7 @@ func buildJobExecutionHistory(allocation *objects.JobAllocation, finishTime int6
 			HostMemoryAllocation:         taskAllocation.GetHostMemoryAllocation(),
 			CPUSocketAllocations:         taskAllocation.GetCPUSocketAllocations(),
 			AcceleratorAllocation:        taskAllocation.GetAcceleratorAllocation(),
+			Finished:                     true,
 		})
 	}
 	return &objects.JobExecutionHistory{

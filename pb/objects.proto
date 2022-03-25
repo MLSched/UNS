@@ -233,6 +233,7 @@ message TaskExecutionHistory {
   HostMemoryAllocation hostMemoryAllocation = 7;
   repeated CPUSocketAllocation CPUSocketAllocations = 8;
   AcceleratorAllocation acceleratorAllocation = 9;
+  bool finished = 10;
 }
 
 message CPUSocketAllocation {

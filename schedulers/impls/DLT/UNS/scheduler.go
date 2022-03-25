@@ -37,6 +37,7 @@ type Scheduler struct {
 	MaxLatency                time.Duration // 一次调度算法执行的最大时延
 	MaxRound                  int
 	FallbackMode              FallbackMode
+	ResourceEfficientMode     bool // 开启ResourceEfficientMode时，在为benefit排序时，优先考虑能立刻运行的allocation更多的分配结果
 	allocationProvideTypeMode base.ProvideType
 }
 
@@ -61,20 +62,22 @@ func Build(configuration interface{}, pusher base.EventPusher, partitionContextA
 		AllocationsProvider: &base.AllocationsProviderImpl{
 			MaxGangAllocations: math.MaxInt64,
 		},
-		BenefitsCalculator: benefits.NewMakeSpanCalculator(),
+		//BenefitsCalculator: benefits.NewMakeSpanCalculator(),
 		//BenefitsCalculator: benefits.NewCompositeCalculator(map[benefitsinterfaces.Calculator]float64{
 		//	benefits.NewJCTCalculator(): 1,
 		//	benefits.NewDDLCalculator(): 1e20,
 		//}),
-		//BenefitsCalculator: benefits.NewJCTCalculator(),
+		BenefitsCalculator: benefits.NewJCTCalculator(),
 		//BenefitsCalculator: benefits.NewDDLCalculator(),
-		BenefitsSampler:    sampler.NewIncrementalSampler(20, 16, 2),
+		BenefitsSampler: sampler.NewIncrementalSampler(20, 10, 2),
+		//BenefitsSampler:    sampler.NewFixExponentSampler(20),
 		ScoreCalculator:    score.NewConsolidationScoreCalculator(),
-		MaxRound:           10,
+		MaxRound:           5,
 		MaximumSameBenefit: 1,
 		MaxLatency:         10 * time.Second,
 		//MaxLatency:       1e9 * time.Second,
 		FallbackMode: LinearPrediction,
+		//FallbackMode: LoopAllocation,
 	}
 	sche.allocationProvideTypeMode = base.ProvideTypeDefault
 	if c.GetNonSpaceSharing() {
@@ -86,15 +89,16 @@ func Build(configuration interface{}, pusher base.EventPusher, partitionContextA
 
 func (s *Scheduler) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
 	originalPC := s.GetPartitionContext().Clone(false)
-	unallocatedAccIDs := originalPC.GetUnallocatedAcceleratorIDs()
-	unallocatedJobs := originalPC.GetUnallocatedJobs()
-	log.Printf("[UNS Scheduler] start schedule, unallocated accIDs = %v, unallocated acc count %d, unallocated jobs count = %d", unallocatedAccIDs, len(unallocatedAccIDs), len(unallocatedJobs))
+	//unallocatedAccIDs := originalPC.GetUnallocatedAcceleratorIDs()
+	//unallocatedJobs := originalPC.GetUnallocatedJobs()
+	//log.Printf("[UNS Scheduler] start schedule, unallocated accIDs = %v, unallocated acc count %d, unallocated jobs count = %d", unallocatedAccIDs, len(unallocatedAccIDs), len(unallocatedJobs))
 	t := originalPC.Now()
 	originalPC.Time = &t
 	pc := originalPC.Clone(false)
 	jobAllocations := make([]*objects.JobAllocation, 0)
 	if s.checkScheduleAble(pc) {
-		jas := s.parallelSchedule(&scheduleParam{
+		jas := s.parallelSchedule(&scheduleContext{
+			originalPC:      originalPC,
 			pc:              pc,
 			provideTypeMode: s.allocationProvideTypeMode,
 			sampler:         s.BenefitsSampler,
@@ -106,83 +110,89 @@ func (s *Scheduler) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
 		}
 	}
 	if s.checkScheduleAble(pc) {
-		// 当执行一次调度后，仍然存在未分配的任务和加速器时
-		switch s.FallbackMode {
-		case GreedyAllocation:
-			log.Printf("[UNS Scheduler] enter greedy allocation fallback schedule")
-			provideTypeMode := s.allocationProvideTypeMode | base.ProvideTypeOnlyUnoccupied
-			jas := s.parallelSchedule(&scheduleParam{
-				pc:              pc,
-				provideTypeMode: provideTypeMode,
-				sampler:         s.BenefitsSampler,
-				round:           1e9, // allocate all
-			})
-			jobAllocations = append(jobAllocations, jas...)
-		case LoopAllocation:
-			count := 0
-			for s.checkScheduleAble(pc) {
-				count++
-				log.Printf("[UNS Scheduler] enter loop fallback schedule, count = %d", count)
-				jas := s.parallelSchedule(&scheduleParam{
-					pc:              pc,
-					provideTypeMode: s.allocationProvideTypeMode,
-					sampler:         s.BenefitsSampler,
-					round:           s.MaxRound,
-				})
-				jobAllocations = append(jobAllocations, jas...)
-				if len(jas) == 0 {
-					break
-				}
-				for _, ja := range jas {
-					s.TempAllocJob(pc, ja)
-				}
-			}
-		case LinearPrediction:
-			log.Printf("[UNS Scheduler] enter linear prediction fallback schedule")
-			jas := s.parallelSchedule(&scheduleParam{
-				pc:              pc,
-				provideTypeMode: s.allocationProvideTypeMode,
-				sampler:         sampler.NewFixSampler(1),
-				round:           1e9, // allocate all
-			})
-			jobAllocations = append(jobAllocations, jas...)
-		}
+		// 当执行一次调度后，仍然存在未分配的任务和加速器时，进入fallback调度模式
+		jobAllocations = append(jobAllocations, s.fallbackSchedule(originalPC, pc)...)
 	}
 	if len(jobAllocations) == 0 {
 		return nil
 	}
+	//for _, allocation := range jobAllocations {
+	//	if allocation.GetJobID() == "dd3a0a978475dfd449bdd136" {
+	//		log.Printf("")
+	//	}
+	//}
 	filteredJobAllocations := s.FilterScheduleAbleJobAllocations(jobAllocations, pc)
+	//for _, allocation := range filteredJobAllocations {
+	//	if allocation.GetJobID() == "dd3a0a978475dfd449bdd136" {
+	//		log.Printf("")
+	//	}
+	//}
 	return &eventobjs.SSUpdateAllocationsEvent{NewJobAllocations: filteredJobAllocations}
 }
 
-func benefitsSorter(data []*types.AllocContext) *utils.Sorter {
-	return &utils.Sorter{
-		LenFunc: func() int {
-			return len(data)
-		},
-		LessFunc: func(i, j int) bool {
-			if data[i].GetBenefit() == data[j].GetBenefit() {
-				c1 := data[i]
-				c2 := data[j]
-				return c1.NewJobAllocationsFingerPrint < c2.NewJobAllocationsFingerPrint
+func (s *Scheduler) fallbackSchedule(originalPC *partition.Context, pc *partition.Context) []*objects.JobAllocation {
+	switch s.FallbackMode {
+	case GreedyAllocation:
+		log.Printf("[UNS Scheduler] enter greedy allocation fallback schedule")
+		provideTypeMode := s.allocationProvideTypeMode | base.ProvideTypeOnlyUnoccupied
+		jas := s.parallelSchedule(&scheduleContext{
+			originalPC:      originalPC,
+			pc:              pc,
+			provideTypeMode: provideTypeMode,
+			sampler:         s.BenefitsSampler,
+			round:           1e9, // allocate all
+		})
+		return jas
+	case LoopAllocation:
+		count := 0
+		jobAllocations := make([]*objects.JobAllocation, 0)
+		for s.checkScheduleAble(pc) {
+			count++
+			log.Printf("[UNS Scheduler] enter loop fallback schedule, count = %d", count)
+			jas := s.parallelSchedule(&scheduleContext{
+				originalPC:      originalPC,
+				pc:              pc,
+				provideTypeMode: s.allocationProvideTypeMode,
+				sampler:         s.BenefitsSampler,
+				round:           s.MaxRound,
+			})
+			jobAllocations = append(jobAllocations, jas...)
+			if len(jas) == 0 {
+				break
 			}
-			return data[i].GetBenefit() > data[j].GetBenefit()
-		},
-		SwapFunc: func(i, j int) {
-			t := data[i]
-			data[i] = data[j]
-			data[j] = t
-		},
+			for _, ja := range jas {
+				s.TempAllocJob(pc, ja)
+			}
+		}
+		return jobAllocations
+	case LinearPrediction:
+		log.Printf("[UNS Scheduler] enter linear prediction fallback schedule")
+		jas := s.parallelSchedule(&scheduleContext{
+			originalPC:      originalPC,
+			pc:              pc,
+			provideTypeMode: s.allocationProvideTypeMode,
+			sampler:         sampler.NewFixSampler(1),
+			round:           1e9, // allocate all
+		})
+		return jas
+	default:
+		panic("Unsupported fallback mode.")
 	}
 }
 
 // 将收益从大到小排序
-func sortBenefits(data []*types.AllocContext) {
-	sorter := benefitsSorter(data)
-	if !sort.IsSorted(sorter) {
-		sort.Stable(sorter)
-		//sort.Sort(sorter)
-	}
+func (s *Scheduler) sortBenefits(schedulerContext *scheduleContext, data []*types.AllocContext) {
+	sort.SliceStable(data, func(i, j int) bool {
+		if s.ResourceEfficientMode && len(s.FilterScheduleAbleJobAllocations(data[i].NewJobAllocations, schedulerContext.pc)) > len(s.FilterScheduleAbleJobAllocations(data[j].NewJobAllocations, schedulerContext.pc)) {
+			return true
+		}
+		if data[i].GetBenefit() == data[j].GetBenefit() {
+			c1 := data[i]
+			c2 := data[j]
+			return c1.NewJobAllocationsFingerPrint < c2.NewJobAllocationsFingerPrint
+		}
+		return data[i].GetBenefit() > data[j].GetBenefit()
+	})
 }
 
 func (s *Scheduler) genJobAllocationFingerPrint(jobAllocation *objects.JobAllocation) string {
@@ -204,27 +214,26 @@ func (s *Scheduler) genJobAllocationsFingerPrint(jobAllocations []*objects.JobAl
 	return strings.Join(fingerPrints, "\n")
 }
 
-type scheduleParam struct {
+type scheduleContext struct {
+	originalPC      *partition.Context
 	pc              *partition.Context
 	provideTypeMode base.ProvideType
 	sampler         sampler.Sampler
 	round           int
 }
 
-func (s *Scheduler) parallelSchedule(param *scheduleParam) []*objects.JobAllocation {
-	//provideTypeMode := s.allocationProvideTypeMode
-	//if greedyAllocation {
-	//	provideTypeMode |= base.ProvideTypeOnlyUnoccupied
-	//}
+func (s *Scheduler) parallelSchedule(param *scheduleContext) []*objects.JobAllocation {
 	pc := param.pc
 	unallocatedJobs := pc.GetUnallocatedJobs()
 	unallocatedJobsCount := len(unallocatedJobs)
-	// Clone后将时间固定住
+	baseBenefit, baseStub := s.BenefitsCalculator.ByHistory(pc, pc.GetJobExecutionHistories())
 	acs := make([]*types.AllocContext, 0)
 	acs = append(acs, &types.AllocContext{
 		PC:                           pc,
 		Job:                          nil,
 		JobAllocation:                nil,
+		Benefit:                      baseBenefit,
+		BenefitStub:                  baseStub,
 		NewJobAllocations:            make([]*objects.JobAllocation, 0),
 		NewJobAllocationsFingerPrint: "",
 	})
@@ -233,7 +242,7 @@ func (s *Scheduler) parallelSchedule(param *scheduleParam) []*objects.JobAllocat
 	for round < param.round && round < unallocatedJobsCount {
 		round++
 		if time.Now().Sub(start) > s.MaxLatency {
-			log.Printf("[UNS Scheduler] exceeds MaxLatency, skip rest %d rounds.", s.MaxRound-round)
+			log.Printf("[UNS Scheduler] exceeds MaxLatency, skip rest %d rounds.", param.round-round+1)
 			break
 		}
 		// 在每一轮中，对所有基础的partitionContext，让所有未得到分配的任务，尝试它的所有放置可能，并获得一个benefit。
@@ -245,7 +254,7 @@ func (s *Scheduler) parallelSchedule(param *scheduleParam) []*objects.JobAllocat
 		for _, ac := range acs {
 			ac := ac
 			go func() {
-				r := s.predictACBenefits(ac, param.provideTypeMode)
+				r := s.predictACBenefits(param, ac)
 				mu.Lock()
 				defer mu.Unlock()
 				withBenefits = append(withBenefits, r...)
@@ -253,7 +262,7 @@ func (s *Scheduler) parallelSchedule(param *scheduleParam) []*objects.JobAllocat
 			}()
 		}
 		wg.Wait()
-		sortBenefits(withBenefits)
+		s.sortBenefits(param, withBenefits)
 		withBenefits = s.DeDuplicate(withBenefits)
 		withBenefits = s.FilterSameBenefitsByScore(withBenefits, s.MaximumSameBenefit)
 		withBenefits = param.sampler.Sample(withBenefits)
@@ -275,11 +284,6 @@ func (s *Scheduler) parallelSchedule(param *scheduleParam) []*objects.JobAllocat
 	}
 	bestAC := acs[0]
 	return bestAC.NewJobAllocations
-	//filteredJobAllocations := s.FilterScheduleAbleJobAllocations(bestAC.PC, pc)
-	//if len(filteredJobAllocations) == 0 {
-	//	return nil
-	//}
-	//return filteredJobAllocations
 }
 
 func (s *Scheduler) DeDuplicate(sorted []*types.AllocContext) []*types.AllocContext {
@@ -359,7 +363,7 @@ func (s *Scheduler) checkScheduleAble(pc *partition.Context) bool {
 	return true
 }
 
-func (s *Scheduler) predictACBenefits(ac *types.AllocContext, provideTypeMode base.ProvideType) []*types.AllocContext {
+func (s *Scheduler) predictACBenefits(scheduleContext *scheduleContext, ac *types.AllocContext) []*types.AllocContext {
 	pc := ac.PC
 	acs := make([]*types.AllocContext, 0)
 	basePredictResult := ac.PredictResult
@@ -376,63 +380,71 @@ func (s *Scheduler) predictACBenefits(ac *types.AllocContext, provideTypeMode ba
 			panic(reason)
 		}
 	}
-	_, baseBenefitsStub := s.BenefitsCalculator.Cal(pc, basePredictResult)
+	_, baseBenefitsStub := s.BenefitsCalculator.ByPredictIncrementally(pc, basePredictResult, ac.BenefitStub)
 	_, baseScoreStub := s.ScoreCalculator.GetScore(pc, pc.GetAllocationsSlice())
-	jobs := pc.GetUnallocatedJobs()
-	jobIDs := s.getSortedJobIDs(jobs)
 	accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
 	nodeID2TaskAllocations := s.GetNodeID2TaskAllocations(pc)
+	jobs := pc.GetUnallocatedJobs()
+	jobIDs := s.getSortedJobIDs(jobs)
 	for _, jobID := range jobIDs {
 		job := jobs[jobID]
-		possibleJobAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, provideTypeMode)
-		for _, jobAllocation := range possibleJobAllocations {
-			// 对于每个可能的分配，临时得将该分配结果赋予给partitionContext。
-			jobAllocation := jobAllocation
-			attemptAlloc := func() {
-				cancelAlloc := s.TempAllocJob(pc, jobAllocation)
-				defer cancelAlloc()
-				// 随后获取新的jobAllocation的所有相关的jobAllocations
-				//relatedJobAllocations := s.RelatedJobAllocations(pc, accID2SortedTaskAllocations, jobAllocation)
-				relatedJobAllocations := s.RelatedJobAllocationsByNodes(pc, nodeID2TaskAllocations, jobAllocation)
-				// 使用这些相关的jobAllocations，提高predict的计算速度。
-				//partialPredictResult, err := s.Predictor.Predict(pc, pc.GetAllocationsSlice())
-				partialPredictResult, err := s.Predictor.Predict(pc, relatedJobAllocations)
-				if err != nil {
-					if predictorinterfaces.IsMultiSpanNodesGangTasksError(err) || predictorinterfaces.IsSpaceSharingOutOfMemoryError(err) {
-						// 忽略显存溢出造成的问题和多分布式任务跨节点运行时共享节点的问题
-						return
+		//possibleJobAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, scheduleContext.provideTypeMode|base.ProvideTypeImmediateAllocation)
+		possibleJobAllocations := make([]*objects.JobAllocation, 0)
+		getPossibleAcs := func(possibleAllocations []*objects.JobAllocation) []*types.AllocContext {
+			possibleAcs := make([]*types.AllocContext, 0)
+			for _, jobAllocation := range possibleAllocations {
+				// 对于每个可能的分配，临时得将该分配结果赋予给partitionContext。
+				jobAllocation := jobAllocation
+				attemptAlloc := func() {
+					cancelAlloc := s.TempAllocJob(pc, jobAllocation)
+					defer cancelAlloc()
+					// 随后获取新的jobAllocation的所有相关的jobAllocations
+					relatedJobAllocations := s.RelatedJobAllocationsByNodes(pc, nodeID2TaskAllocations, jobAllocation)
+					// 使用这些相关的jobAllocations，提高predict的计算速度。
+					partialPredictResult, err := s.Predictor.Predict(pc, relatedJobAllocations)
+					if err != nil {
+						if predictorinterfaces.IsMultiSpanNodesGangTasksError(err) || predictorinterfaces.IsSpaceSharingOutOfMemoryError(err) {
+							// 忽略显存溢出造成的问题和多分布式任务跨节点运行时共享节点的问题
+							return
+						}
+						for _, m := range pc.GetAllocationsSlice() {
+							st, _ := utils.MarshalJsonPB(m)
+							log.Printf("%s", st)
+						}
+						log.Printf("[UNS Scheduler] find unproper job allocation, err=[%v]", err)
+						panic("fast fail")
 					}
-					for _, m := range pc.GetAllocationsSlice() {
-						st, _ := utils.MarshalJsonPB(m)
-						log.Printf("%s", st)
+					if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
+						s.MarkGangJobStartTime(jobAllocation, *partialPredictResult.GetResult(jobAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime())
 					}
-					log.Printf("[UNS Scheduler] find unproper job allocation, err=[%v]", err)
-					panic("fast fail")
+					benefit, stub := s.BenefitsCalculator.ByPredictIncrementally(pc, partialPredictResult, baseBenefitsStub)
+					jobAllocationsScore, _ := s.ScoreCalculator.GetScoreIncrementally(pc, []*objects.JobAllocation{jobAllocation}, baseScoreStub)
+					newJobAllocations := make([]*objects.JobAllocation, len(ac.NewJobAllocations), len(ac.NewJobAllocations)+1)
+					copy(newJobAllocations, ac.NewJobAllocations)
+					newJobAllocations = append(newJobAllocations, jobAllocation)
+					possibleAcs = append(possibleAcs, &types.AllocContext{
+						PC:                           pc,
+						Job:                          job,
+						JobAllocation:                jobAllocation,
+						NewJobAllocations:            newJobAllocations,
+						NewJobAllocationsFingerPrint: s.genJobAllocationsFingerPrint(newJobAllocations),
+						Benefit:                      benefit,
+						BenefitStub:                  stub,
+						Score:                        jobAllocationsScore,
+					})
 				}
-				if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
-					s.MarkGangJobStartTime(jobAllocation, *partialPredictResult.GetResult(jobAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime())
-				}
-				// 合并得到完整的predictResult。
-				// completePredictResult := basePredictResult.Combine(partialPredictResult)
-				benefit, _ := s.BenefitsCalculator.CalIncrementally(pc, partialPredictResult, baseBenefitsStub)
-				jobAllocationsScore, _ := s.ScoreCalculator.GetScoreIncrementally(pc, []*objects.JobAllocation{jobAllocation}, baseScoreStub)
-				newJobAllocations := make([]*objects.JobAllocation, len(ac.NewJobAllocations), len(ac.NewJobAllocations)+1)
-				copy(newJobAllocations, ac.NewJobAllocations)
-				newJobAllocations = append(newJobAllocations, jobAllocation)
-				acs = append(acs, &types.AllocContext{
-					PC:                           pc,
-					Job:                          job,
-					JobAllocation:                jobAllocation,
-					NewJobAllocations:            newJobAllocations,
-					NewJobAllocationsFingerPrint: s.genJobAllocationsFingerPrint(newJobAllocations),
-					Benefit:                      benefit,
-					Score:                        jobAllocationsScore,
-				})
+				attemptAlloc()
 			}
-			attemptAlloc()
+			return possibleAcs
 		}
+		possibleAcs := getPossibleAcs(possibleJobAllocations)
+		if len(possibleAcs) == 0 {
+			// 当采取ImmediateAllocation无法得到分配结果时，采取更远视的分配策略获取possibleJobAllocations
+			possibleAcs = getPossibleAcs(s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, scheduleContext.provideTypeMode))
+		}
+		acs = append(acs, possibleAcs...)
 	}
-	sortBenefits(acs)
+	s.sortBenefits(scheduleContext, acs)
 	acs = s.FilterSameBenefitsByScore(acs, s.MaximumSameBenefit)
 	acs = s.BenefitsSampler.Sample(acs)
 	return acs
