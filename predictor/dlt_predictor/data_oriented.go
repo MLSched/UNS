@@ -1,6 +1,7 @@
 package dlt_predictor
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/configs"
 	"UNS/pb_gen/objects"
 	"UNS/utils"
@@ -40,10 +41,10 @@ func (p *DataOrientedPredictor) loadData() {
 	p.data = data
 }
 
-func (p *DataOrientedPredictor) getDataParallelMiniBatchDurationNanoSecond(ctx *PredictSessionContext, allocation *objects.JobAllocation) int64 {
+func (p *DataOrientedPredictor) getDataParallelMiniBatchDurationNanoSecond(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) int64 {
 	acceleratorType := func() string {
 		acceleratorID := allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID()
-		return ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorID].GetAcceleratorMetaInfo().GetBriefType()
+		return ctx.partitionContext.MetalViews.AcceleratorID2Accelerator[acceleratorID].GetAcceleratorMetaInfo().GetBriefType()
 	}()
 	d := p.getDLTJobData(allocation.GetJobID())
 	duration := p.getMiniBatchDurationNanoSecond(ctx, allocation.GetJobID(), acceleratorType)
@@ -55,7 +56,7 @@ func (p *DataOrientedPredictor) getDataParallelMiniBatchDurationNanoSecond(ctx *
 	return int64(float64(duration) * consolidationPenalty)
 }
 
-func (p *DataOrientedPredictor) getDataParallelConsolidationPenalty(ctx *PredictSessionContext, allocation *objects.JobAllocation) float64 {
+func (p *DataOrientedPredictor) getDataParallelConsolidationPenalty(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) float64 {
 	consolidationLevel := p.getDataParallelConsolidationLevel(ctx, allocation)
 	d := p.getDLTJobData(allocation.GetJobID())
 	return float64(d.GetConsolidationLevel2Penalties()[int64(consolidationLevel)])

@@ -34,7 +34,7 @@ type PredictSessionContext struct {
 	partitionContext          *partition.Context
 	endNanoTime               int64
 	result                    *base.PredictResult
-	acceleratorID2Allocations map[string][]*objects.JobAllocation
+	acceleratorID2Allocations map[string][]*pb_gen.JobAllocation
 }
 
 func NewDLTBasePredictor(impl DLTPredictorTemplate) *DLTBasePredictor {
@@ -49,7 +49,7 @@ func NewDLTBasePredictor(impl DLTPredictorTemplate) *DLTBasePredictor {
 	}
 }
 
-func (p *DLTBasePredictor) PrerequisiteCheck(partitionContext *partition.Context, allocations []*objects.JobAllocation) error {
+func (p *DLTBasePredictor) PrerequisiteCheck(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) error {
 	if err := p.Base.PrerequisiteCheck(partitionContext, allocations); err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (p *DLTBasePredictor) PrerequisiteCheck(partitionContext *partition.Context
 }
 
 // Predict 预测全部allocations的开始时间和结束时间。由于只支持Single和Gang类型的时间预测，所以预测结果仅包含单一数字。
-func (p *DLTBasePredictor) Predict(partitionContext *partition.Context, allocations []*objects.JobAllocation) (interfaces.PredictResult, error) {
+func (p *DLTBasePredictor) Predict(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) (interfaces.PredictResult, error) {
 	r, err := p.PredictByEndTime(partitionContext, allocations, math.MaxInt64)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (p *DLTBasePredictor) Predict(partitionContext *partition.Context, allocati
 	return r, nil
 }
 
-func (p *DLTBasePredictor) PredictByEndTime(partitionContext *partition.Context, allocations []*objects.JobAllocation, endNanoTime int64) (interfaces.PredictResult, error) {
+func (p *DLTBasePredictor) PredictByEndTime(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation, endNanoTime int64) (interfaces.PredictResult, error) {
 	if err := p.PrerequisiteCheck(partitionContext, allocations); err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (p *DLTBasePredictor) PredictByEndTime(partitionContext *partition.Context,
 	return ctx.result, nil
 }
 
-func (p *DLTBasePredictor) PredictSolely(partitionContext *partition.Context, allocations []*objects.JobAllocation) (interfaces.PredictResult, error) {
+func (p *DLTBasePredictor) PredictSolely(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) (interfaces.PredictResult, error) {
 	ctx := p.buildPredictSessionContext(partitionContext, allocations, math.MaxInt64)
 	for _, jobAllocation := range allocations {
 		start := jobAllocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond()
@@ -103,7 +103,7 @@ func (p *DLTBasePredictor) PredictSolely(partitionContext *partition.Context, al
 		p.updateJobStartExecutionTime(ctx, jobAllocation, start.GetValue())
 	}
 	for _, jobAllocation := range allocations {
-		miniBatchDurations, err := p.getSpaceSharingMiniBatchDuration(ctx, []*objects.JobAllocation{jobAllocation})
+		miniBatchDurations, err := p.getSpaceSharingMiniBatchDuration(ctx, []*pb_gen.JobAllocation{jobAllocation})
 		if err != nil {
 			return nil, err
 		}
@@ -121,15 +121,15 @@ func (p *DLTBasePredictor) PredictSolely(partitionContext *partition.Context, al
 	return ctx.result, nil
 }
 
-func (p *DLTBasePredictor) buildPredictSessionContext(partitionContext *partition.Context, allocations []*objects.JobAllocation, endNanoTime int64) *PredictSessionContext {
+func (p *DLTBasePredictor) buildPredictSessionContext(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation, endNanoTime int64) *PredictSessionContext {
 	result := base.NewPredictResult()
-	acceleratorID2Allocations := make(map[string][]*objects.JobAllocation)
+	acceleratorID2Allocations := make(map[string][]*pb_gen.JobAllocation)
 	for _, allocation := range allocations {
 		taskAllocations := allocation.GetTaskAllocations()
 		for _, taskAllocation := range taskAllocations {
 			accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
 			if _, ok := acceleratorID2Allocations[accID]; !ok {
-				acceleratorID2Allocations[accID] = make([]*objects.JobAllocation, 0)
+				acceleratorID2Allocations[accID] = make([]*pb_gen.JobAllocation, 0)
 			}
 			acceleratorID2Allocations[accID] = append(acceleratorID2Allocations[accID], allocation)
 		}
@@ -142,11 +142,11 @@ func (p *DLTBasePredictor) buildPredictSessionContext(partitionContext *partitio
 	}
 }
 
-func (p *DLTBasePredictor) isAllocationPredicted(ctx *PredictSessionContext, allocation *objects.JobAllocation) bool {
+func (p *DLTBasePredictor) isAllocationPredicted(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) bool {
 	return ctx.result.IsResultComplete(allocation.GetTaskAllocations()[0])
 }
 
-func (p *DLTBasePredictor) extractStartTime(allocation *objects.JobAllocation) *int64 {
+func (p *DLTBasePredictor) extractStartTime(allocation *pb_gen.JobAllocation) *int64 {
 	t := p.extractRepresentTaskAllocation(allocation).GetStartExecutionTimeNanoSecond()
 	if t != nil {
 		v := t.GetValue()
@@ -155,13 +155,13 @@ func (p *DLTBasePredictor) extractStartTime(allocation *objects.JobAllocation) *
 	return nil
 }
 
-func (p *DLTBasePredictor) extractRepresentTaskAllocation(allocation *objects.JobAllocation) *objects.TaskAllocation {
+func (p *DLTBasePredictor) extractRepresentTaskAllocation(allocation *pb_gen.JobAllocation) *objects.TaskAllocation {
 	return allocation.GetTaskAllocations()[0]
 }
 
-func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *PredictSessionContext, allocations []*objects.JobAllocation) error {
+func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *PredictSessionContext, allocations []*pb_gen.JobAllocation) error {
 	// firstly, predict jobs with TaskGroupType of 'single'
-	startExecutionTimeKnownAllocation := make([]*objects.JobAllocation, 0, len(allocations))
+	startExecutionTimeKnownAllocation := make([]*pb_gen.JobAllocation, 0, len(allocations))
 	for _, allocation := range allocations {
 		taskAllocation := p.extractRepresentTaskAllocation(allocation)
 		if taskAllocation.GetStartExecutionTimeNanoSecond() == nil && p.getStartExecutionNanoTimeInSession(ctx, allocation) == nil {
@@ -183,7 +183,7 @@ func (p *DLTBasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Pr
 	return nil
 }
 
-func (p *DLTBasePredictor) markStartExecutionTime(ctx *PredictSessionContext, allocations []*objects.JobAllocation) bool {
+func (p *DLTBasePredictor) markStartExecutionTime(ctx *PredictSessionContext, allocations []*pb_gen.JobAllocation) bool {
 	marked := false
 nextAlloc:
 	for _, allocation := range allocations {
@@ -243,16 +243,16 @@ func (p *DLTBasePredictor) getGangTaskGroupDLTExtra(ctx *PredictSessionContext, 
 // 为什么不能直接用allocation.GetStartExecutionNanoTime？
 // 因为placeholder任务的存在，它们不知道自己什么时候开始，我们需要将其他全部任务的结束时间算出后，才能计算他们的开始执行时间。
 // 而allocation在Predict中是只读的，我们需要另外的数据结构存储它们临时的开始时间。
-func (p *DLTBasePredictor) getStartExecutionNanoTimeInSession(ctx *PredictSessionContext, allocation *objects.JobAllocation) *int64 {
+func (p *DLTBasePredictor) getStartExecutionNanoTimeInSession(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) *int64 {
 	r := ctx.result.GetResult(p.extractRepresentTaskAllocation(allocation))
 	return r.GetStartExecutionNanoTime()
 }
 
-func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContext, allocations []*objects.JobAllocation) (map[*objects.JobAllocation]int64, error) {
+func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContext, allocations []*pb_gen.JobAllocation) (map[*pb_gen.JobAllocation]int64, error) {
 	if len(allocations) == 0 {
-		return map[*objects.JobAllocation]int64{}, nil
+		return map[*pb_gen.JobAllocation]int64{}, nil
 	}
-	startNanoTime2Allocations := map[int64][]*objects.JobAllocation{}
+	startNanoTime2Allocations := map[int64][]*pb_gen.JobAllocation{}
 	sortedStartTime := make([]int64, 0, len(allocations))
 	jobID2RemainingMiniBatches := make(map[string]float64)
 	for _, allocation := range allocations {
@@ -260,7 +260,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 		startNanoTime := *startNanoTimePtr
 		sortedStartTime = append(sortedStartTime, startNanoTime)
 		if _, ok := startNanoTime2Allocations[startNanoTime]; !ok {
-			startNanoTime2Allocations[startNanoTime] = make([]*objects.JobAllocation, 0, 1)
+			startNanoTime2Allocations[startNanoTime] = make([]*pb_gen.JobAllocation, 0, 1)
 		}
 		startNanoTime2Allocations[startNanoTime] = append(startNanoTime2Allocations[startNanoTime], allocation)
 		remainingMiniBatches := float64(p.impl.getJobTotalMiniBatches(ctx, allocation.GetJobID()))
@@ -268,7 +268,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 		jobID2RemainingMiniBatches[allocation.GetJobID()] = remainingMiniBatches
 	}
 	utils.SortInt64(sortedStartTime)
-	runningAllocations := make(map[string]*objects.JobAllocation)
+	runningAllocations := make(map[string]*pb_gen.JobAllocation)
 	for _, allocation := range startNanoTime2Allocations[sortedStartTime[0]] {
 		runningAllocations[allocation.GetJobID()] = allocation
 	}
@@ -278,9 +278,9 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 	}
 	nextStartTimeIdx := 1
 
-	result := make(map[*objects.JobAllocation]int64)
-	getSpaceSharedAllocations := func(runningAllocation *objects.JobAllocation) []*objects.JobAllocation {
-		spaceSharedRunningAllocationsMap := make(map[string]*objects.JobAllocation)
+	result := make(map[*pb_gen.JobAllocation]int64)
+	getSpaceSharedAllocations := func(runningAllocation *pb_gen.JobAllocation) []*pb_gen.JobAllocation {
+		spaceSharedRunningAllocationsMap := make(map[string]*pb_gen.JobAllocation)
 		acceleratorIDs := p.getAllocatedAcceleratorIDs(ctx, runningAllocation)
 		for _, acceleratorID := range acceleratorIDs {
 			acs := ctx.acceleratorID2Allocations[acceleratorID]
@@ -290,7 +290,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 				}
 			}
 		}
-		spaceSharedRunningAllocations := make([]*objects.JobAllocation, 0, len(spaceSharedRunningAllocationsMap))
+		spaceSharedRunningAllocations := make([]*pb_gen.JobAllocation, 0, len(spaceSharedRunningAllocationsMap))
 		for _, a := range spaceSharedRunningAllocationsMap {
 			spaceSharedRunningAllocations = append(spaceSharedRunningAllocations, a)
 		}
@@ -339,7 +339,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 			return result, nil
 		}
 		passDurationForRunningAllocations := func(currTime int64, duration int64) {
-			resultRunningAllocations := make(map[string]*objects.JobAllocation)
+			resultRunningAllocations := make(map[string]*pb_gen.JobAllocation)
 			for _, allocation := range runningAllocations {
 				duration2Finish := int64(math.Ceil(jobID2RemainingMiniBatches[allocation.GetJobID()] * float64(jobID2MiniBatchDuration[allocation.GetJobID()])))
 				if duration >= duration2Finish {
@@ -380,7 +380,7 @@ func (p *DLTBasePredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, jo
 	panic("template method.")
 }
 
-func (p *DLTBasePredictor) getSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, allocations []*objects.JobAllocation) (map[string]int64, error) {
+func (p *DLTBasePredictor) getSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, allocations []*pb_gen.JobAllocation) (map[string]int64, error) {
 	if len(allocations) > 2 {
 		log.Printf("space sharing failed.")
 		for _, a := range allocations {
@@ -391,10 +391,10 @@ func (p *DLTBasePredictor) getSpaceSharingMiniBatchDuration(ctx *PredictSessionC
 		//return interfaces.NonPlaceholderUnsetStartTimeError.Set(reason)
 		return nil, interfaces.SpaceSharingMoreThanTwoError.Set(reason)
 	}
-	getTaskGroupType := func(allocation *objects.JobAllocation) objects.TaskGroupType {
+	getTaskGroupType := func(allocation *pb_gen.JobAllocation) objects.TaskGroupType {
 		return p.getTaskGroup(ctx, allocation.GetJobID()).GetTaskGroupType()
 	}
-	getJobIDs := func(allocations []*objects.JobAllocation) []string {
+	getJobIDs := func(allocations []*pb_gen.JobAllocation) []string {
 		jobIDs := make([]string, 0, len(allocations))
 		for _, allocation := range allocations {
 			jobIDs = append(jobIDs, allocation.GetJobID())
@@ -422,7 +422,7 @@ func (p *DLTBasePredictor) getSpaceSharingMiniBatchDuration(ctx *PredictSessionC
 	if taskGroupType == objects.TaskGroupType_taskGroupTypeSingle {
 		return p.impl.getSingleTaskSpaceSharingMiniBatchDuration(ctx, acceleratorIDs[0], getJobIDs(allocations)), nil
 	} else if taskGroupType == objects.TaskGroupType_taskGroupTypeGang {
-		getGangType := func(allocation *objects.JobAllocation) objects.DLTGangType {
+		getGangType := func(allocation *pb_gen.JobAllocation) objects.DLTGangType {
 			gangTaskGroupExtra, err := p.getGangTaskGroupDLTExtra(ctx, allocations[0].GetJobID())
 			if err != nil {
 				return objects.DLTGangType_DLTGangTypeUnknown
@@ -460,7 +460,7 @@ func (p *DLTBasePredictor) getTaskGroup(ctx *PredictSessionContext, jobID string
 	return ctx.partitionContext.GetUnfinishedJob(jobID).GetTaskGroup()
 }
 
-func (p *DLTBasePredictor) getAllocatedAcceleratorIDs(ctx *PredictSessionContext, allocation *objects.JobAllocation) []string {
+func (p *DLTBasePredictor) getAllocatedAcceleratorIDs(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) []string {
 	return pb_gen.GetAllocatedAcceleratorIDs(allocation)
 }
 
@@ -477,7 +477,7 @@ func (p *DLTBasePredictor) getJobs(ctx *PredictSessionContext, jobIDs []string) 
 }
 
 func (p *DLTBasePredictor) getAccelerator(ctx *PredictSessionContext, acceleratorID string) *objects.Accelerator {
-	return ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorID]
+	return ctx.partitionContext.MetalViews.AcceleratorID2Accelerator[acceleratorID]
 }
 
 func (p *DLTBasePredictor) getAccelerators(ctx *PredictSessionContext, acceleratorIDs []string) []*objects.Accelerator {
@@ -488,7 +488,7 @@ func (p *DLTBasePredictor) getAccelerators(ctx *PredictSessionContext, accelerat
 	return accelerators
 }
 
-func (p *DLTBasePredictor) getDataParallelConsolidationLevel(ctx *PredictSessionContext, allocation *objects.JobAllocation) configs.ConsolidationLevel {
+func (p *DLTBasePredictor) getDataParallelConsolidationLevel(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) configs.ConsolidationLevel {
 	nodeIDs := make(map[string]bool)
 	CPUSocketIDs := make(map[string]bool)
 
@@ -498,7 +498,7 @@ nextAlloc:
 		nodeIDs[nodeID] = true
 		acceleratorAllocation := taskAllocation.GetAcceleratorAllocation()
 		accID := acceleratorAllocation.GetAcceleratorID()
-		node := ctx.partitionContext.View.NodeID2Node[nodeID]
+		node := ctx.partitionContext.MetalViews.NodeID2Node[nodeID]
 		for _, CPUSocket := range node.GetCPUSockets() {
 			for _, nodeAccelerator := range CPUSocket.GetAccelerators() {
 				if nodeAccelerator.GetAcceleratorID() == accID {
@@ -534,7 +534,6 @@ func (p *DLTBasePredictor) checkAcceleratorMemoryCapacity(ctx *PredictSessionCon
 			bytes := p.impl.getMaximumAcceleratorMemoryCostBytes(ctx, jobID)
 			if bytes > remainingBytes {
 				reason := fmt.Sprintf("DLTBasePredictor checkAcceleratorMemoryCapacity accelerator memory not enough, accelerator type is %s", t)
-				log.Printf(reason)
 				return interfaces.SpaceSharingOutOfMemoryError.Set(reason)
 			}
 			remainingBytes -= bytes
@@ -543,19 +542,19 @@ func (p *DLTBasePredictor) checkAcceleratorMemoryCapacity(ctx *PredictSessionCon
 	return nil
 }
 
-func (p *DLTBasePredictor) updateJobStartExecutionTime(ctx *PredictSessionContext, jobAllocation *objects.JobAllocation, value int64) {
+func (p *DLTBasePredictor) updateJobStartExecutionTime(ctx *PredictSessionContext, jobAllocation *pb_gen.JobAllocation, value int64) {
 	p.rangeAllTaskAllocations(jobAllocation, func(taskAllocation *objects.TaskAllocation) {
 		ctx.result.UpdateStartExecutionTime(taskAllocation, value)
 	})
 }
 
-func (p *DLTBasePredictor) updateJobFinishTime(ctx *PredictSessionContext, jobAllocation *objects.JobAllocation, value int64) {
+func (p *DLTBasePredictor) updateJobFinishTime(ctx *PredictSessionContext, jobAllocation *pb_gen.JobAllocation, value int64) {
 	p.rangeAllTaskAllocations(jobAllocation, func(taskAllocation *objects.TaskAllocation) {
 		ctx.result.UpdateFinishTime(taskAllocation, value)
 	})
 }
 
-func (p *DLTBasePredictor) rangeAllTaskAllocations(jobAllocation *objects.JobAllocation, do func(taskAllocation *objects.TaskAllocation)) {
+func (p *DLTBasePredictor) rangeAllTaskAllocations(jobAllocation *pb_gen.JobAllocation, do func(taskAllocation *objects.TaskAllocation)) {
 	for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
 		do(taskAllocation)
 	}
@@ -564,7 +563,7 @@ func (p *DLTBasePredictor) rangeAllTaskAllocations(jobAllocation *objects.JobAll
 // checkRunningAllocations 检查同时运行的allocation是否合法。
 // 目前主要检查的是：若当有分布式的allocation，且它们占用了不止一个节点时，
 // 则不允许它们共享同一个节点：理由是，当多个分布式任务占用同一个节点时，它们的网络带宽会造成arbitrary的性能下降
-func (p *DLTBasePredictor) checkRunningAllocations(ctx *PredictSessionContext, runningAllocations map[string]*objects.JobAllocation) error {
+func (p *DLTBasePredictor) checkRunningAllocations(ctx *PredictSessionContext, runningAllocations map[string]*pb_gen.JobAllocation) error {
 	spanNodesAllocationsNodeIDs := make(map[string]bool, 0)
 	for _, allocation := range runningAllocations {
 		if len(allocation.GetTaskAllocations()) <= 1 {

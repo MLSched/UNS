@@ -1,6 +1,7 @@
 package base
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/objects"
 	"UNS/predictor/interfaces"
 	"UNS/schedulers/partition"
@@ -32,7 +33,7 @@ func New(SupportJobTypes []objects.JobType, SupportTaskGroupTypes []objects.Task
 	}
 }
 
-func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocations []*objects.JobAllocation) error {
+func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) error {
 	for _, allocation := range allocations {
 		job := partitionContext.GetUnfinishedJob(allocation.GetJobID())
 		if !p.SupportJobTypes[job.GetJobType()] {

@@ -56,7 +56,6 @@ message SJFSchedulerConfiguration {
   int64 intervalNano = 4;
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
-  bool nonSpaceSharing = 7;
 }
 
 message EDFSchedulerConfiguration {
@@ -66,7 +65,6 @@ message EDFSchedulerConfiguration {
   int64 intervalNano = 4;
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
-  bool nonSpaceSharing = 7;
 }
 
 message HydraSchedulerConfiguration {

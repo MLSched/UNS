@@ -1,6 +1,7 @@
 package partition
 
 import (
+	"UNS/pb_gen"
 	eventobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
 	"errors"
@@ -13,11 +14,12 @@ import (
 )
 
 type Context struct {
-	Meta *objects.Partition
-	View *View
-	mu   *sync.RWMutex
+	Meta            *objects.Partition
+	MetalViews      *MetalViews
+	AllocationViews *AllocationViews
+	mu              *sync.RWMutex
 
-	Allocations    map[string]*objects.JobAllocation
+	Allocations    map[string]*pb_gen.JobAllocation
 	UnfinishedJobs map[string]*objects.Job
 	FinishedJobs   map[string]*objects.Job
 
@@ -28,7 +30,7 @@ type Context struct {
 	Time *int64
 }
 
-type View struct {
+type MetalViews struct {
 	NodeID2Node               map[string]*objects.Node
 	NodeID2Accelerators       map[string][]*objects.Accelerator
 	AcceleratorID2Accelerator map[string]*objects.Accelerator
@@ -37,24 +39,29 @@ type View struct {
 	AcceleratorIDs            []string
 }
 
+type AllocationViews struct {
+	UnallocatedAcceleratorIDs map[string]bool
+	UnallocatedJobs           map[string]*objects.Job
+}
+
 func Build(partition *objects.Partition) (*Context, error) {
 	ctx := &Context{
 		Meta:                    partition,
 		mu:                      &sync.RWMutex{},
 		Util:                    &Util{},
-		Allocations:             make(map[string]*objects.JobAllocation),
+		Allocations:             make(map[string]*pb_gen.JobAllocation),
 		UnfinishedJobs:          make(map[string]*objects.Job),
 		FinishedJobs:            make(map[string]*objects.Job),
 		ExecutionHistoryManager: NewExecutionHistoryManager(),
 	}
-	ctx.refreshView()
+	ctx.refreshMetalViews()
 	return ctx, nil
 }
 
-func (c *Context) refreshView() {
+func (c *Context) refreshMetalViews() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.View = &View{
+	c.MetalViews = &MetalViews{
 		NodeID2Node:               make(map[string]*objects.Node),
 		NodeID2Accelerators:       make(map[string][]*objects.Accelerator),
 		AcceleratorID2Accelerator: make(map[string]*objects.Accelerator),
@@ -63,7 +70,7 @@ func (c *Context) refreshView() {
 		AcceleratorIDs:            make([]string, 0),
 	}
 	for _, node := range c.Meta.GetNodes() {
-		c.View.NodeID2Node[node.GetNodeID()] = node
+		c.MetalViews.NodeID2Node[node.GetNodeID()] = node
 		accelerators := make([]*objects.Accelerator, 0)
 		for _, CPUSocket := range node.GetCPUSockets() {
 			for _, accelerator := range CPUSocket.GetAccelerators() {
@@ -71,20 +78,23 @@ func (c *Context) refreshView() {
 			}
 			//accelerators = append(accelerators, CPUSocket.GetAccelerators()...)
 			for _, accelerator := range CPUSocket.GetAccelerators() {
-				c.View.AcceleratorID2Accelerator[accelerator.GetAcceleratorID()] = accelerator
-				c.View.AcceleratorID2NodeID[accelerator.GetAcceleratorID()] = node.GetNodeID()
-				c.View.AcceleratorID2SocketID[accelerator.GetAcceleratorID()] = CPUSocket.GetCPUSocketID()
-				c.View.AcceleratorIDs = append(c.View.AcceleratorIDs, accelerator.GetAcceleratorID())
+				c.MetalViews.AcceleratorID2Accelerator[accelerator.GetAcceleratorID()] = accelerator
+				c.MetalViews.AcceleratorID2NodeID[accelerator.GetAcceleratorID()] = node.GetNodeID()
+				c.MetalViews.AcceleratorID2SocketID[accelerator.GetAcceleratorID()] = CPUSocket.GetCPUSocketID()
+				c.MetalViews.AcceleratorIDs = append(c.MetalViews.AcceleratorIDs, accelerator.GetAcceleratorID())
 			}
 		}
-		c.View.NodeID2Accelerators[node.GetNodeID()] = accelerators
+		c.MetalViews.NodeID2Accelerators[node.GetNodeID()] = accelerators
 	}
-	sort.Strings(c.View.AcceleratorIDs)
+	sort.Strings(c.MetalViews.AcceleratorIDs)
 }
 
 func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
+	defer func() {
+		c.RefreshAllocationViews()
+		c.mu.Unlock()
+	}()
 	c.updateCurrentTime(eo.GetCurrentNanoTime())
 	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {
 		jobID := updatedJobAllocation.GetJobID()
@@ -105,7 +115,7 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 	}
 	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {
 		jobID := updatedJobAllocation.GetJobID()
-		c.Allocations[jobID] = updatedJobAllocation
+		c.Allocations[jobID] = pb_gen.WrapJobAllocation(updatedJobAllocation)
 	}
 	c.ExecutionHistoryManager.Add(eo.GetJobExecutionHistories()...)
 	return nil
@@ -113,7 +123,10 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 
 func (c *Context) UpdateJobs(eo *eventobjs.RMUpdateJobsEvent) error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
+	defer func() {
+		c.RefreshAllocationViews()
+		c.mu.Unlock()
+	}()
 	c.updateCurrentTime(eo.GetCurrentNanoTime())
 	for _, job := range eo.GetNewJobs() {
 		if _, duplicated := c.UnfinishedJobs[job.GetJobID()]; duplicated {
@@ -184,16 +197,18 @@ func (c *Context) Clone(cloneAllocations bool) *Context {
 					Placeholder:                  taskAllocation.GetPlaceholder(),
 				})
 			}
-			cloned.Allocations[jobID] = &objects.JobAllocation{
-				JobID:             allocation.GetJobID(),
-				ResourceManagerID: allocation.GetResourceManagerID(),
-				PartitionID:       allocation.GetPartitionID(),
-				TaskAllocations:   clonedTaskAllocations,
-				Extra:             allocation.GetExtra(),
+			cloned.Allocations[jobID] = &pb_gen.JobAllocation{
+				JobAllocation: &objects.JobAllocation{
+					JobID:             allocation.GetJobID(),
+					ResourceManagerID: allocation.GetResourceManagerID(),
+					PartitionID:       allocation.GetPartitionID(),
+					TaskAllocations:   clonedTaskAllocations,
+					Extra:             allocation.GetExtra(),
+				},
 			}
 		}
 	} else {
-		cloned.Allocations = make(map[string]*objects.JobAllocation)
+		cloned.Allocations = make(map[string]*pb_gen.JobAllocation)
 		for jobID, allocation := range c.Allocations {
 			cloned.Allocations[jobID] = allocation
 		}
@@ -210,6 +225,7 @@ func (c *Context) Clone(cloneAllocations bool) *Context {
 	}
 	cloned.ExecutionHistoryManager = c.ExecutionHistoryManager.Clone()
 	cloned.Time = c.Time
+	cloned.RefreshAllocationViews()
 	return cloned
 }
 
@@ -229,19 +245,17 @@ func (c *Context) GetJob(jobID string) *objects.Job {
 	}
 }
 
-func (c *Context) GetAllocationsSlice() []*objects.JobAllocation {
+func (c *Context) GetAllocationsSlice() []*pb_gen.JobAllocation {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	allocations := make([]*objects.JobAllocation, 0, len(c.Allocations))
+	allocations := make([]*pb_gen.JobAllocation, 0, len(c.Allocations))
 	for _, allocation := range c.Allocations {
 		allocations = append(allocations, allocation)
 	}
 	return allocations
 }
 
-func (c *Context) GetUnallocatedJobs() map[string]*objects.Job {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (c *Context) getUnallocatedJobs() map[string]*objects.Job {
 	jobs := make(map[string]*objects.Job)
 	for jobID, job := range c.UnfinishedJobs {
 		jobs[jobID] = job
@@ -252,9 +266,9 @@ func (c *Context) GetUnallocatedJobs() map[string]*objects.Job {
 	return jobs
 }
 
-func (c *Context) GetUnallocatedAcceleratorIDs() map[string]bool {
+func (c *Context) getUnallocatedAcceleratorIDs() map[string]bool {
 	totalAcceleratorIDs := make(map[string]bool)
-	for accID := range c.View.AcceleratorID2Accelerator {
+	for accID := range c.MetalViews.AcceleratorID2Accelerator {
 		totalAcceleratorIDs[accID] = true
 	}
 	for _, jobAllocation := range c.Allocations {
@@ -267,4 +281,34 @@ func (c *Context) GetUnallocatedAcceleratorIDs() map[string]bool {
 
 func (c *Context) GetJobExecutionHistories() map[string]*objects.JobExecutionHistory {
 	return c.ExecutionHistoryManager.GetAll()
+}
+
+func (c *Context) RefreshAllocationViews() {
+	c.AllocationViews = &AllocationViews{
+		UnallocatedAcceleratorIDs: nil,
+		UnallocatedJobs:           nil,
+	}
+	c.AllocationViews.UnallocatedAcceleratorIDs = c.getUnallocatedAcceleratorIDs()
+	c.AllocationViews.UnallocatedJobs = c.getUnallocatedJobs()
+}
+
+func (c *Context) TempAllocJob(allocation *pb_gen.JobAllocation) func() {
+	c.Allocations[allocation.GetJobID()] = allocation
+	job := c.AllocationViews.UnallocatedJobs[allocation.GetJobID()]
+	delete(c.AllocationViews.UnallocatedJobs, allocation.GetJobID())
+	deletedUnallocatedAccIDKeys := make(map[string]bool)
+	for _, taskAllocation := range allocation.GetTaskAllocations() {
+		accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
+		if _, ok := c.AllocationViews.UnallocatedAcceleratorIDs[accID]; ok {
+			deletedUnallocatedAccIDKeys[accID] = true
+			delete(c.AllocationViews.UnallocatedAcceleratorIDs, accID)
+		}
+	}
+	return func() {
+		delete(c.Allocations, allocation.GetJobID())
+		c.AllocationViews.UnallocatedJobs[allocation.GetJobID()] = job
+		for key := range deletedUnallocatedAccIDKeys {
+			c.AllocationViews.UnallocatedAcceleratorIDs[key] = true
+		}
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"UNS/pb_gen/objects"
 	"UNS/schedulers/partition"
 	"log"
+	"math"
 )
 
 type Metrics struct {
@@ -55,7 +56,7 @@ func (m *Metrics) CalTotalVioDeadline(eh *partition.ExecutionHistoryManager) {
 	eh.Range(func(history *objects.JobExecutionHistory) {
 		job := m.FinishedJobs[history.GetJobID()]
 		finish := history.GetTaskExecutionHistories()[0].GetStartExecutionTimeNanoSecond() + history.GetTaskExecutionHistories()[0].GetDurationNanoSecond()
-		if job.GetDeadline() == 0 {
+		if job.GetDeadline() == math.MaxInt64 {
 			return
 		}
 		totalWithDeadlineCount++

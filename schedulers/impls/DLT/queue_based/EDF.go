@@ -76,9 +76,10 @@ func (s *EDFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) Jo
 	r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
 	job := pc.GetUnfinishedJob(possibleAllocation.GetJobID())
 	finishTime := *r.GetFinishNanoTime()
-	//if job.GetDeadline() == math.MaxInt64 {
-	//	return -JobAllocationScore(math.Inf(-1))
-	//}
+	if job.GetDeadline() == math.MaxInt64 {
+		// 当没有deadline时，结束时间越早，分越高
+		return -JobAllocationScore(finishTime)
+	}
 	vioDeadline := finishTime - job.GetDeadline()
 	return -JobAllocationScore(vioDeadline)
 }

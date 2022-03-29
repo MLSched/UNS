@@ -1,6 +1,7 @@
 package hydra
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/configs"
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
@@ -41,7 +42,7 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 	pc := s.GetPartitionContext().Clone(false)
 	t := pc.Now()
 	pc.Time = &t
-	if len(pc.GetUnallocatedJobs()) == 0 {
+	if len(pc.AllocationViews.UnallocatedJobs) == 0 {
 		return nil
 	}
 
@@ -49,8 +50,8 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 	scheduler := initHydraBABHeuristicScheduler(10000 * time.Millisecond)
 	scheduler.SetCluster(ctx.Cluster)
 	scheduler.OnScheduleEvent(types.NewScheduleEventJobsArrived(ctx.UnallocatedJobMetas))
-	unallocatedJobs := ctx.PC.GetUnallocatedJobs()
-	newJobAllocations := make([]*objects.JobAllocation, 0)
+	unallocatedJobs := ctx.PC.AllocationViews.UnallocatedJobs
+	newJobAllocations := make([]*pb_gen.JobAllocation, 0)
 	for _, queue := range ctx.Cluster.GPUJobQueues() {
 		if len(queue.Jobs()) == 0 {
 			continue
@@ -61,7 +62,7 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 			accID := adapter.AccID(queue.GPU().ID())
 
 			taskAllocation := &objects.TaskAllocation{
-				NodeID:                   ctx.PC.View.AcceleratorID2NodeID[accID],
+				NodeID:                   ctx.PC.MetalViews.AcceleratorID2NodeID[accID],
 				JobID:                    j.GetJobID(),
 				TaskID:                   task.GetTaskID(),
 				AllocationTimeNanoSecond: ctx.PC.FixedNow(),
@@ -69,16 +70,18 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 					AcceleratorID: accID,
 				},
 			}
-			newJobAllocations = append(newJobAllocations, &objects.JobAllocation{
-				JobID:             j.GetJobID(),
-				ResourceManagerID: ctx.PC.Meta.GetResourceManagerID(),
-				PartitionID:       ctx.PC.Meta.GetPartitionID(),
-				TaskAllocations:   []*objects.TaskAllocation{taskAllocation},
-				Extra:             nil,
+			newJobAllocations = append(newJobAllocations, &pb_gen.JobAllocation{
+				JobAllocation: &objects.JobAllocation{
+					JobID:             j.GetJobID(),
+					ResourceManagerID: ctx.PC.Meta.GetResourceManagerID(),
+					PartitionID:       ctx.PC.Meta.GetPartitionID(),
+					TaskAllocations:   []*objects.TaskAllocation{taskAllocation},
+					Extra:             nil,
+				},
 			})
 		}
 	}
-	return &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: newJobAllocations}
+	return &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: pb_gen.UnwrapJobAllocations(newJobAllocations)}
 }
 
 func initHydraBABHeuristicScheduler(latency time.Duration) types.Scheduler {

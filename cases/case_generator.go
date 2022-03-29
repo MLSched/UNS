@@ -31,9 +31,12 @@ var dataDir = "/Users/purchaser/datasets/ali-cluster/cluster-trace-gpu-v2020/dat
 var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
 var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
 
+//var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data_test.json"
+//var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration_test.json"
+
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 500
+var jobCount = 1000
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -60,10 +63,10 @@ var jobExecutionTimeScaleFactor = float64(1)
 //
 var syncMode = true
 
-var deadlineProb = float64(0.5)
-var deadlineDistribution = []float64{1.2, 1.5}
+var deadlineProb = float64(0.3)
+var deadlineDistribution = []float64{1.2, 2}
 
-var onlySingleTaskJob = true
+var onlySingleTaskJob = false
 
 const (
 	A100      = "A100"
@@ -102,42 +105,42 @@ var consolidationLevel2PenaltyDistributions = map[configs.ConsolidationLevel][]f
 }
 var consolidationLevels = []configs.ConsolidationLevel{configs.ConsolidationLevel_NVLink, configs.ConsolidationLevel_SameCPUSocket, configs.ConsolidationLevel_DiffCPUSocket, configs.ConsolidationLevel_DiffNode}
 
-var gpuMemoryCostDistributions = []int64{int64(0.5 * float64(GiB)), int64(8 * GiB)}
+var gpuMemoryCostDistributions = []int64{int64(0.5 * float64(GiB)), int64(16 * GiB)}
 
 var instance2Count = map[*Instance]int64{
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti},
 	//}): 4,
-	//NewInstance(map[int64][]string{
-	//	0: {V100},
-	//}): 4,
-	//NewInstance(map[int64][]string{
-	//	0: {A100},
-	//}): 4,
+	NewInstance(map[int64][]string{
+		0: {V100, V100},
+	}): 3,
+	NewInstance(map[int64][]string{
+		0: {A100, A100},
+	}): 3,
 	NewInstance(map[int64][]string{
 		0: {GTX2080Ti, GTX2080Ti},
-	}): 2,
+	}): 3,
 	NewInstance(map[int64][]string{
 		0: {GTX2080Ti, GTX2080Ti},
-		1: {V100, V100},
-	}): 2,
+		1: {GTX2080Ti, GTX2080Ti},
+	}): 3,
 	NewInstance(map[int64][]string{
 		0: {V100, V100},
 		1: {V100, V100},
-	}): 2,
+	}): 3,
 	NewInstance(map[int64][]string{
 		0: {V100, V100, A100, A100},
-	}): 2,
+	}): 3,
 	NewInstance(map[int64][]string{
 		0: {A100, A100},
 		1: {A100, A100},
-	}): 2,
+	}): 3,
 	//NewInstance(map[int64][]string{
 	//	0: {A100, A100, A100, A100},
 	//}): 1,
 	NewInstance(map[int64][]string{
 		0: {A100, A100, A100, A100},
-	}): 2,
+	}): 3,
 }
 
 var naiveSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
@@ -201,7 +204,6 @@ var sjfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 					},
 				},
 			},
-			NonSpaceSharing: false,
 		}},
 	},
 }}
@@ -223,7 +225,6 @@ var edfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 					},
 				},
 			},
-			NonSpaceSharing: false,
 		}},
 	},
 }}
@@ -351,9 +352,6 @@ func (g *CaseGenerator) PreprocessTaskTable(header []string, records [][]string)
 	startTimeIdx := utils.IndexOf(header, "start_time")
 	endTimeIdx := utils.IndexOf(header, "end_time")
 	filterTaskName := func(record []string) bool {
-		if record[taskNameIdx] == "TVMTuneMain" {
-			//log.Println(record)
-		}
 		return -1 == utils.IndexOf([]string{"tensorflow", "PyTorchWorker", "worker"}, record[taskNameIdx])
 	}
 	filterStatus := func(record []string) bool {
@@ -614,7 +612,7 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 		}
 		for _, d := range data {
 			d.GetJob().SubmitTimeNanoSecond -= minSubmitTime
-			if d.GetJob().GetDeadline() != 0 {
+			if d.GetJob().GetDeadline() != math.MaxInt64 {
 				d.GetJob().Deadline -= minSubmitTime
 			}
 		}
@@ -634,9 +632,6 @@ func (g *CaseGenerator) generateConsolidationLevel2Penalties() map[int64]float32
 		dis := consolidationLevel2PenaltyDistributions[level]
 		result[int64(level.Number())] = float32(g.randomUniform(dis))
 	}
-	//for cl, dis := range consolidationLevel2PenaltyDistributions {
-	//	result[int64(cl.Number())] = float32(g.randomUniform(dis))
-	//}
 	return result
 }
 

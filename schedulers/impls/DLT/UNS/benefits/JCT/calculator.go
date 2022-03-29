@@ -110,12 +110,6 @@ func (c *Calculator) avgJCT2Benefit(avgJCT float64) interfaces2.Benefit {
 	return interfaces2.Benefit(-avgJCT)
 }
 
-//func (c *Calculator) ByHistory(pc *partition.Context, histories map[string]*objects.JobExecutionHistory) (benefit interfaces2.Benefit, stub interface{}) {
-//	return c.Cal(pc, nil, func() map[string]*base.BenefitCalculationContext {
-//		return c.ExtractContextByHistory(pc, histories)
-//	})
-//}
-
 func (c *Calculator) NewStub() interface{} {
 	return &Stub{JobID2JCT: make(map[string]int64)}
 }

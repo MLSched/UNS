@@ -5,17 +5,12 @@ import (
 	"UNS/schedulers/impls/DLT/UNS/benefits/base"
 	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"UNS/schedulers/partition"
+	"math"
 )
 
 type Calculator struct {
 	*base.CalculatorCommon
 }
-
-//func (c *Calculator) ByHistory(pc *partition.Context, histories map[string]*objects.JobExecutionHistory) (benefit interfaces2.Benefit, stub interface{}) {
-//	return c.Cal(pc, nil, func() map[string]*base.BenefitCalculationContext {
-//		return c.ExtractContextByHistory(pc, histories)
-//	})
-//}
 
 func NewCalculator() *Calculator {
 	common := &base.CalculatorCommon{}
@@ -27,19 +22,20 @@ func NewCalculator() *Calculator {
 
 type Stub struct {
 	JobID2VioDeadline map[string]int64
+	JobID2JCT         map[string]int64
 }
 
-//func (c *Calculator) ByPredictIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit interfaces2.Benefit, stub interface{}) {
-//	return c.Cal(pc, prevStub, func() map[string]*base.BenefitCalculationContext {
-//		return c.ExtractContextByPredict(pc, allocationsPredictResult)
-//	})
-//}
-
 func (c *Calculator) CloneStub(stub interface{}) interface{} {
-	s := &Stub{JobID2VioDeadline: make(map[string]int64)}
+	s := &Stub{
+		JobID2VioDeadline: make(map[string]int64),
+		JobID2JCT:         make(map[string]int64),
+	}
 	oStub := stub.(*Stub)
-	for jobID, JCT := range oStub.JobID2VioDeadline {
-		s.JobID2VioDeadline[jobID] = JCT
+	for jobID, vioDeadline := range oStub.JobID2VioDeadline {
+		s.JobID2VioDeadline[jobID] = vioDeadline
+	}
+	for jobID, JCT := range oStub.JobID2JCT {
+		s.JobID2JCT[jobID] = JCT
 	}
 	return s
 }
@@ -48,70 +44,51 @@ func (c *Calculator) ByHistory(pc *partition.Context, histories map[string]*obje
 	return 0, nil
 }
 
-//func (c *Calculator) ByPredict(pc *partition.Context, allocationsPredictResult interfaces.PredictResult) (benefit interfaces2.Benefit, stub interface{}) {
-//	return c.Cal(pc, nil, func() map[string]*base.BenefitCalculationContext {
-//		return c.ExtractContextByPredict(pc, allocationsPredictResult)
-//	})
-//	//s := &Stub{
-//	//	JobID2VioDeadline: make(map[string]int64),
-//	//}
-//	//c.updateStub(pc, allocationsPredictResult, s)
-//	//totalVioDeadline := c.calculateTotalVioDeadline(s)
-//	//return c.toBenefit(totalVioDeadline, c.startInstantlyCount(s)), s
-//}
-
 func (c *Calculator) UpdateStub(pc *partition.Context, contexts map[string]*base.BenefitCalculationContext, stub interface{}) {
 	s := stub.(*Stub)
 	for _, ctx := range contexts {
 		job := ctx.Job
 		finishTime := ctx.FinishTime
-		if job.GetDeadline() == 0 {
+		if job.GetDeadline() == math.MaxInt64 {
+			s.JobID2VioDeadline[job.GetJobID()] = 0
 			return
 		}
 		vioDeadline := finishTime - job.GetDeadline()
-		//if vioDeadline <= 0 {
-		//	s.JobID2VioDeadline[job.GetJobID()] = 0
-		//	continue
-		//}
 		s.JobID2VioDeadline[job.GetJobID()] = vioDeadline
 	}
+	for _, ctx := range contexts {
+		job := ctx.Job
+		submitTime := job.GetSubmitTimeNanoSecond()
+		finishTime := ctx.FinishTime
+		s.JobID2JCT[job.GetJobID()] = finishTime - submitTime
+	}
 }
-
-//func (c *Calculator) updateStubByPredict(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, stub *Stub) {
-//	if allocationsPredictResult == nil {
-//		return
-//	}
-//	allocationsPredictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
-//		job := pc.GetUnfinishedJob(allocation.GetJobID())
-//		finishTime := *result.GetFinishNanoTime()
-//		if job.GetDeadline() == 0 {
-//			return
-//		}
-//		vioDeadline := finishTime - job.GetDeadline()
-//		if vioDeadline <= 0 {
-//			return
-//		}
-//		stub.JobID2VioDeadline[job.GetJobID()] = vioDeadline
-//	})
-//}
 
 func (c *Calculator) NewStub() interface{} {
-	return &Stub{JobID2VioDeadline: make(map[string]int64)}
+	return &Stub{
+		JobID2VioDeadline: make(map[string]int64),
+		JobID2JCT:         make(map[string]int64),
+	}
 }
 
-func (c *Calculator) calculateTotalVioDeadline(stub *Stub) float64 {
+func (c *Calculator) calculateBenefit(stub *Stub) interfaces2.Benefit {
 	totalVioDeadline := int64(0)
+	vioDeadlineJobCount := 0
 	for _, vioDeadline := range stub.JobID2VioDeadline {
 		totalVioDeadline += vioDeadline
+		if vioDeadline > 0 {
+			vioDeadlineJobCount++
+		}
 	}
-	return float64(totalVioDeadline)
-}
-
-func (c *Calculator) toBenefit(totalVioDeadline float64) interfaces2.Benefit {
-	return interfaces2.Benefit(-totalVioDeadline)
+	totalJCT := int64(0)
+	for _, JCT := range stub.JobID2JCT {
+		totalJCT += JCT
+	}
+	benefit := -interfaces2.Benefit((1e20*float64(vioDeadlineJobCount) + float64(totalJCT)) / float64(len(stub.JobID2JCT)))
+	//benefit := -interfaces2.Benefit(totalVioDeadline)
+	return benefit
 }
 
 func (c *Calculator) Calculate(stub interface{}) interfaces2.Benefit {
-	totalVioDeadline := c.calculateTotalVioDeadline(stub.(*Stub))
-	return c.toBenefit(totalVioDeadline)
+	return c.calculateBenefit(stub.(*Stub))
 }

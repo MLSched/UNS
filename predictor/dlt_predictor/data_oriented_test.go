@@ -1,6 +1,7 @@
 package dlt_predictor
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/configs"
 	"UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
@@ -109,22 +110,22 @@ func TestDataOrientedCase1(t *testing.T) {
 			},
 		},
 	}})
-	allocations := make([]*objects.JobAllocation, 0, len(partitionContext.Allocations))
+	allocations := make([]*pb_gen.JobAllocation, 0, len(partitionContext.Allocations))
 	for _, allocation := range partitionContext.Allocations {
 		allocations = append(allocations, allocation)
 	}
 
 	for _, allocation := range allocations {
-		t.Logf("job ID = %s, total mini batches = %d, solely mini batch duration second = %f", allocation.GetJobID(), p.getJobTotalMiniBatches(nil, allocation.GetJobID()), float64(p.getMiniBatchDurationNanoSecond(nil, allocation.GetJobID(), partitionContext.View.AcceleratorID2Accelerator[allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID()].GetAcceleratorMetaInfo().GetBriefType()))/1e9)
+		t.Logf("job ID = %s, total mini batches = %d, solely mini batch duration second = %f", allocation.GetJobID(), p.getJobTotalMiniBatches(nil, allocation.GetJobID()), float64(p.getMiniBatchDurationNanoSecond(nil, allocation.GetJobID(), partitionContext.MetalViews.AcceleratorID2Accelerator[allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID()].GetAcceleratorMetaInfo().GetBriefType()))/1e9)
 	}
-	j2j3Shared := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_1_2_1"]}, []*objects.Job{job2, job3})
+	j2j3Shared := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.MetalViews.AcceleratorID2Accelerator["ACCELERATOR_1_2_1"]}, []*objects.Job{job2, job3})
 	fj2j3Shared := make(map[string]float64)
 	for j, t := range j2j3Shared {
 		fj2j3Shared[j] = float64(t) / 1e9
 	}
 	t.Logf("job2, job3 space sharing mini batch duration second = %v", fj2j3Shared)
 
-	j1j4Shared := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_1_1_1"], partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_1_1_2"]}, []*objects.Job{job1, job4})
+	j1j4Shared := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.MetalViews.AcceleratorID2Accelerator["ACCELERATOR_1_1_1"], partitionContext.MetalViews.AcceleratorID2Accelerator["ACCELERATOR_1_1_2"]}, []*objects.Job{job1, job4})
 	fj1j4Shared := make(map[string]float64)
 	for j, t := range j1j4Shared {
 		fj1j4Shared[j] = float64(t) / 1e9
@@ -141,7 +142,7 @@ func TestDataOrientedCase1(t *testing.T) {
 		t.Logf("allocation job ID = %s, startExecutionTime = %f, finishTime = %f", allocation.GetJobID(), float64(*each.GetStartExecutionNanoTime())/1e9, float64(*each.GetFinishNanoTime())/1e9)
 	}
 
-	r := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_2_1_1"], partitionContext.View.AcceleratorID2Accelerator["ACCELERATOR_2_2_1"]}, []*objects.Job{job1})
+	r := p.getSpaceSharingMiniBatchDurationNanoSecond(nil, []*objects.Accelerator{partitionContext.MetalViews.AcceleratorID2Accelerator["ACCELERATOR_2_1_1"], partitionContext.MetalViews.AcceleratorID2Accelerator["ACCELERATOR_2_2_1"]}, []*objects.Job{job1})
 	t.Log(float64(r["JOB_1"]) / 1e9)
 
 	result.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {

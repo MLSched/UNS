@@ -1,6 +1,7 @@
 package types
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/objects"
 	predictorinterfaces "UNS/predictor/interfaces"
 	benefitsinterfaces "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
@@ -11,8 +12,8 @@ import (
 type AllocContext struct {
 	PC                           *partition.Context
 	Job                          *objects.Job
-	JobAllocation                *objects.JobAllocation
-	NewJobAllocations            []*objects.JobAllocation
+	JobAllocation                *pb_gen.JobAllocation
+	NewJobAllocations            []*pb_gen.JobAllocation
 	NewJobAllocationsFingerPrint string
 	Benefit                      benefitsinterfaces.Benefit
 	BenefitStub                  interface{}

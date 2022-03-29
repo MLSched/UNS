@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/objects"
 	predictorinterfaces "UNS/predictor/interfaces"
 	"UNS/schedulers/impls/DLT/hydra/types"
@@ -24,7 +25,7 @@ var GPUTypes = func() func(ctx *partition.Context) []types.GPUType {
 	return func(ctx *partition.Context) []types.GPUType {
 		if len(GPUTypes) == 0 {
 			accTypes := make(map[string]bool)
-			for _, acc := range ctx.View.AcceleratorID2Accelerator {
+			for _, acc := range ctx.MetalViews.AcceleratorID2Accelerator {
 				accTypes[acc.GetAcceleratorMetaInfo().GetBriefType()] = true
 			}
 			for t := range accTypes {
@@ -39,7 +40,7 @@ var GPUs = func() func(ctx *partition.Context) map[types.GPUID]types.GPU {
 	GPUs := make(map[types.GPUID]types.GPU)
 	return func(ctx *partition.Context) map[types.GPUID]types.GPU {
 		if len(GPUs) == 0 {
-			for accID, acc := range ctx.View.AcceleratorID2Accelerator {
+			for accID, acc := range ctx.MetalViews.AcceleratorID2Accelerator {
 				GPUs[GPUID(accID)] = &GPU{acc: acc}
 			}
 		}
@@ -69,7 +70,7 @@ var GPUType2ProfileAccID = func() func(ctx *partition.Context) map[types.GPUType
 	GPUType2ProfileAccID := make(map[types.GPUType]string)
 	return func(ctx *partition.Context) map[types.GPUType]string {
 		if len(GPUType2ProfileAccID) == 0 {
-			for accID, acc := range ctx.View.AcceleratorID2Accelerator {
+			for accID, acc := range ctx.MetalViews.AcceleratorID2Accelerator {
 				t := acc.GetAcceleratorMetaInfo().GetBriefType()
 				if _, ok := GPUType2ProfileAccID[types.GPUType(t)]; ok {
 					continue
@@ -122,7 +123,7 @@ func BuildScheduleContext(pc *partition.Context, predictor predictorinterfaces.P
 		jobID2RemainingTime[jobID] = map[types.GPUType]int64{getGPUType(pc, allocation): remainingTime}
 		jobID2RemainingRatio[jobID] = remainingRatio
 	})
-	for _, job := range pc.GetUnallocatedJobs() {
+	for _, job := range pc.AllocationViews.UnallocatedJobs {
 		jobID := job.GetJobID()
 		if _, ok := jobID2RemainingTime[jobID]; ok {
 			continue
@@ -132,7 +133,7 @@ func BuildScheduleContext(pc *partition.Context, predictor predictorinterfaces.P
 	}
 	ctx.JobID2RemainingRatio = jobID2RemainingRatio
 	ctx.JobID2RemainingTime = jobID2RemainingTime
-	unallocatedJobs := ctx.PC.GetUnallocatedJobs()
+	unallocatedJobs := ctx.PC.AllocationViews.UnallocatedJobs
 	jobMetas, unallocatedJobMetas := func() ([]types.JobMeta, []types.JobMeta) {
 		metas := make([]types.JobMeta, 0)
 		unallocatedJobMetas := make([]types.JobMeta, 0)
@@ -180,7 +181,7 @@ func BuildScheduleContext(pc *partition.Context, predictor predictorinterfaces.P
 }
 
 func getGPUType(pc *partition.Context, allocation *objects.TaskAllocation) types.GPUType {
-	return types.GPUType(pc.View.AcceleratorID2Accelerator[allocation.GetAcceleratorAllocation().GetAcceleratorID()].GetAcceleratorMetaInfo().GetBriefType())
+	return types.GPUType(pc.MetalViews.AcceleratorID2Accelerator[allocation.GetAcceleratorAllocation().GetAcceleratorID()].GetAcceleratorMetaInfo().GetBriefType())
 }
 
 func getGPUID(allocation *objects.TaskAllocation) types.GPUID {
@@ -192,10 +193,10 @@ func getGPU(pc *partition.Context, allocation *objects.TaskAllocation) types.GPU
 }
 
 func profileJobs(pc *partition.Context, predictor predictorinterfaces.Predictor, jobs []*objects.Job) {
-	buildAllocation := func(job *objects.Job, gpuType types.GPUType) *objects.JobAllocation {
+	buildAllocation := func(job *objects.Job, gpuType types.GPUType) *pb_gen.JobAllocation {
 		task := job.GetTaskGroup().GetTasks()[0]
 		taskAllocation := &objects.TaskAllocation{
-			NodeID:                       pc.View.AcceleratorID2NodeID[GPUType2ProfileAccID(pc)[gpuType]],
+			NodeID:                       pc.MetalViews.AcceleratorID2NodeID[GPUType2ProfileAccID(pc)[gpuType]],
 			JobID:                        job.GetJobID(),
 			TaskID:                       task.GetTaskID(),
 			StartExecutionTimeNanoSecond: &wrappers.Int64Value{Value: 0},
@@ -203,14 +204,15 @@ func profileJobs(pc *partition.Context, predictor predictorinterfaces.Predictor,
 				AcceleratorID: GPUType2ProfileAccID(pc)[gpuType],
 			},
 		}
-		return &objects.JobAllocation{
-			JobID:             job.GetJobID(),
-			ResourceManagerID: pc.Meta.GetResourceManagerID(),
-			PartitionID:       pc.Meta.GetPartitionID(),
-			TaskAllocations:   []*objects.TaskAllocation{taskAllocation},
+		return &pb_gen.JobAllocation{
+			JobAllocation: &objects.JobAllocation{
+				JobID:             job.GetJobID(),
+				ResourceManagerID: pc.Meta.GetResourceManagerID(),
+				PartitionID:       pc.Meta.GetPartitionID(),
+				TaskAllocations:   []*objects.TaskAllocation{taskAllocation}},
 		}
 	}
-	jobAllocations := make([]*objects.JobAllocation, 0, len(jobs))
+	jobAllocations := make([]*pb_gen.JobAllocation, 0, len(jobs))
 	for _, gpuType := range GPUTypes(pc) {
 		for _, job := range jobs {
 			jobAllocations = append(jobAllocations, buildAllocation(job, gpuType))
@@ -226,7 +228,7 @@ func profileJobs(pc *partition.Context, predictor predictorinterfaces.Predictor,
 		if jobID2ExecutionTime[jobID] == nil {
 			jobID2ExecutionTime[jobID] = make(map[types.GPUType]int64)
 		}
-		gpuType := pc.View.AcceleratorID2Accelerator[allocation.GetAcceleratorAllocation().GetAcceleratorID()].GetAcceleratorMetaInfo().GetBriefType()
+		gpuType := pc.MetalViews.AcceleratorID2Accelerator[allocation.GetAcceleratorAllocation().GetAcceleratorID()].GetAcceleratorMetaInfo().GetBriefType()
 		jobID2ExecutionTime[jobID][types.GPUType(gpuType)] = *result.GetFinishNanoTime() - *result.GetStartExecutionNanoTime()
 	})
 	for jobID, executionTimes := range jobID2ExecutionTime {

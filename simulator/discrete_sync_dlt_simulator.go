@@ -23,7 +23,7 @@ type DiscreteSyncDLTSimulator struct {
 	partitionContext     *partition.Context
 	predictor            interfaces.Predictor
 	scheduleIntervalNano int64
-	updateJobAllocations []*objects.JobAllocation
+	updateJobAllocations []*pb_gen.JobAllocation
 	nextScheduleTime     int64
 }
 
@@ -139,18 +139,10 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 			metrics.Analyse(s.partitionContext)
 			return
 		}
-		//if len(s.partitionContext.GetUnallocatedAcceleratorIDs()) > 0 && len(s.partitionContext.GetUnallocatedJobs()) > 0 {
-		//	for jobID := range s.partitionContext.GetUnallocatedJobs() {
-		//		log.Printf("unallocate job %s", jobID)
-		//	}
-		//	for accID := range s.partitionContext.GetUnallocatedAcceleratorIDs() {
-		//		log.Printf("unallocate accID %s", accID)
-		//	}
-		//}
 		log.Printf("simulation submitted unfinished jobs %d, unallocated jobs %d, unallocated accs %d, finished jobs %d, total jobs %d.",
 			len(s.partitionContext.UnfinishedJobs),
-			len(s.partitionContext.GetUnallocatedJobs()),
-			len(s.partitionContext.GetUnallocatedAcceleratorIDs()),
+			len(s.partitionContext.AllocationViews.UnallocatedJobs),
+			len(s.partitionContext.AllocationViews.UnallocatedAcceleratorIDs),
 			len(s.partitionContext.FinishedJobs), len(s.getJobs()))
 		//time.Sleep(10 * time.Millisecond)
 	}
@@ -176,19 +168,19 @@ func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCal
 		}
 	}
 	finishTime := int64(math.MaxInt64)
-	closest2FinishAllocations := make([]*objects.JobAllocation, 0)
+	closest2FinishAllocations := make([]*pb_gen.JobAllocation, 0)
 	for _, allocation := range allocations {
 		r := predictResult.GetResult(allocation.GetTaskAllocations()[0])
 		jobFinishNanoTime := *r.GetFinishNanoTime()
 		if jobFinishNanoTime < finishTime {
 			finishTime = jobFinishNanoTime
-			closest2FinishAllocations = make([]*objects.JobAllocation, 0)
+			closest2FinishAllocations = make([]*pb_gen.JobAllocation, 0)
 		}
 		if jobFinishNanoTime == finishTime {
 			closest2FinishAllocations = append(closest2FinishAllocations, allocation)
 		}
 	}
-	newStartedPlaceholderAllocations := make([]*objects.JobAllocation, 0)
+	newStartedPlaceholderAllocations := make([]*pb_gen.JobAllocation, 0)
 	for _, allocation := range allocations {
 		r := predictResult.GetResult(allocation.GetTaskAllocations()[0])
 		if allocation.GetTaskAllocations()[0].GetPlaceholder() && allocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond() == nil && r.GetStartExecutionNanoTime() != nil {
@@ -211,7 +203,7 @@ func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCal
 				}
 			}
 			err := s.partitionContext.UpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-				UpdatedJobAllocations: newStartedPlaceholderAllocations,
+				UpdatedJobAllocations: pb_gen.UnwrapJobAllocations(newStartedPlaceholderAllocations),
 				FinishedJobIDs:        finishedJobIDs,
 				JobExecutionHistories: jobExecutionHistories,
 				CurrentNanoTime:       &wrappers.Int64Value{Value: finishTime},
@@ -221,7 +213,7 @@ func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCal
 			}
 			log.Printf("simulateClosestFinishAllocation callback called, closest to finish allocations = %+v, current nano time = %d", closest2FinishAllocations, finishTime)
 			s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-				UpdatedJobAllocations: newStartedPlaceholderAllocations,
+				UpdatedJobAllocations: pb_gen.UnwrapJobAllocations(newStartedPlaceholderAllocations),
 				FinishedJobIDs:        finishedJobIDs,
 				JobExecutionHistories: jobExecutionHistories,
 				CurrentNanoTime:       &wrappers.Int64Value{Value: finishTime},
@@ -295,7 +287,7 @@ func (s *DiscreteSyncDLTSimulator) simulateUpdateAllocations() *timeAndCallback 
 		return &timeAndCallback{nanoTime: t, necessity: true, callback: func() {
 			log.Printf("simulateUpdateAllocations callback called, current nano time = %d", t)
 			s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-				UpdatedJobAllocations: jobAllocations,
+				UpdatedJobAllocations: pb_gen.UnwrapJobAllocations(jobAllocations),
 				CurrentNanoTime:       &wrappers.Int64Value{Value: t},
 			})
 		}}
@@ -400,9 +392,9 @@ func (s *DiscreteSyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSUpda
 	}
 
 	// 对调度器给予的分配，进行过滤
-	allocations := eo.NewJobAllocations
-	nonPlaceholders := make([]*objects.JobAllocation, 0, len(allocations))
-	placeholders := make([]*objects.JobAllocation, 0, len(allocations))
+	allocations := pb_gen.WrapJobAllocations(eo.NewJobAllocations)
+	nonPlaceholders := make([]*pb_gen.JobAllocation, 0, len(allocations))
+	placeholders := make([]*pb_gen.JobAllocation, 0, len(allocations))
 	for _, allocation := range allocations {
 		if s.partitionContext.Allocations[allocation.GetJobID()] != nil {
 			reason := fmt.Sprintf("simulator ignores allocation of jobID = %s since it is already allocated", allocation.GetJobID())
@@ -415,7 +407,7 @@ func (s *DiscreteSyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSUpda
 			nonPlaceholders = append(nonPlaceholders, allocation)
 		}
 	}
-	filteredAllocations := make([]*objects.JobAllocation, 0, len(allocations))
+	filteredAllocations := make([]*pb_gen.JobAllocation, 0, len(allocations))
 
 	for _, nonPlaceholderAllocation := range nonPlaceholders {
 		for _, acceleratorID := range pb_gen.GetAllocatedAcceleratorIDs(nonPlaceholderAllocation) {
@@ -454,7 +446,7 @@ nextPlaceholderAlloc:
 	log.Printf("simulator update SS allocations, job IDs = %+v\n", filteredJobIDs)
 	if len(filteredAllocations) > 0 {
 		err := s.partitionContext.UpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-			UpdatedJobAllocations: filteredAllocations,
+			UpdatedJobAllocations: pb_gen.UnwrapJobAllocations(filteredAllocations),
 			CurrentNanoTime:       &wrappers.Int64Value{Value: s.partitionContext.Now()},
 		})
 		fastFail(err)

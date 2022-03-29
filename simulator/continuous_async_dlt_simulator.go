@@ -129,8 +129,8 @@ func (s *ContinuousAsyncDLTSimulator) checkFinishedJobs() {
 			}
 			fastFail(err)
 			jobExecutionHistories := make([]*objects.JobExecutionHistory, 0)
-			newlyStartedAllocations := make([]*objects.JobAllocation, 0)
-			isNewlyStarted := func(results interfaces.PredictResult, allocation *objects.JobAllocation) bool {
+			newlyStartedAllocations := make([]*pb_gen.JobAllocation, 0)
+			isNewlyStarted := func(results interfaces.PredictResult, allocation *pb_gen.JobAllocation) bool {
 				ftaskAllocation := allocation.GetTaskAllocations()[0]
 				r := results.GetResult(ftaskAllocation)
 				if *r.GetStartExecutionNanoTime() <= now && ftaskAllocation.GetStartExecutionTimeNanoSecond() == nil {
@@ -158,7 +158,7 @@ func (s *ContinuousAsyncDLTSimulator) checkFinishedJobs() {
 			}
 			log.Printf("simulator newlyStartedAllocations = %v, finishedJobIDs = %v", newlyStartedAllocations, finishedJobIDs)
 			ev := &eventobjs.RMUpdateAllocationsEvent{
-				UpdatedJobAllocations: newlyStartedAllocations,
+				UpdatedJobAllocations: pb_gen.UnwrapJobAllocations(newlyStartedAllocations),
 				FinishedJobIDs:        finishedJobIDs,
 				JobExecutionHistories: jobExecutionHistories,
 			}
@@ -250,9 +250,9 @@ func (s *ContinuousAsyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSU
 			}
 		}
 		// 对调度器给予的分配，进行过滤
-		allocations := eo.NewJobAllocations
-		nonPlaceholders := make([]*objects.JobAllocation, 0, len(allocations))
-		placeholders := make([]*objects.JobAllocation, 0, len(allocations))
+		allocations := pb_gen.WrapJobAllocations(eo.NewJobAllocations)
+		nonPlaceholders := make([]*pb_gen.JobAllocation, 0, len(allocations))
+		placeholders := make([]*pb_gen.JobAllocation, 0, len(allocations))
 		for _, allocation := range allocations {
 			if allocation.GetTaskAllocations()[0].GetPlaceholder() {
 				placeholders = append(placeholders, allocation)
@@ -260,7 +260,7 @@ func (s *ContinuousAsyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSU
 				nonPlaceholders = append(nonPlaceholders, allocation)
 			}
 		}
-		filteredAllocations := make([]*objects.JobAllocation, 0, len(allocations))
+		filteredAllocations := make([]*pb_gen.JobAllocation, 0, len(allocations))
 		now := s.partitionContext.Now()
 	nextNonPlaceholderAlloc:
 		for _, nonPlaceholderAllocation := range nonPlaceholders {
@@ -311,11 +311,11 @@ func (s *ContinuousAsyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSU
 		log.Printf("simulator update SS allocations, job IDs = %+v\n", filteredJobIDs)
 		if len(filteredAllocations) > 0 {
 			err := s.partitionContext.UpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-				UpdatedJobAllocations: filteredAllocations,
+				UpdatedJobAllocations: pb_gen.UnwrapJobAllocations(filteredAllocations),
 			})
 			fastFail(err)
 			s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
-				UpdatedJobAllocations: filteredAllocations,
+				UpdatedJobAllocations: pb_gen.UnwrapJobAllocations(filteredAllocations),
 			})
 		}
 	})
@@ -343,7 +343,7 @@ func (s *ContinuousAsyncDLTSimulator) sortJobsBySubmission(jobs []*objects.Job) 
 	sort.Sort(sorter)
 }
 
-func (s *ContinuousAsyncDLTSimulator) printAllocations(allocations []*objects.JobAllocation) {
+func (s *ContinuousAsyncDLTSimulator) printAllocations(allocations []*pb_gen.JobAllocation) {
 	for _, a := range allocations {
 		s, _ := utils.MarshalJsonPB(a)
 		log.Println(s)

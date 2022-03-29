@@ -119,3 +119,11 @@ func SliceInsert(idx int, v interface{}, ls ...interface{}) []interface{} {
 	res = append(res, rear...)
 	return res
 }
+
+func StringSetToSlice(set map[string]bool) []string {
+	s := make([]string, 0, len(set))
+	for k := range set {
+		s = append(s, k)
+	}
+	return s
+}

@@ -1,6 +1,7 @@
 package dlt_predictor
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/configs"
 	"UNS/pb_gen/objects"
 	"hash/crc32"
@@ -17,17 +18,17 @@ func NewRandomPredictor(configuration *configs.DLTPredictorRandomConfiguration) 
 	return p
 }
 
-func (p *RandomPredictor) getDataParallelMiniBatchDurationNanoSecond(ctx *PredictSessionContext, allocation *objects.JobAllocation) int64 {
+func (p *RandomPredictor) getDataParallelMiniBatchDurationNanoSecond(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) int64 {
 	acceleratorType := func() string {
 		acceleratorID := allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID()
-		return ctx.partitionContext.View.AcceleratorID2Accelerator[acceleratorID].GetAcceleratorMetaInfo().GetBriefType()
+		return ctx.partitionContext.MetalViews.AcceleratorID2Accelerator[acceleratorID].GetAcceleratorMetaInfo().GetBriefType()
 	}()
 	duration := p.getMiniBatchDurationNanoSecond(ctx, ctx.partitionContext.GetUnfinishedJob(allocation.GetJobID()), acceleratorType)
 	consolidationPenalty := p.getDataParallelConsolidationPenalty(ctx, allocation)
 	return int64(float64(duration) * consolidationPenalty)
 }
 
-func (p *RandomPredictor) getDataParallelConsolidationPenalty(ctx *PredictSessionContext, allocation *objects.JobAllocation) float64 {
+func (p *RandomPredictor) getDataParallelConsolidationPenalty(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) float64 {
 	nodeIDs := make(map[string]bool)
 	CPUSocketIDs := make(map[string]bool)
 
@@ -37,7 +38,7 @@ nextAlloc:
 		nodeIDs[nodeID] = true
 		acceleratorAllocation := taskAllocation.GetAcceleratorAllocation()
 		accID := acceleratorAllocation.GetAcceleratorID()
-		node := ctx.partitionContext.View.NodeID2Node[nodeID]
+		node := ctx.partitionContext.MetalViews.NodeID2Node[nodeID]
 		for _, CPUSocket := range node.GetCPUSockets() {
 			for _, nodeAccelerator := range CPUSocket.GetAccelerators() {
 				if nodeAccelerator.GetAcceleratorID() == accID {

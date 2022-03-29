@@ -1,6 +1,7 @@
 package simulator
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/objects"
 	"UNS/predictor/interfaces"
 	"UNS/utils"
@@ -11,7 +12,7 @@ import (
 	"time"
 )
 
-func printAllocations(allocations []*objects.JobAllocation) {
+func printAllocations(allocations []*pb_gen.JobAllocation) {
 	for _, a := range allocations {
 		s, _ := utils.MarshalJsonPB(a)
 		log.Println(s)
@@ -39,7 +40,7 @@ func printPredictResults(result interfaces.PredictResult, printUnix bool) {
 	})
 }
 
-func buildJobExecutionHistory(allocation *objects.JobAllocation, finishTime int64) *objects.JobExecutionHistory {
+func buildJobExecutionHistory(allocation *pb_gen.JobAllocation, finishTime int64) *objects.JobExecutionHistory {
 	taskExecutionHistories := make([]*objects.TaskExecutionHistory, 0, len(allocation.GetTaskAllocations()))
 	ftaskAllocation := allocation.GetTaskAllocations()[0]
 	for i, taskAllocation := range allocation.GetTaskAllocations() {

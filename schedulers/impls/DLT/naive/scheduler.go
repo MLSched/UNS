@@ -1,6 +1,7 @@
 package naive
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/configs"
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
@@ -45,14 +46,14 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 		nodesMap[node.GetNodeID()] = node
 	}
 	acceleratorID2NodeID := make(map[string]string)
-	for nodeID, accelerators := range partitionContext.View.NodeID2Accelerators {
+	for nodeID, accelerators := range partitionContext.MetalViews.NodeID2Accelerators {
 		for _, accelerator := range accelerators {
 			acceleratorID2NodeID[accelerator.GetAcceleratorID()] = nodeID
 		}
 	}
 
 	acceleratorIDs := make([]string, 0, len(acceleratorID2NodeID))
-	for acceleratorID := range partitionContext.View.AcceleratorID2Accelerator {
+	for acceleratorID := range partitionContext.MetalViews.AcceleratorID2Accelerator {
 		acceleratorIDs = append(acceleratorIDs, acceleratorID)
 	}
 	sort.Strings(acceleratorIDs)
@@ -72,7 +73,7 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 		return nil
 	}
 
-	newAllocations := make([]*objects.JobAllocation, 0)
+	newAllocations := make([]*pb_gen.JobAllocation, 0)
 	for _, job := range unscheduledJobs {
 		taskGroup := job.GetTaskGroup()
 		switch taskGroup.GetTaskGroupType() {
@@ -112,13 +113,15 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 			}
 			taskAllocations = append(taskAllocations, taskAllocation)
 		}
-		newAllocation := &objects.JobAllocation{
-			JobID:             job.GetJobID(),
-			ResourceManagerID: s.Config.GetResourceManagerID(),
-			PartitionID:       s.Config.GetPartitionID(),
-			TaskAllocations:   taskAllocations,
+		newAllocation := &pb_gen.JobAllocation{
+			JobAllocation: &objects.JobAllocation{
+				JobID:             job.GetJobID(),
+				ResourceManagerID: s.Config.GetResourceManagerID(),
+				PartitionID:       s.Config.GetPartitionID(),
+				TaskAllocations:   taskAllocations,
+			},
 		}
 		newAllocations = append(newAllocations, newAllocation)
 	}
-	return &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: newAllocations}
+	return &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: pb_gen.UnwrapJobAllocations(newAllocations)}
 }

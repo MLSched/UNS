@@ -1,6 +1,7 @@
 package queue_based
 
 import (
+	"UNS/pb_gen"
 	"UNS/pb_gen/configs"
 	eventobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
@@ -58,14 +59,14 @@ func (s *QueueBasedSchedulerTemplate) PrioritySort(pc *partition.Context, jobs m
 
 func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
 	originalPC := s.GetPartitionContext().Clone(false)
-	log.Printf("unallocated accIDs = %v", originalPC.GetUnallocatedAcceleratorIDs())
+	log.Printf("unallocated accIDs = %v", originalPC.AllocationViews.UnallocatedAcceleratorIDs)
 	t := originalPC.Now()
 	originalPC.Time = &t
 	pc := originalPC.Clone(false)
 	if !s.IfHasUnallocated(pc) {
 		return nil
 	}
-	unallocatedJobs := pc.GetUnallocatedJobs()
+	unallocatedJobs := pc.AllocationViews.UnallocatedJobs
 	sorted := s.impl.PrioritySort(pc, unallocatedJobs)
 	for _, job := range sorted {
 		basePredictResult, err := s.Predictor.Predict(pc, pc.GetAllocationsSlice())
@@ -77,7 +78,7 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 		nodeID2TaskAllocations := s.GetNodeID2TaskAllocations(pc)
 		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, s.AllocationProvideMode)
 		var bestScore *JobAllocationScore = nil
-		var bestJobAllocation *objects.JobAllocation = nil
+		var bestJobAllocation *pb_gen.JobAllocation = nil
 		for _, possibleAllocation := range possibleAllocations {
 			cancel := s.TempAllocJob(pc, possibleAllocation)
 			pr, err := s.Predictor.Predict(pc, s.RelatedJobAllocationsByNodes(pc, nodeID2TaskAllocations, possibleAllocation))
@@ -107,11 +108,11 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 			cancel()
 		}
 		s.TempAllocJob(pc, bestJobAllocation)
-		unallocatedJobs = pc.GetUnallocatedJobs()
+		unallocatedJobs = pc.AllocationViews.UnallocatedJobs
 	}
 
 	newJobAllocations := s.FilterScheduleAbleJobAllocations(s.GetNewJobAllocations(pc, originalPC), originalPC)
-	return &eventobjs.SSUpdateAllocationsEvent{NewJobAllocations: newJobAllocations}
+	return &eventobjs.SSUpdateAllocationsEvent{NewJobAllocations: pb_gen.UnwrapJobAllocations(newJobAllocations)}
 }
 
 func (s *QueueBasedSchedulerTemplate) GetSchedulerID() string {
@@ -122,7 +123,7 @@ type JobAllocationScorerParam struct {
 	PC            *partition.Context
 	PredictResult interfaces2.PredictResult
 	Job           *objects.Job
-	JobAllocation *objects.JobAllocation
+	JobAllocation *pb_gen.JobAllocation
 }
 
 type JobAllocationScore float64

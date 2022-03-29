@@ -1,7 +1,7 @@
 package score
 
 import (
-	"UNS/pb_gen/objects"
+	"UNS/pb_gen"
 	"UNS/schedulers/partition"
 	"UNS/utils"
 )
@@ -9,8 +9,8 @@ import (
 type JobAllocationsScore float64
 
 type Calculator interface {
-	GetScore(pc *partition.Context, jobAllocations []*objects.JobAllocation) (JobAllocationsScore, interface{})
-	GetScoreIncrementally(pc *partition.Context, jobAllocations []*objects.JobAllocation, stub interface{}) (JobAllocationsScore, interface{})
+	GetScore(pc *partition.Context, jobAllocations []*pb_gen.JobAllocation) (JobAllocationsScore, interface{})
+	GetScoreIncrementally(pc *partition.Context, jobAllocations []*pb_gen.JobAllocation, stub interface{}) (JobAllocationsScore, interface{})
 }
 
 type ConsolidationScoreCalculator struct {
@@ -25,7 +25,7 @@ type ConsolidationScoreStub struct {
 	SocketIDs map[string]bool
 }
 
-func (c *ConsolidationScoreCalculator) GetScore(pc *partition.Context, jobAllocations []*objects.JobAllocation) (JobAllocationsScore, interface{}) {
+func (c *ConsolidationScoreCalculator) GetScore(pc *partition.Context, jobAllocations []*pb_gen.JobAllocation) (JobAllocationsScore, interface{}) {
 	stub := &ConsolidationScoreStub{
 		NodeIDs:   make(map[string]bool),
 		SocketIDs: make(map[string]bool),
@@ -34,7 +34,7 @@ func (c *ConsolidationScoreCalculator) GetScore(pc *partition.Context, jobAlloca
 	return c.getScore(stub), stub
 }
 
-func (c *ConsolidationScoreCalculator) GetScoreIncrementally(pc *partition.Context, jobAllocations []*objects.JobAllocation, stub interface{}) (JobAllocationsScore, interface{}) {
+func (c *ConsolidationScoreCalculator) GetScoreIncrementally(pc *partition.Context, jobAllocations []*pb_gen.JobAllocation, stub interface{}) (JobAllocationsScore, interface{}) {
 	s := stub.(*ConsolidationScoreStub)
 	s = c.cloneStub(s)
 	c.updateStub(pc, jobAllocations, s)
@@ -49,12 +49,12 @@ func (c *ConsolidationScoreCalculator) cloneStub(stub *ConsolidationScoreStub) *
 
 }
 
-func (c *ConsolidationScoreCalculator) updateStub(pc *partition.Context, jobAllocations []*objects.JobAllocation, stub *ConsolidationScoreStub) {
+func (c *ConsolidationScoreCalculator) updateStub(pc *partition.Context, jobAllocations []*pb_gen.JobAllocation, stub *ConsolidationScoreStub) {
 	for _, jobAllocation := range jobAllocations {
 		for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
 			accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
-			stub.NodeIDs[pc.View.AcceleratorID2NodeID[accID]] = true
-			stub.SocketIDs[pc.View.AcceleratorID2SocketID[accID]] = true
+			stub.NodeIDs[pc.MetalViews.AcceleratorID2NodeID[accID]] = true
+			stub.SocketIDs[pc.MetalViews.AcceleratorID2SocketID[accID]] = true
 		}
 	}
 }
