@@ -37,12 +37,17 @@ type MetalViews struct {
 	AcceleratorID2NodeID      map[string]string
 	AcceleratorID2SocketID    map[string]string
 	AcceleratorIDs            []string
+	AcceleratorIDsSet         map[string]bool
+	// GroupedAccelerators acc类型 -> acc所在节点 -> acc所在Socket -> acc 的映射
+	GroupedAccelerators map[string]map[string]map[string][]string
 }
 
 type AllocationViews struct {
-	UnallocatedAcceleratorIDs map[string]bool
-	UnallocatedJobs           map[string]*objects.Job
-	AllocationsSlice          []*pb_gen.JobAllocation
+	UnallocatedAcceleratorIDs     map[string]bool
+	UnallocatedJobs               map[string]*objects.Job
+	AllocationsSlice              []*pb_gen.JobAllocation
+	AcceleratorID2TaskAllocations map[string][]*objects.TaskAllocation
+	NodeID2TaskAllocations        map[string][]*objects.TaskAllocation
 }
 
 func Build(partition *objects.Partition) (*Context, error) {
@@ -56,6 +61,7 @@ func Build(partition *objects.Partition) (*Context, error) {
 		ExecutionHistoryManager: NewExecutionHistoryManager(),
 	}
 	ctx.refreshMetalViews()
+	ctx.RefreshAllocationViews()
 	return ctx, nil
 }
 
@@ -69,6 +75,7 @@ func (c *Context) refreshMetalViews() {
 		AcceleratorID2NodeID:      make(map[string]string),
 		AcceleratorID2SocketID:    make(map[string]string),
 		AcceleratorIDs:            make([]string, 0),
+		AcceleratorIDsSet:         make(map[string]bool),
 	}
 	for _, node := range c.Meta.GetNodes() {
 		c.MetalViews.NodeID2Node[node.GetNodeID()] = node
@@ -83,10 +90,12 @@ func (c *Context) refreshMetalViews() {
 				c.MetalViews.AcceleratorID2NodeID[accelerator.GetAcceleratorID()] = node.GetNodeID()
 				c.MetalViews.AcceleratorID2SocketID[accelerator.GetAcceleratorID()] = CPUSocket.GetCPUSocketID()
 				c.MetalViews.AcceleratorIDs = append(c.MetalViews.AcceleratorIDs, accelerator.GetAcceleratorID())
+				c.MetalViews.AcceleratorIDsSet[accelerator.GetAcceleratorID()] = true
 			}
 		}
 		c.MetalViews.NodeID2Accelerators[node.GetNodeID()] = accelerators
 	}
+	c.MetalViews.GroupedAccelerators = c.groupAccelerators()
 	sort.Strings(c.MetalViews.AcceleratorIDs)
 }
 
@@ -246,9 +255,7 @@ func (c *Context) GetJob(jobID string) *objects.Job {
 	}
 }
 
-func (c *Context) GetAllocationsSlice() []*pb_gen.JobAllocation {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (c *Context) getAllocationsSlice() []*pb_gen.JobAllocation {
 	allocations := make([]*pb_gen.JobAllocation, 0, len(c.Allocations))
 	for _, allocation := range c.Allocations {
 		allocations = append(allocations, allocation)
@@ -286,21 +293,66 @@ func (c *Context) GetJobExecutionHistories() map[string]*objects.JobExecutionHis
 
 func (c *Context) RefreshAllocationViews() {
 	c.AllocationViews = &AllocationViews{
-		UnallocatedAcceleratorIDs: nil,
-		UnallocatedJobs:           nil,
-		AllocationsSlice:          nil,
+		UnallocatedAcceleratorIDs:     nil,
+		UnallocatedJobs:               nil,
+		AllocationsSlice:              nil,
+		AcceleratorID2TaskAllocations: nil,
+		NodeID2TaskAllocations:        nil,
 	}
 	c.AllocationViews.UnallocatedAcceleratorIDs = c.getUnallocatedAcceleratorIDs()
 	c.AllocationViews.UnallocatedJobs = c.getUnallocatedJobs()
-	c.AllocationViews.AllocationsSlice = c.GetAllocationsSlice()
+	c.AllocationViews.AllocationsSlice = c.getAllocationsSlice()
+	c.AllocationViews.AcceleratorID2TaskAllocations = c.getAccID2SortedTaskAllocations()
+	// getNodeID2TaskAllocations 依赖了AllocationsSlice，一定要注意顺序，不能在GetAllocationsSlice之前调用GetNodeID2TaskAllocations
+	c.AllocationViews.NodeID2TaskAllocations = c.getNodeID2TaskAllocations()
 }
 
+func (c *Context) getAccID2SortedTaskAllocations() map[string][]*objects.TaskAllocation {
+	result := make(map[string][]*objects.TaskAllocation)
+	for accID := range c.MetalViews.AcceleratorID2Accelerator {
+		result[accID] = make([]*objects.TaskAllocation, 0)
+	}
+	for _, jobAllocation := range c.Allocations {
+		for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+			accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
+			result[accID] = append(result[accID], taskAllocation)
+		}
+	}
+	return result
+}
+
+// TempAllocJob 临时性的将jobAllocation添加，为了高性能，需要更新缓存。
 func (c *Context) TempAllocJob(allocation *pb_gen.JobAllocation) func() {
+	// Allocations
 	c.Allocations[allocation.GetJobID()] = allocation
+
+	// UnallocatedJobs
 	job := c.AllocationViews.UnallocatedJobs[allocation.GetJobID()]
 	delete(c.AllocationViews.UnallocatedJobs, allocation.GetJobID())
-	deletedUnallocatedAccIDKeys := make(map[string]bool)
+
+	// AllocationsSlice
+	//beforeAllocationsSlice := make([]*pb_gen.JobAllocation, len(c.AllocationViews.AllocationsSlice))
+	// TODO debug
+	//copy(beforeAllocationsSlice, c.AllocationViews.AllocationsSlice)
 	c.AllocationViews.AllocationsSlice = append(c.AllocationViews.AllocationsSlice, allocation)
+
+	// AcceleratorID2TaskAllocations
+	accIDs := make(map[string]bool)
+	// TODO debug
+	//copiedAccID2TaskAllocations := make(map[string][]*objects.TaskAllocation)
+	//for accID, taskAllocations := range c.AllocationViews.AcceleratorID2TaskAllocations {
+	//	copiedAccID2TaskAllocations[accID] = make([]*objects.TaskAllocation, len(taskAllocations))
+	//	copy(copiedAccID2TaskAllocations[accID], taskAllocations)
+	//}
+
+	for _, taskAllocation := range allocation.GetTaskAllocations() {
+		accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
+		c.AllocationViews.AcceleratorID2TaskAllocations[accID] = append(c.AllocationViews.AcceleratorID2TaskAllocations[accID], taskAllocation)
+		accIDs[accID] = true
+	}
+
+	// UnallocatedAcceleratorIDs
+	deletedUnallocatedAccIDKeys := make(map[string]bool)
 	for _, taskAllocation := range allocation.GetTaskAllocations() {
 		accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
 		if _, ok := c.AllocationViews.UnallocatedAcceleratorIDs[accID]; ok {
@@ -308,12 +360,118 @@ func (c *Context) TempAllocJob(allocation *pb_gen.JobAllocation) func() {
 			delete(c.AllocationViews.UnallocatedAcceleratorIDs, accID)
 		}
 	}
+
+	// NodeID2TaskAllocations
+
+	// TODO Debug
+	//copiedNodeID2TaskAllocations := make(map[string][]*objects.TaskAllocation)
+	//for nodeID, taskAllocations := range c.AllocationViews.NodeID2TaskAllocations {
+	//	copiedNodeID2TaskAllocations[nodeID] = make([]*objects.TaskAllocation, len(taskAllocations))
+	//	copy(copiedNodeID2TaskAllocations[nodeID], taskAllocations)
+	//}
+
+	for _, taskAllocation := range allocation.GetTaskAllocations() {
+		nodeID := taskAllocation.GetNodeID()
+		c.AllocationViews.NodeID2TaskAllocations[nodeID] = append(c.AllocationViews.NodeID2TaskAllocations[nodeID], taskAllocation)
+	}
+
 	return func() {
+		// Allocations
 		delete(c.Allocations, allocation.GetJobID())
+
+		// UnallocatedJobs
 		c.AllocationViews.UnallocatedJobs[allocation.GetJobID()] = job
+
+		// UnallocatedAcceleratorIDs
 		for key := range deletedUnallocatedAccIDKeys {
 			c.AllocationViews.UnallocatedAcceleratorIDs[key] = true
 		}
+
+		// AllocationsSlice
 		c.AllocationViews.AllocationsSlice = c.AllocationViews.AllocationsSlice[:len(c.AllocationViews.AllocationsSlice)-1]
+		//// TODO Debug
+		//for idx, item := range c.AllocationViews.AllocationsSlice {
+		//	if beforeAllocationsSlice[idx] != item {
+		//		panic("error")
+		//	}
+		//}
+
+		// AcceleratorID2TaskAllocations
+		for accID := range accIDs {
+			s := c.AllocationViews.AcceleratorID2TaskAllocations[accID]
+			// 删除最后一项。
+			c.AllocationViews.AcceleratorID2TaskAllocations[accID] = s[:len(s)-1]
+		}
+		//// TODO Debug
+		//for accID, taskAllocations := range copiedAccID2TaskAllocations {
+		//	copied := c.AllocationViews.AcceleratorID2TaskAllocations[accID]
+		//	for idx, taskAllocation := range taskAllocations {
+		//		if copied[idx] != taskAllocation {
+		//			panic("error accID2taskAllocations")
+		//		}
+		//	}
+		//}
+
+		// NodeID2TaskAllocations
+		for _, taskAllocation := range allocation.GetTaskAllocations() {
+			nodeID := taskAllocation.GetNodeID()
+			s := c.AllocationViews.NodeID2TaskAllocations[nodeID]
+			// 删除最后一项。
+			c.AllocationViews.NodeID2TaskAllocations[nodeID] = s[:len(s)-1]
+		}
+
+		// TODO debug
+		//for nodeID, taskAllocations := range copiedNodeID2TaskAllocations {
+		//	copied := c.AllocationViews.NodeID2TaskAllocations[nodeID]
+		//	for idx, taskAllocation := range taskAllocations {
+		//		if copied[idx] != taskAllocation {
+		//			panic("error nodeID2taskAllocations")
+		//		}
+		//	}
+		//}
 	}
+}
+
+// groupAccelerators 将accelerators分组，获取acc类型 -> acc所在节点 -> acc所在Socket -> acc 的映射
+func (c *Context) groupAccelerators() map[string]map[string]map[string][]string {
+	pc := c
+	result := make(map[string]map[string]map[string][]string)
+	for accID, acc := range pc.MetalViews.AcceleratorID2Accelerator {
+		t := acc.GetAcceleratorMetaInfo().GetBriefType()
+		if _, ok := result[t]; !ok {
+			result[t] = make(map[string]map[string][]string)
+		}
+		nodeID := pc.MetalViews.AcceleratorID2NodeID[accID]
+		node := pc.MetalViews.NodeID2Node[nodeID]
+		if _, ok := result[t][node.GetNodeID()]; !ok {
+			result[t][node.GetNodeID()] = make(map[string][]string, 0)
+		}
+		accID2SocketID := make(map[string]string)
+		for _, socket := range node.GetCPUSockets() {
+			for _, acc := range socket.GetAccelerators() {
+				accID2SocketID[acc.GetAcceleratorID()] = socket.GetCPUSocketID()
+			}
+		}
+		socketID := accID2SocketID[accID]
+		if _, ok := result[t][node.GetNodeID()][socketID]; !ok {
+			result[t][node.GetNodeID()][socketID] = make([]string, 0)
+		}
+		result[t][node.GetNodeID()][socketID] = append(result[t][node.GetNodeID()][socketID], acc.GetAcceleratorID())
+	}
+	return result
+}
+
+func (c *Context) getNodeID2TaskAllocations() map[string][]*objects.TaskAllocation {
+	pc := c
+	result := make(map[string][]*objects.TaskAllocation)
+	for _, jobAllocation := range pc.AllocationViews.AllocationsSlice {
+		for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+			nodeID := taskAllocation.GetNodeID()
+			if _, ok := result[nodeID]; !ok {
+				result[nodeID] = make([]*objects.TaskAllocation, 0)
+			}
+			result[nodeID] = append(result[nodeID], taskAllocation)
+		}
+	}
+	return result
 }

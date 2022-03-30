@@ -175,9 +175,9 @@ func (r *PredictResult) Range(f func(taskAllocation *objects.TaskAllocation, res
 	}
 }
 
-func (r *PredictResult) Combine(target interfaces.PredictResult) interfaces.PredictResult {
+func (r *PredictResult) Merge(target interfaces.PredictResult) interfaces.PredictResult {
 	if _, ok := target.(*PredictResult); !ok {
-		panic("PredictResult Combine target type does not match.")
+		panic("PredictResult Merge target type does not match.")
 	}
 	newPr := &PredictResult{Results: make(map[*objects.TaskAllocation]*EachPredictResult)}
 	for ta, e := range r.Results {

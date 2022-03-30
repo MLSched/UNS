@@ -17,7 +17,7 @@ type Predictor interface {
 type PredictResult interface {
 	GetResult(taskAllocation *objects.TaskAllocation) EachPredictResult
 	Range(func(allocation *objects.TaskAllocation, result EachPredictResult))
-	Combine(target PredictResult) PredictResult
+	Merge(target PredictResult) PredictResult
 }
 
 type EachPredictResult interface {

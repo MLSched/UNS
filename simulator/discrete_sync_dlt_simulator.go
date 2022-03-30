@@ -155,7 +155,7 @@ type timeAndCallback struct {
 }
 
 func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCallback {
-	allocations := s.partitionContext.GetAllocationsSlice()
+	allocations := s.partitionContext.AllocationViews.AllocationsSlice
 	//s.printAllocations(allocations)
 	predictResult, err := s.predictor.Predict(s.partitionContext, allocations)
 	if err != nil {

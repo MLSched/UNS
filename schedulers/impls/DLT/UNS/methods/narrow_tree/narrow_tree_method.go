@@ -325,9 +325,9 @@ func (s *Method) checkScheduleAble(pc *partition.Context) bool {
 func (s *Method) predictACBenefits(scheduleContext *scheduleContext, ac *types.AllocContext) []*types.AllocContext {
 	pc := ac.PC
 	acs := make([]*types.AllocContext, 0)
-	basePredictResult, err := s.Predictor.Predict(pc, pc.GetAllocationsSlice())
+	basePredictResult, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
 	if err != nil {
-		for _, m := range pc.GetAllocationsSlice() {
+		for _, m := range pc.AllocationViews.AllocationsSlice {
 			st, _ := utils.MarshalJsonPB(m)
 			log.Printf("%s", st)
 		}
@@ -336,9 +336,8 @@ func (s *Method) predictACBenefits(scheduleContext *scheduleContext, ac *types.A
 		panic(reason)
 	}
 	_, baseBenefitsStub := s.BenefitsCalculator.ByPredictIncrementally(pc, basePredictResult, ac.BenefitStub)
-	_, baseScoreStub := s.ScoreCalculator.GetScore(pc, pc.GetAllocationsSlice())
-	accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
-	nodeID2TaskAllocations := s.GetNodeID2TaskAllocations(pc)
+	_, baseScoreStub := s.ScoreCalculator.GetScore(pc, pc.AllocationViews.AllocationsSlice)
+	nodeID2TaskAllocations := pc.AllocationViews.NodeID2TaskAllocations
 	jobs := pc.AllocationViews.UnallocatedJobs
 	jobIDs := s.getSortedJobIDs(jobs)
 	for _, jobID := range jobIDs {
@@ -360,7 +359,7 @@ func (s *Method) predictACBenefits(scheduleContext *scheduleContext, ac *types.A
 							// 忽略显存溢出造成的问题和多分布式任务跨节点运行时共享节点的问题
 							return
 						}
-						for _, m := range pc.GetAllocationsSlice() {
+						for _, m := range pc.AllocationViews.AllocationsSlice {
 							st, _ := utils.MarshalJsonPB(m)
 							log.Printf("%s", st)
 						}
@@ -391,12 +390,11 @@ func (s *Method) predictACBenefits(scheduleContext *scheduleContext, ac *types.A
 			return possibleACs
 		}
 		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(&base.GetPossibleAllocationsParams{
-			PC:                          pc,
-			AccID2SortedTaskAllocations: accID2SortedTaskAllocations,
-			PredictResult:               basePredictResult,
-			Job:                         job,
-			ProvideType:                 scheduleContext.provideTypeMode,
-			MaxCount:                    math.MaxInt64,
+			PC:            pc,
+			PredictResult: basePredictResult,
+			Job:           job,
+			ProvideType:   scheduleContext.provideTypeMode,
+			MaxCount:      math.MaxInt64,
 		})
 		if s.ResourceEfficientMode {
 			filtered := s.FilterAllocationsForResourceEfficiency(scheduleContext.initialPC, possibleAllocations)

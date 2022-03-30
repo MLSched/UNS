@@ -376,20 +376,6 @@ func (i *DLTSchedulerTemplate) GetNewJobAllocations(newPC *partition.Context, cu
 	return result
 }
 
-func (i *DLTSchedulerTemplate) GetNodeID2TaskAllocations(pc *partition.Context) map[string][]*objects.TaskAllocation {
-	result := make(map[string][]*objects.TaskAllocation)
-	for _, jobAllocation := range pc.GetAllocationsSlice() {
-		for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
-			nodeID := taskAllocation.GetNodeID()
-			if _, ok := result[nodeID]; !ok {
-				result[nodeID] = make([]*objects.TaskAllocation, 0)
-			}
-			result[nodeID] = append(result[nodeID], taskAllocation)
-		}
-	}
-	return result
-}
-
 // GetJobAllocationStartTime 获取jobAllocation的任务开始时间。
 // 仅针对DLT任务，因为只有gang和single类型的任务，所以job开始时间就是task的开始时间。
 func (i *DLTSchedulerTemplate) GetJobAllocationStartTime(allocation *pb_gen.JobAllocation) *wrappers.Int64Value {

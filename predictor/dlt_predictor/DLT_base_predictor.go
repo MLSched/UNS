@@ -313,9 +313,6 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 				continue
 			}
 			spaceSharedRunningAllocations := getSpaceSharedAllocations(runningAllocation)
-			if len(spaceSharedRunningAllocations) == 2 && spaceSharedRunningAllocations[0].GetJobID() == "f92eff9824837558a972da2c" && spaceSharedRunningAllocations[1].GetJobID() == "7e4b45b7f77d08b193831669" {
-				log.Printf("")
-			}
 			r, err := p.getSpaceSharingMiniBatchDuration(ctx, spaceSharedRunningAllocations)
 			if err != nil {
 				return nil, err

@@ -104,7 +104,7 @@ func BuildScheduleContext(pc *partition.Context, predictor predictorinterfaces.P
 		}
 	}
 	profileJobs(pc, predictor, unProfiled)
-	pr, err := predictor.Predict(pc, pc.GetAllocationsSlice())
+	pr, err := predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
 	if err != nil {
 		panic(err)
 	}

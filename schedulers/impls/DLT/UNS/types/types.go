@@ -3,6 +3,7 @@ package types
 import (
 	"UNS/pb_gen"
 	"UNS/pb_gen/objects"
+	"UNS/predictor/interfaces"
 	benefitsinterfaces "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"UNS/schedulers/impls/DLT/UNS/score"
 	"UNS/schedulers/partition"
@@ -16,6 +17,7 @@ type AllocContext struct {
 	NewJobAllocationsFingerPrint string
 	Benefit                      benefitsinterfaces.Benefit
 	BenefitStub                  interface{}
+	PredictResult                interfaces.PredictResult
 	Score                        score.JobAllocationsScore
 }
 

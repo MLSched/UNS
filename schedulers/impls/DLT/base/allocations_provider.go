@@ -13,18 +13,15 @@ import (
 )
 
 type GetPossibleAllocationsParams struct {
-	PC                          *partition.Context
-	AccID2SortedTaskAllocations map[string][]*objects.TaskAllocation
-	PredictResult               interfaces.PredictResult
-	Job                         *objects.Job
-	ProvideType                 ProvideType
-	MaxCount                    int
+	PC            *partition.Context
+	PredictResult interfaces.PredictResult
+	Job           *objects.Job
+	ProvideType   ProvideType
+	MaxCount      int
 }
 
 type AllocationsProvider interface {
 	GetPossibleAllocations(params *GetPossibleAllocationsParams) []*pb_gen.JobAllocation
-	// PrepareAccID2SortedTaskAllocations 在一个predictResult下，计算出每个加速器上，所有的jobAllocation的一个排序，该排序按照每个任务的结束时间进行排序。
-	PrepareAccID2SortedTaskAllocations(pc *partition.Context, predictResult interfaces.PredictResult) map[string][]*objects.TaskAllocation
 }
 
 type ProvideType int
@@ -59,7 +56,8 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 	job := params.Job
 	provideTypeMode := params.ProvideType
 	predictResult := params.PredictResult
-	accID2SortedTaskAllocations := params.AccID2SortedTaskAllocations
+
+	//accID2SortedTaskAllocations := a.PrepareAccID2SortedTaskAllocations(pc, predictResult)
 	result := make([]*pb_gen.JobAllocation, 0)
 	buildJobAllocation := func(accID string, startTime int64) *pb_gen.JobAllocation {
 		return buildJobAllocation(pc, job, []string{accID}, &startTime, startTime, false, nil)
@@ -103,7 +101,23 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 		if enoughAllocations() {
 			return true
 		}
-		taskAllocations := accID2SortedTaskAllocations[accID]
+		taskAllocations := pc.AllocationViews.AcceleratorID2TaskAllocations[accID]
+		////taskAllocations := accID2SortedTaskAllocations[accID]
+		//// TODO debug
+		//{
+		//	//cachedTaskAllocations := pc.AllocationViews.AcceleratorID2TaskAllocations[accID]
+		//	//sort.Slice(cachedTaskAllocations, func(i, j int) bool {
+		//	//	return cachedTaskAllocations[i].TaskID < cachedTaskAllocations[j].TaskID
+		//	//})
+		//	sort.Slice(taskAllocations, func(i, j int) bool {
+		//		return taskAllocations[i].TaskID < taskAllocations[j].TaskID
+		//	})
+		//	//for i := 0; i < len(cachedTaskAllocations); i++ {
+		//	//	if cachedTaskAllocations[i] != taskAllocations[i] {
+		//	//		log.Printf("")
+		//	//	}
+		//	//}
+		//}
 		if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyUnoccupied) && len(taskAllocations) != 0 {
 			return false
 		}
@@ -112,7 +126,7 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 			addJobAllocation(accID, pc.FixedNow())
 			return false
 		}
-		lastTaskAllocation := taskAllocations[len(taskAllocations)-1]
+		_, beforeLastFinishTime, lastTaskAllocation, _ := a.getLastFinishTaskAllocationAndJobID(pc, taskAllocations, predictResult)
 		if j := pc.GetUnfinishedJob(lastTaskAllocation.GetJobID()); j.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
 			// 最后一个Task是gang的，不能与它并行执行，直接放在它的后面。
 			addJobAllocation(accID, finishTime(lastTaskAllocation))
@@ -134,8 +148,8 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 			return false
 		} else {
 			// 如果多于一个任务，则从倒数第二个任务结束开始，可以与最后一个任务并行执行
-			beforeLast := taskAllocations[len(taskAllocations)-2]
-			beforeLastFinishTime := finishTime(beforeLast)
+			//beforeLast := taskAllocations[len(taskAllocations)-2]
+			//beforeLastFinishTime := finishTime(beforeLast)
 			addJobAllocation(accID, beforeLastFinishTime)
 			if lastFinish := finishTime(lastTaskAllocation); lastFinish != beforeLastFinishTime {
 				addJobAllocation(accID, lastFinish)
@@ -156,24 +170,32 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 	job := params.Job
 	provideTypeMode := params.ProvideType
 	predictResult := params.PredictResult
-	accID2SortedTaskAllocations := params.AccID2SortedTaskAllocations
 	maxCount := params.MaxCount
 
 	workersCount := len(job.GetTaskGroup().GetTasks())
-	getLastTaskFinishTime := func(accID string) int64 {
-		if sorted, ok := accID2SortedTaskAllocations[accID]; ok && len(sorted) > 0 {
-			return *predictResult.GetResult(sorted[len(sorted)-1]).GetFinishNanoTime()
+	getLastTaskFinishTimeAndJobID := func() func(accID string) (int64, string) {
+		type timeAndID struct {
+			Time  int64
+			JobID string
 		}
-		return pc.FixedNow()
-	}
+		cache := make(map[string]timeAndID)
+		return func(accID string) (int64, string) {
+			if c, ok := cache[accID]; ok {
+				return c.Time, c.JobID
+			}
+			time, _, _, jobID := a.getLastFinishTaskAllocationAndJobID(pc, pc.AllocationViews.AcceleratorID2TaskAllocations[accID], predictResult)
+			cache[accID] = timeAndID{Time: time, JobID: jobID}
+			return time, jobID
+		}
+	}()
 	sortAccsByFinishTime := func(accIDs []string) {
 		sorter := &utils.Sorter{
 			LenFunc: func() int {
 				return len(accIDs)
 			},
 			LessFunc: func(i, j int) bool {
-				iFinish := getLastTaskFinishTime(accIDs[i])
-				jFinish := getLastTaskFinishTime(accIDs[j])
+				iFinish, _ := getLastTaskFinishTimeAndJobID(accIDs[i])
+				jFinish, _ := getLastTaskFinishTimeAndJobID(accIDs[j])
 				if iFinish < jFinish {
 					return true
 				}
@@ -206,13 +228,7 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 				latest = -1
 				latestWaitingAccIDs = make(map[string]bool)
 				for _, accID := range accIDs {
-					as := accID2SortedTaskAllocations[accID]
-					var lastFinishTime int64
-					if len(as) == 0 {
-						lastFinishTime = pc.FixedNow()
-					} else {
-						lastFinishTime = *predictResult.GetResult(as[len(as)-1]).GetFinishNanoTime()
-					}
+					lastFinishTime, _ := getLastTaskFinishTimeAndJobID(accID)
 					if lastFinishTime < earliest {
 						earliest = lastFinishTime
 					}
@@ -235,8 +251,7 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 				}
 				waitingJobIDs := make(map[string]bool)
 				for accID := range latestWaitingAccIDs {
-					taskAllocations := accID2SortedTaskAllocations[accID]
-					jobID := taskAllocations[len(taskAllocations)-1].GetJobID()
+					_, jobID := getLastTaskFinishTimeAndJobID(accID)
 					waitingJobIDs[jobID] = true
 				}
 				return nil, true, utils.StringSetToSlice(waitingJobIDs)
@@ -263,7 +278,7 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 		}
 		return false
 	}
-	accType2Node2Socket2Accs := a.groupAccelerators(pc)
+	accType2Node2Socket2Accs := pc.MetalViews.GroupedAccelerators
 	accTypes := make([]string, 0, len(accType2Node2Socket2Accs))
 	for accType := range accType2Node2Socket2Accs {
 		accTypes = append(accTypes, accType)
@@ -432,4 +447,26 @@ func buildJobAllocation(pc *partition.Context, job *objects.Job, accIDs []string
 		},
 		PlaceholderWaitingJobIDs: placeholderWaitingJobIDs,
 	}
+}
+
+func (a *AllocationsProviderImpl) getLastFinishTaskAllocationAndJobID(pc *partition.Context, taskAllocations []*objects.TaskAllocation, result interfaces.PredictResult) (int64, int64, *objects.TaskAllocation, string) {
+	if len(taskAllocations) == 0 {
+		return pc.FixedNow(), 0, nil, ""
+	}
+	max := int64(math.MinInt64)
+	beforeMax := int64(math.MinInt64)
+	maxJobID := ""
+	var maxTaskAllocation *objects.TaskAllocation = nil
+	for _, taskAllocation := range taskAllocations {
+		t := *result.GetResult(taskAllocation).GetFinishNanoTime()
+		if t >= max {
+			beforeMax = max
+			max = t
+			maxJobID = taskAllocation.GetJobID()
+			maxTaskAllocation = taskAllocation
+		} else if t >= beforeMax {
+			beforeMax = t
+		}
+	}
+	return max, beforeMax, maxTaskAllocation, maxJobID
 }

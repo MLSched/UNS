@@ -67,20 +67,18 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 	unallocatedJobs := pc.AllocationViews.UnallocatedJobs
 	sorted := s.impl.PrioritySort(pc, unallocatedJobs)
 	for _, job := range sorted {
-		basePredictResult, err := s.Predictor.Predict(pc, pc.GetAllocationsSlice())
+		basePredictResult, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
 		if err != nil {
 			log.Printf("[SJF Scheduler] predict failed, err=%v", err)
 			return nil
 		}
-		accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
-		nodeID2TaskAllocations := s.GetNodeID2TaskAllocations(pc)
+		nodeID2TaskAllocations := pc.AllocationViews.NodeID2TaskAllocations
 		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(&base2.GetPossibleAllocationsParams{
-			PC:                          pc,
-			AccID2SortedTaskAllocations: accID2SortedTaskAllocations,
-			PredictResult:               basePredictResult,
-			Job:                         job,
-			ProvideType:                 s.AllocationProvideMode,
-			MaxCount:                    math.MaxInt64,
+			PC:            pc,
+			PredictResult: basePredictResult,
+			Job:           job,
+			ProvideType:   s.AllocationProvideMode,
+			MaxCount:      math.MaxInt64,
 		})
 		var bestScore *JobAllocationScore = nil
 		var bestJobAllocation *pb_gen.JobAllocation = nil
