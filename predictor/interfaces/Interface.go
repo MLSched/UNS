@@ -11,6 +11,7 @@ type Predictor interface {
 	// The start time of each allocation must be provided.
 	Predict(partition *partition.Context, allocations []*pb_gen.JobAllocation) (PredictResult, error)
 	PredictSolely(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) (PredictResult, error)
+	PredictSolelyFastestExecutionTime(job *objects.Job) int64
 }
 
 type PredictResult interface {

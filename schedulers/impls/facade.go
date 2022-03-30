@@ -3,7 +3,7 @@ package impls
 import (
 	"UNS/pb_gen"
 	"UNS/pb_gen/configs"
-	"UNS/schedulers/impls/DLT/UNS"
+	UNSMethods "UNS/schedulers/impls/DLT/UNS/methods"
 	"UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/impls/DLT/hydra"
 	"UNS/schedulers/impls/DLT/naive"
@@ -16,7 +16,7 @@ type Factory func(configuration interface{}, pusher base.EventPusher, partitionC
 
 var factories = map[configs.SchedulerType]Factory{
 	configs.SchedulerType_schedulerTypeNaive: naive.Build,
-	configs.SchedulerType_schedulerTypeUNS:   UNS.Build,
+	configs.SchedulerType_schedulerTypeUNS:   UNSMethods.Build,
 	configs.SchedulerType_schedulerTypeSJF:   queue_based.BuildSJF,
 	configs.SchedulerType_schedulerTypeEDF:   queue_based.BuildEDF,
 	configs.SchedulerType_schedulerTypeHydra: hydra.Build,

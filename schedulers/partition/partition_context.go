@@ -42,6 +42,7 @@ type MetalViews struct {
 type AllocationViews struct {
 	UnallocatedAcceleratorIDs map[string]bool
 	UnallocatedJobs           map[string]*objects.Job
+	AllocationsSlice          []*pb_gen.JobAllocation
 }
 
 func Build(partition *objects.Partition) (*Context, error) {
@@ -287,9 +288,11 @@ func (c *Context) RefreshAllocationViews() {
 	c.AllocationViews = &AllocationViews{
 		UnallocatedAcceleratorIDs: nil,
 		UnallocatedJobs:           nil,
+		AllocationsSlice:          nil,
 	}
 	c.AllocationViews.UnallocatedAcceleratorIDs = c.getUnallocatedAcceleratorIDs()
 	c.AllocationViews.UnallocatedJobs = c.getUnallocatedJobs()
+	c.AllocationViews.AllocationsSlice = c.GetAllocationsSlice()
 }
 
 func (c *Context) TempAllocJob(allocation *pb_gen.JobAllocation) func() {
@@ -297,6 +300,7 @@ func (c *Context) TempAllocJob(allocation *pb_gen.JobAllocation) func() {
 	job := c.AllocationViews.UnallocatedJobs[allocation.GetJobID()]
 	delete(c.AllocationViews.UnallocatedJobs, allocation.GetJobID())
 	deletedUnallocatedAccIDKeys := make(map[string]bool)
+	c.AllocationViews.AllocationsSlice = append(c.AllocationViews.AllocationsSlice, allocation)
 	for _, taskAllocation := range allocation.GetTaskAllocations() {
 		accID := taskAllocation.GetAcceleratorAllocation().GetAcceleratorID()
 		if _, ok := c.AllocationViews.UnallocatedAcceleratorIDs[accID]; ok {
@@ -310,5 +314,6 @@ func (c *Context) TempAllocJob(allocation *pb_gen.JobAllocation) func() {
 		for key := range deletedUnallocatedAccIDKeys {
 			c.AllocationViews.UnallocatedAcceleratorIDs[key] = true
 		}
+		c.AllocationViews.AllocationsSlice = c.AllocationViews.AllocationsSlice[:len(c.AllocationViews.AllocationsSlice)-1]
 	}
 }

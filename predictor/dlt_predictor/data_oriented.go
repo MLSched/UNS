@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io/ioutil"
+	"math"
 	"sort"
 	"strings"
 )
@@ -119,8 +120,19 @@ func (p *DataOrientedPredictor) getSpecifiedSpaceSharingMiniBatchDuration(ctx *P
 	return result
 }
 
-func (p *DataOrientedPredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, jobID string) int64 {
+func (p *DataOrientedPredictor) getJobTotalMiniBatches(jobID string) int64 {
 	return p.getDLTJobData(jobID).GetTotalMiniBatches()
+}
+
+func (p *DataOrientedPredictor) getSolelyFastestMiniBatchDuration(jobID string) int64 {
+	accType2MiniBatchDuration := p.getDLTJobData(jobID).GetAcceleratorType2MiniBatchDuration().GetAccType2Duration()
+	min := int64(math.MaxInt64)
+	for _, duration := range accType2MiniBatchDuration {
+		if duration < min {
+			min = duration
+		}
+	}
+	return min
 }
 
 func (p *DataOrientedPredictor) getSingleTaskSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorID string, jobIDs []string) map[string]int64 {

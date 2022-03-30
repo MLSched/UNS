@@ -27,7 +27,8 @@ type DLTPredictorTemplate interface {
 	getSingleTaskSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorID string, jobIDs []string) map[string]int64
 	getDataParallelTasksSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorIDs []string, jobIDs []string) map[string]int64
 	getMaximumAcceleratorMemoryCostBytes(ctx *PredictSessionContext, jobID string) int64
-	getJobTotalMiniBatches(ctx *PredictSessionContext, jobID string) int64
+	getJobTotalMiniBatches(jobID string) int64
+	getSolelyFastestMiniBatchDuration(jobID string) int64
 }
 
 type PredictSessionContext struct {
@@ -108,7 +109,7 @@ func (p *DLTBasePredictor) PredictSolely(partitionContext *partition.Context, al
 			return nil, err
 		}
 		miniBatchDuration := miniBatchDurations[jobAllocation.GetJobID()]
-		totalMiniBatch := p.impl.getJobTotalMiniBatches(ctx, jobAllocation.GetJobID())
+		totalMiniBatch := p.impl.getJobTotalMiniBatches(jobAllocation.GetJobID())
 		totalDuration := totalMiniBatch * miniBatchDuration
 		finishTime := *ctx.result.GetResult(jobAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime() + totalDuration
 		p.updateJobFinishTime(ctx, jobAllocation, finishTime)
@@ -119,6 +120,12 @@ func (p *DLTBasePredictor) PredictSolely(partitionContext *partition.Context, al
 		}
 	})
 	return ctx.result, nil
+}
+
+func (p *DLTBasePredictor) PredictSolelyFastestExecutionTime(job *objects.Job) int64 {
+	totalMiniBatches := p.impl.getJobTotalMiniBatches(job.GetJobID())
+	miniBatchDuration := p.impl.getSolelyFastestMiniBatchDuration(job.GetJobID())
+	return totalMiniBatches * miniBatchDuration
 }
 
 func (p *DLTBasePredictor) buildPredictSessionContext(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation, endNanoTime int64) *PredictSessionContext {
@@ -263,7 +270,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 			startNanoTime2Allocations[startNanoTime] = make([]*pb_gen.JobAllocation, 0, 1)
 		}
 		startNanoTime2Allocations[startNanoTime] = append(startNanoTime2Allocations[startNanoTime], allocation)
-		remainingMiniBatches := float64(p.impl.getJobTotalMiniBatches(ctx, allocation.GetJobID()))
+		remainingMiniBatches := float64(p.impl.getJobTotalMiniBatches(allocation.GetJobID()))
 		//log.Printf("allocation job ID = %s, remaining mini batches = %f\n", allocation.GetJobID(), remainingMiniBatches)
 		jobID2RemainingMiniBatches[allocation.GetJobID()] = remainingMiniBatches
 	}
@@ -376,7 +383,7 @@ func (p *DLTBasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionCon
 	return result, nil
 }
 
-func (p *DLTBasePredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, jobID string) int64 {
+func (p *DLTBasePredictor) getJobTotalMiniBatches(jobID string) int64 {
 	panic("template method.")
 }
 
@@ -446,6 +453,10 @@ func (p *DLTBasePredictor) getSpaceSharingMiniBatchDuration(ctx *PredictSessionC
 		reason := fmt.Sprintf("unsupported task group type %s", taskGroupType)
 		return nil, interfaces.UnsupportedTaskGroupTypeError.Set(reason)
 	}
+}
+
+func (p *DLTBasePredictor) getSolelyFastestMiniBatchDuration(jobID string) int64 {
+	panic("template method.")
 }
 
 func (p *DLTBasePredictor) getSingleTaskSpaceSharingMiniBatchDuration(ctx *PredictSessionContext, acceleratorID string, jobIDs []string) map[string]int64 {

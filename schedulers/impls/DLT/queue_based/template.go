@@ -42,10 +42,8 @@ type QueueBasedSchedulerParam struct {
 
 func BuildTemplate(param *QueueBasedSchedulerParam) (*QueueBasedSchedulerTemplate, error) {
 	sche := &QueueBasedSchedulerTemplate{
-		Predictor: predictor.BuildPredictor(param.PredictorConfiguration),
-		AllocationsProvider: &base2.AllocationsProviderImpl{
-			MaxGangAllocations: math.MaxInt64,
-		},
+		Predictor:             predictor.BuildPredictor(param.PredictorConfiguration),
+		AllocationsProvider:   &base2.AllocationsProviderImpl{},
 		impl:                  param.Impl,
 		AllocationProvideMode: param.AllocationProvideMode,
 	}
@@ -76,7 +74,14 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 		}
 		accID2SortedTaskAllocations := s.AllocationsProvider.PrepareAccID2SortedTaskAllocations(pc, basePredictResult)
 		nodeID2TaskAllocations := s.GetNodeID2TaskAllocations(pc)
-		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(pc, accID2SortedTaskAllocations, basePredictResult, job, s.AllocationProvideMode)
+		possibleAllocations := s.AllocationsProvider.GetPossibleAllocations(&base2.GetPossibleAllocationsParams{
+			PC:                          pc,
+			AccID2SortedTaskAllocations: accID2SortedTaskAllocations,
+			PredictResult:               basePredictResult,
+			Job:                         job,
+			ProvideType:                 s.AllocationProvideMode,
+			MaxCount:                    math.MaxInt64,
+		})
 		var bestScore *JobAllocationScore = nil
 		var bestJobAllocation *pb_gen.JobAllocation = nil
 		for _, possibleAllocation := range possibleAllocations {

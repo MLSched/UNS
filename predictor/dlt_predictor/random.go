@@ -89,7 +89,7 @@ func (p *RandomPredictor) getSpaceSharingMiniBatchDurationNanoSecond(ctx *Predic
 	return result
 }
 
-func (p *RandomPredictor) getJobTotalMiniBatches(ctx *PredictSessionContext, jobID string) int64 {
+func (p *RandomPredictor) getJobTotalMiniBatches(jobID string) int64 {
 	return int64(int(crc32.ChecksumIEEE([]byte(jobID)))%10000 + 1000)
 }
 
