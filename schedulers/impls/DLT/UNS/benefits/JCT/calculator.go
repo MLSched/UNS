@@ -2,9 +2,11 @@ package JCT
 
 import (
 	"UNS/pb_gen/objects"
+	predictorinterfaces "UNS/predictor/interfaces"
 	"UNS/schedulers/impls/DLT/UNS/benefits/base"
 	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"UNS/schedulers/partition"
+	"sort"
 )
 
 type Calculator struct {
@@ -117,4 +119,27 @@ func (c *Calculator) NewStub() interface{} {
 func (c *Calculator) Calculate(prevStub interface{}) interfaces2.Benefit {
 	avgJCT := c.calculateAvgJCT(prevStub.(*Stub))
 	return c.avgJCT2Benefit(avgJCT)
+}
+
+func (c *Calculator) PrioritySort(pc *partition.Context, jobs map[string]*objects.Job, predictor predictorinterfaces.Predictor) map[string]int {
+	type JobAndTime struct {
+		Job  *objects.Job
+		Time int64
+	}
+	jobAndTimes := make([]*JobAndTime, 0, len(jobs))
+	for _, job := range jobs {
+		et := predictor.PredictSolelyFastestExecutionTime(job)
+		jobAndTimes = append(jobAndTimes, &JobAndTime{
+			Job:  job,
+			Time: et,
+		})
+	}
+	sort.Slice(jobAndTimes, func(i, j int) bool {
+		return jobAndTimes[i].Time < jobAndTimes[j].Time
+	})
+	result := make(map[string]int)
+	for i, jat := range jobAndTimes {
+		result[jat.Job.GetJobID()] = i
+	}
+	return result
 }

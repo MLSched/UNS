@@ -10,6 +10,8 @@ import (
 	"UNS/schedulers/impls/DLT/UNS/score"
 	"UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/partition"
+	"sort"
+	"strings"
 )
 
 type Scheduler struct {
@@ -66,4 +68,25 @@ func (s *Scheduler) FilterAllocationsForResourceEfficiency(initialPC *partition.
 		}
 	}
 	return filtered
+}
+
+func (s *Scheduler) GenJobAllocationFingerPrint(jobAllocation *pb_gen.JobAllocation) string {
+	b := &strings.Builder{}
+	b.WriteString(jobAllocation.GetJobID())
+	for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+		b.WriteByte('|')
+		b.WriteString(taskAllocation.GetAcceleratorAllocation().GetAcceleratorID())
+		b.WriteString(taskAllocation.GetStartExecutionTimeNanoSecond().String())
+		//b.WriteString(taskAllocation.GetPlaceholder())
+	}
+	return b.String()
+}
+
+func (s *Scheduler) GenJobAllocationsFingerPrint(jobAllocations []*pb_gen.JobAllocation) string {
+	fingerPrints := make([]string, 0, len(jobAllocations))
+	for _, jobAllocation := range jobAllocations {
+		fingerPrints = append(fingerPrints, s.GenJobAllocationFingerPrint(jobAllocation))
+	}
+	sort.Strings(fingerPrints)
+	return strings.Join(fingerPrints, "\n")
 }

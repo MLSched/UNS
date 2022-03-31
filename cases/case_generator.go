@@ -60,7 +60,6 @@ var submitTimeScaleFactor = float64(5)
 var jobExecutionTimeScaleFactor = float64(1)
 
 //var syncMode = false
-//
 var syncMode = true
 
 var deadlineProb = float64(0.3)
@@ -517,11 +516,13 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 	GPUTypeIdx := utils.IndexOf(mergedHeader, "GPUType")
 	userIDIdx := utils.IndexOf(mergedHeader, "user")
 
+	executionDurations := make([]int64, 0)
 	generatorJob := func(record []string) *configs.DLTJobData {
 		jobID := record[jobIDIdx]
 		startTimeSecond, _ := strconv.ParseFloat(record[startTimeIdx], 64)
 		endTimeSecond, _ := strconv.ParseFloat(record[endTimeIdx], 64)
 		executionDurationSecond := jobExecutionTimeScaleFactor * (endTimeSecond - startTimeSecond)
+		executionDurations = append(executionDurations, int64(executionDurationSecond))
 		min := float64(miniBatchDurationNanoSecondDistribution[0])
 		max := float64(miniBatchDurationNanoSecondDistribution[1])
 		miniBatchDurationNanoSecond := int64(g.randomUniform([]float64{min, max}))
@@ -596,13 +597,23 @@ func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords []
 	gangJobsCount := 0
 	for _, record := range mergedRecords {
 		d := generatorJob(record)
-		s, _ := utils.MarshalJsonPB(d)
-		log.Printf("%v", s)
+		//s, _ := utils.MarshalJsonPB(d)
+		//log.Printf("%v", s)
 		data[d.GetJob().GetJobID()] = d
 		if d.GetJob().GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
 			gangJobsCount++
 		}
 	}
+	totalExecutionDuration := int64(0)
+	maxExecutionDuration := int64(0)
+	for _, ed := range executionDurations {
+		totalExecutionDuration += ed
+		if ed > maxExecutionDuration {
+			maxExecutionDuration = ed
+		}
+	}
+	avgExecutionDuration := totalExecutionDuration / int64(len(executionDurations))
+	log.Printf("avgExecutionDuration = %d, maxExecutionDuration = %d", avgExecutionDuration, maxExecutionDuration)
 	normalizeSubmitTime := func(data map[string]*configs.DLTJobData) {
 		minSubmitTime := int64(math.MaxInt64)
 		for _, d := range data {
