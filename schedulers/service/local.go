@@ -14,7 +14,7 @@ import (
 )
 
 // LocalSchedulersService 统一调度服务的大脑。
-// 管理ResourceManager与Cluster、Partition、Scheduler的引用以及维护它们的映射关系。
+// 管理ResourceManager与Cluster、MockPartition、Scheduler的引用以及维护它们的映射关系。
 // 并且负责分发两侧之间的消息。
 type LocalSchedulersService struct {
 	mu                        *sync.RWMutex
@@ -161,7 +161,7 @@ func (ss *LocalSchedulersService) handleEventFromRM(e *eventFromRM) {
 	}
 	events.Reply(e.Event, &events.Result{
 		Succeeded: false,
-		Reason:    fmt.Sprintf("Non-existed Partition ID, RMID = [%s], Partition ID = [%s]", e.RMID, e.PartitionID),
+		Reason:    fmt.Sprintf("Non-existed MockPartition ID, RMID = [%s], MockPartition ID = [%s]", e.RMID, e.PartitionID),
 	})
 }
 

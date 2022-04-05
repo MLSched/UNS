@@ -30,7 +30,7 @@ const (
 	ProvideTypeDefault             ProvideType = 0
 	ProvideTypeOnlyUnoccupied      ProvideType = 0x0000_0010
 	ProvideTypeOnlyNonSpaceSharing ProvideType = 0x0000_0100
-	ProvideTypeImmediateAllocation ProvideType = 0x0000_1000
+	ProvideTypeResourceEfficient   ProvideType = 0x0000_1000
 )
 
 type AllocationsProviderImpl struct {
@@ -63,9 +63,6 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 		return buildJobAllocation(pc, job, []string{accID}, &startTime, startTime, false, nil)
 	}
 	addJobAllocation := func(accID string, startTime int64) {
-		if a.isProvideTypeMode(provideTypeMode, ProvideTypeImmediateAllocation) && startTime != pc.FixedNow() {
-			return
-		}
 		result = append(result, buildJobAllocation(accID, startTime))
 	}
 	finishTime := func(taskAllocation *objects.TaskAllocation) int64 {
@@ -259,8 +256,14 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 			if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyUnoccupied) && (startTime == nil || *startTime != pc.FixedNow()) {
 				return false
 			}
-			if a.isProvideTypeMode(provideTypeMode, ProvideTypeImmediateAllocation) && (allocationTime != pc.FixedNow()) {
-				return false
+			if a.isProvideTypeMode(provideTypeMode, ProvideTypeResourceEfficient) {
+				for _, waitingJobID := range placeholderWaitingJobIDs {
+					if pc.Allocations[waitingJobID].GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond().GetValue() > pc.FixedNow() {
+						// 当该allocation等待的一个任务的开始时间比pc的FixedNow更晚，这时该allocation不是ResourceEfficient类型的，
+						// 因为此时它等待了一个还没有真正开始运行的任务。
+						continue
+					}
+				}
 			}
 			na := buildJobAllocation(pc, job, accIDs, startTime, allocationTime, placeholder, placeholderWaitingJobIDs)
 			resultAllocations = append(resultAllocations, na)

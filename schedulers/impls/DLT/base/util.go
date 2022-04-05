@@ -18,7 +18,7 @@ func UpdatePartitionContext(event *events.Event, c *partition.Context) error {
 		case *eventobjs.RMUpdateTimeEvent:
 			return c.UpdateTime(eo)
 		default:
-			reason := fmt.Sprintf("Partition Context ID = [%s] received unknown event = [%v]", c.Meta.GetPartitionID(), event.Data)
+			reason := fmt.Sprintf("MockPartition Context ID = [%s] received unknown event = [%v]", c.Meta.GetPartitionID(), event.Data)
 			log.Println(reason)
 			panic(reason)
 		}

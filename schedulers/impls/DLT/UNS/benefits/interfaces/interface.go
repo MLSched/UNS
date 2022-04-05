@@ -13,5 +13,6 @@ type Calculator interface {
 	ByPredictIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit Benefit, stub interface{})
 	ByPredict(pc *partition.Context, allocationsPredictResult interfaces.PredictResult) (benefit Benefit, stub interface{})
 	CloneStub(stub interface{}) interface{}
+	NewStub() interface{}
 	ByHistory(pc *partition.Context, histories map[string]*objects.JobExecutionHistory) (benefit Benefit, stub interface{})
 }

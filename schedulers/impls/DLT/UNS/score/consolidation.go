@@ -11,6 +11,7 @@ type JobAllocationsScore float64
 type Calculator interface {
 	GetScore(pc *partition.Context, jobAllocations []*pb_gen.JobAllocation) (JobAllocationsScore, interface{})
 	GetScoreIncrementally(pc *partition.Context, jobAllocations []*pb_gen.JobAllocation, stub interface{}) (JobAllocationsScore, interface{})
+	NewStub() interface{}
 }
 
 type ConsolidationScoreCalculator struct {
@@ -23,6 +24,13 @@ func NewConsolidationScoreCalculator() *ConsolidationScoreCalculator {
 type ConsolidationScoreStub struct {
 	NodeIDs   map[string]bool
 	SocketIDs map[string]bool
+}
+
+func (c *ConsolidationScoreCalculator) NewStub() interface{} {
+	return &ConsolidationScoreStub{
+		NodeIDs:   make(map[string]bool),
+		SocketIDs: make(map[string]bool),
+	}
 }
 
 func (c *ConsolidationScoreCalculator) GetScore(pc *partition.Context, jobAllocations []*pb_gen.JobAllocation) (JobAllocationsScore, interface{}) {

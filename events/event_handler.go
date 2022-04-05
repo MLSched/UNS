@@ -22,6 +22,7 @@ func Reply(event *Event, result *Result) {
 	if event.ResultChan != nil {
 		event.ResultChan <- result
 	}
+	event.Replied = true
 }
 
 func ReplySucceeded(event *Event) {

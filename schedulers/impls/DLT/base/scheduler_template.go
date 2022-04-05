@@ -110,6 +110,7 @@ func (i *DLTSchedulerTemplate) SyncSchedule() {
 	scheduleFinishChan := make(chan interface{})
 	i.scheduleAble <- scheduleFinishChan
 	<-scheduleFinishChan
+	log.Printf("out")
 }
 
 func (i *DLTSchedulerTemplate) AsyncSchedule() {

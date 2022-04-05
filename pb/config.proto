@@ -85,6 +85,7 @@ message UNSSchedulerConfiguration {
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
   bool nonSpaceSharing = 7;
+  bool returnAllScheduleDecisions = 8;
 }
 
 // 任务执行时间预测器的配置

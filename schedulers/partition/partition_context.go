@@ -109,7 +109,7 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {
 		jobID := updatedJobAllocation.GetJobID()
 		if _, ok := c.UnfinishedJobs[jobID]; !ok {
-			reason := fmt.Sprintf("Partition Context ID = [%s] update allocations, encounter unkonwn job ID = [%s]", c.Meta.GetPartitionID(), jobID)
+			reason := fmt.Sprintf("MockPartition Context ID = [%s] update allocations, encounter unkonwn job ID = [%s]", c.Meta.GetPartitionID(), jobID)
 			log.Println(reason)
 			return errors.New(reason)
 		}
@@ -140,14 +140,14 @@ func (c *Context) UpdateJobs(eo *eventobjs.RMUpdateJobsEvent) error {
 	c.updateCurrentTime(eo.GetCurrentNanoTime())
 	for _, job := range eo.GetNewJobs() {
 		if _, duplicated := c.UnfinishedJobs[job.GetJobID()]; duplicated {
-			reason := fmt.Sprintf("Partition Context ID = [%s] update jobs, add new jobs, encounter duplicated job ID = [%s]", c.Meta.GetPartitionID(), job.GetJobID())
+			reason := fmt.Sprintf("MockPartition Context ID = [%s] update jobs, add new jobs, encounter duplicated job ID = [%s]", c.Meta.GetPartitionID(), job.GetJobID())
 			log.Println(reason)
 			return errors.New(reason)
 		}
 	}
 	for _, jobID := range eo.GetRemovedJobIDs() {
 		if _, exists := c.UnfinishedJobs[jobID]; !exists {
-			reason := fmt.Sprintf("Partition Context ID = [%s] update jobs, remove jobs, encounter unkown job ID = [%s]", c.Meta.GetPartitionID(), jobID)
+			reason := fmt.Sprintf("MockPartition Context ID = [%s] update jobs, remove jobs, encounter unkown job ID = [%s]", c.Meta.GetPartitionID(), jobID)
 			log.Println(reason)
 			return errors.New(reason)
 		}
@@ -187,9 +187,8 @@ func (c *Context) FixedNow() int64 {
 	return *c.Time
 }
 
+// Clone 不需加锁，因为仅仅在调度算法中调用，不会同时进行写操作。
 func (c *Context) Clone(cloneAllocations bool) *Context {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	cloned, _ := Build(c.Meta)
 	if cloneAllocations {
 		for jobID, allocation := range c.Allocations {

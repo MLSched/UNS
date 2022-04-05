@@ -93,7 +93,7 @@ func SumInt64(f func(item interface{}) int64, vs ...interface{}) int64 {
 	return s
 }
 
-func MaxInt64(f func(item interface{}) int64, vs ...interface{}) int64 {
+func MaxInt64Interfaces(f func(item interface{}) int64, vs ...interface{}) int64 {
 	max := math.Inf(-1)
 	for _, v := range vs {
 		max = math.Max(max, float64(f(v)))
@@ -101,10 +101,26 @@ func MaxInt64(f func(item interface{}) int64, vs ...interface{}) int64 {
 	return int64(max)
 }
 
-func MinInt64(f func(item interface{}) int64, vs ...interface{}) int64 {
+func MaxInt64(vs ...int64) int64 {
+	max := math.Inf(-1)
+	for _, v := range vs {
+		max = math.Max(max, float64(v))
+	}
+	return int64(max)
+}
+
+func MinInt64Interfaces(f func(item interface{}) int64, vs ...interface{}) int64 {
 	min := math.Inf(1)
 	for _, v := range vs {
 		min = math.Min(min, float64(f(v)))
+	}
+	return int64(min)
+}
+
+func MinInt64(vs ...int64) int64 {
+	min := math.Inf(1)
+	for _, v := range vs {
+		min = math.Min(min, float64(v))
 	}
 	return int64(min)
 }
