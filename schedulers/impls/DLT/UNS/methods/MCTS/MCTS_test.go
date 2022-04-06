@@ -1,1 +1,26 @@
 package MCTS
+
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+func TestName(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				t.Log("Done")
+				return
+			default:
+				t.Log("pass one")
+				time.Sleep(1 * time.Second)
+			}
+		}
+	}()
+	time.Sleep(5 * time.Second)
+	cancel()
+	time.Sleep(1 * time.Second)
+}

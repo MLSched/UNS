@@ -25,10 +25,10 @@ type ScheduleMethod interface {
 }
 
 type CommonMethodParams struct {
-	Predictor           predictorinterfaces.Predictor
-	AllocationsProvider base.AllocationsProvider
-	BenefitsCalculator  benefitsinterfaces.Calculator
-	ScoreCalculator     score.Calculator
+	Predictor                  predictorinterfaces.Predictor
+	AllocationsProvider        base.AllocationsProvider
+	BenefitsCalculator2Weights map[benefitsinterfaces.Calculator]float64
+	ScoreCalculator            score.Calculator
 }
 
 func (s *Scheduler) GetSchedulerID() string {

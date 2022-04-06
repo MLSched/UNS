@@ -14,7 +14,7 @@ import (
 )
 
 type DataOrientedPredictor struct {
-	*DLTBasePredictor
+	*BasePredictor
 	configuration *configs.DLTPredictorDataOrientedConfiguration
 	data          *configs.DLTPredictorDataOrientedDataFormat
 }
@@ -25,7 +25,7 @@ func NewDataOrientedPredictor(configuration *configs.DLTPredictorDataOrientedCon
 	}
 	p.loadData()
 	DLTBase := NewDLTBasePredictor(p)
-	p.DLTBasePredictor = DLTBase
+	p.BasePredictor = DLTBase
 	return p
 }
 

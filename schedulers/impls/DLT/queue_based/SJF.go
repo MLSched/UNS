@@ -6,7 +6,6 @@ import (
 	base2 "UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
-	"math"
 	"sort"
 )
 
@@ -28,13 +27,14 @@ func BuildSJF(configuration interface{}, pusher base2.EventPusher, partitionCont
 	var err error
 	provideMode := base2.ProvideTypeDefault | base2.ProvideTypeOnlyNonSpaceSharing
 	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(&QueueBasedSchedulerParam{
-		Impl:                   sche,
-		PredictorConfiguration: c.PredictorConfiguration,
-		Pusher:                 pusher,
-		PartitionContextAware:  partitionContextAware,
-		IntervalNano:           c.GetIntervalNano(),
-		SyncMode:               c.GetSyncMode(),
-		AllocationProvideMode:  provideMode,
+		Impl:                         sche,
+		PredictorConfiguration:       c.PredictorConfiguration,
+		Pusher:                       pusher,
+		PartitionContextAware:        partitionContextAware,
+		IntervalNano:                 c.GetIntervalNano(),
+		SyncMode:                     c.GetSyncMode(),
+		AllocationProvideMode:        provideMode,
+		ReturnAllSchedulingDecisions: c.ReturnAllScheduleDecisions,
 	})
 	if err != nil {
 		return nil, err
@@ -69,9 +69,9 @@ func (s *SJFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) Jo
 	pr := param.PredictResult
 	pc := param.PC
 	r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
-	if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
-		return JobAllocationScore(math.Inf(-1))
-	}
+	//if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
+	//	return JobAllocationScore(math.Inf(-1))
+	//}
 	job := pc.GetUnfinishedJob(possibleAllocation.GetJobID())
 	JCT := *r.GetFinishNanoTime() - job.GetSubmitTimeNanoSecond()
 	return JobAllocationScore(-JCT)

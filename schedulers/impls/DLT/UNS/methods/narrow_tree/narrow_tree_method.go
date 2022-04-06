@@ -28,6 +28,7 @@ import (
 type Method struct {
 	*base2.Scheduler
 	*base2.CommonMethodParams
+	MainBenefitCalculator     benefitsinterfaces.Calculator
 	BenefitsSampler           sampler.Sampler
 	MaximumSameBenefit        int
 	MaxLatency                time.Duration // 一次调度算法执行的最大时延
@@ -52,10 +53,13 @@ func BuildNarrowTreeMethod(sche *base2.Scheduler, configuration *configs.UNSSche
 		CommonMethodParams: &base2.CommonMethodParams{
 			Predictor:           predictor.BuildPredictor(configuration.GetPredictorConfiguration()),
 			AllocationsProvider: &base.AllocationsProviderImpl{},
-			BenefitsCalculator:  benefits.NewJCTCalculator(),
+			BenefitsCalculator2Weights: map[benefitsinterfaces.Calculator]float64{
+				benefits.NewJCTCalculator(): 1,
+			},
 			//BenefitsCalculator: benefits.NewDDLCalculator(),
 			ScoreCalculator: score.NewConsolidationScoreCalculator(),
 		},
+		MainBenefitCalculator: benefits.NewJCTCalculator(),
 		BenefitsSampler:       sampler.NewFixExponentSampler(10),
 		MaximumSameBenefit:    1,
 		MaxLatency:            10 * time.Second,
@@ -193,7 +197,7 @@ func (s *Method) parallelSchedule(param *scheduleContext) []*pb_gen.JobAllocatio
 	pc := param.pc
 	unallocatedJobs := pc.AllocationViews.UnallocatedJobs
 	unallocatedJobsCount := len(unallocatedJobs)
-	baseBenefit, baseStub := s.BenefitsCalculator.ByHistory(pc, pc.GetJobExecutionHistories())
+	baseBenefit, baseStub := s.MainBenefitCalculator.ByHistory(pc, pc.GetJobExecutionHistories())
 	acs := make([]*types.AllocContext, 0)
 	acs = append(acs, &types.AllocContext{
 		PC:                           pc,
@@ -335,7 +339,7 @@ func (s *Method) predictACBenefits(scheduleContext *scheduleContext, ac *types.A
 		log.Println(reason)
 		panic(reason)
 	}
-	_, baseBenefitsStub := s.BenefitsCalculator.ByPredictIncrementally(pc, basePredictResult, ac.BenefitStub)
+	_, baseBenefitsStub := s.MainBenefitCalculator.ByPredictIncrementally(pc, basePredictResult, ac.BenefitStub)
 	_, baseScoreStub := s.ScoreCalculator.GetScore(pc, pc.AllocationViews.AllocationsSlice)
 	nodeID2TaskAllocations := pc.AllocationViews.NodeID2TaskAllocations
 	jobs := pc.AllocationViews.UnallocatedJobs
@@ -369,7 +373,7 @@ func (s *Method) predictACBenefits(scheduleContext *scheduleContext, ac *types.A
 					if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
 						s.MarkGangJobStartTime(jobAllocation, *partialPredictResult.GetResult(jobAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime())
 					}
-					benefit, stub := s.BenefitsCalculator.ByPredictIncrementally(pc, partialPredictResult, baseBenefitsStub)
+					benefit, stub := s.MainBenefitCalculator.ByPredictIncrementally(pc, partialPredictResult, baseBenefitsStub)
 					jobAllocationsScore, _ := s.ScoreCalculator.GetScoreIncrementally(pc, []*pb_gen.JobAllocation{jobAllocation}, baseScoreStub)
 					newJobAllocations := make([]*pb_gen.JobAllocation, len(ac.NewJobAllocations), len(ac.NewJobAllocations)+1)
 					copy(newJobAllocations, ac.NewJobAllocations)

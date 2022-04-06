@@ -68,10 +68,16 @@ func TestOneShotSchedule(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	totalJCT := int64(0)
+	totalJobsCount := int64(0)
 	result.Range(func(allocation *objects.TaskAllocation, result predictorinterfaces.EachPredictResult) {
 		start := *result.GetStartExecutionNanoTime()
 		finish := *result.GetFinishNanoTime()
 		JCT := finish - localPC.GetJob(allocation.GetJobID()).GetSubmitTimeNanoSecond()
 		log.Printf("allocation %v, start %v, finish %v, duration %v, JCT = %v", allocation, start, finish, finish-start, JCT)
+		totalJCT += JCT
+		totalJobsCount++
 	})
+	avgJCT := float64(totalJCT) / float64(totalJobsCount)
+	log.Printf("avg JCT = %f", avgJCT)
 }

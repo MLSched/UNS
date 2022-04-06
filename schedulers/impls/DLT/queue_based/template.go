@@ -17,9 +17,10 @@ import (
 type QueueBasedSchedulerTemplate struct {
 	*base2.DLTSchedulerTemplate
 
-	Predictor             interfaces2.Predictor
-	AllocationsProvider   base2.AllocationsProvider
-	AllocationProvideMode base2.ProvideType
+	Predictor                    interfaces2.Predictor
+	AllocationsProvider          base2.AllocationsProvider
+	AllocationProvideMode        base2.ProvideType
+	ReturnAllSchedulingDecisions bool
 
 	impl QueueBasedSchedulerInterface
 }
@@ -31,21 +32,23 @@ type QueueBasedSchedulerInterface interface {
 }
 
 type QueueBasedSchedulerParam struct {
-	Impl                   QueueBasedSchedulerInterface
-	PredictorConfiguration *configs.PredictorConfiguration
-	Pusher                 base2.EventPusher
-	PartitionContextAware  base2.PartitionContextAware
-	IntervalNano           int64
-	SyncMode               bool
-	AllocationProvideMode  base2.ProvideType
+	Impl                         QueueBasedSchedulerInterface
+	PredictorConfiguration       *configs.PredictorConfiguration
+	Pusher                       base2.EventPusher
+	PartitionContextAware        base2.PartitionContextAware
+	IntervalNano                 int64
+	SyncMode                     bool
+	AllocationProvideMode        base2.ProvideType
+	ReturnAllSchedulingDecisions bool
 }
 
 func BuildTemplate(param *QueueBasedSchedulerParam) (*QueueBasedSchedulerTemplate, error) {
 	sche := &QueueBasedSchedulerTemplate{
-		Predictor:             predictor.BuildPredictor(param.PredictorConfiguration),
-		AllocationsProvider:   &base2.AllocationsProviderImpl{},
-		impl:                  param.Impl,
-		AllocationProvideMode: param.AllocationProvideMode,
+		Predictor:                    predictor.BuildPredictor(param.PredictorConfiguration),
+		AllocationsProvider:          &base2.AllocationsProviderImpl{},
+		impl:                         param.Impl,
+		AllocationProvideMode:        param.AllocationProvideMode,
+		ReturnAllSchedulingDecisions: param.ReturnAllSchedulingDecisions,
 	}
 	sche.DLTSchedulerTemplate = base2.NewIntervalSchedulerTemplate(sche, param.IntervalNano, param.PartitionContextAware, param.SyncMode, param.Pusher)
 	return sche, nil
@@ -114,7 +117,10 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 		unallocatedJobs = pc.AllocationViews.UnallocatedJobs
 	}
 
-	newJobAllocations := s.FilterScheduleAbleJobAllocations(s.GetNewJobAllocations(pc, originalPC), originalPC)
+	newJobAllocations := s.GetNewJobAllocations(pc, originalPC)
+	if !s.ReturnAllSchedulingDecisions {
+		newJobAllocations = s.FilterScheduleAbleJobAllocations(s.GetNewJobAllocations(pc, originalPC), originalPC)
+	}
 	return &eventobjs.SSUpdateAllocationsEvent{NewJobAllocations: pb_gen.UnwrapJobAllocations(newJobAllocations)}
 }
 

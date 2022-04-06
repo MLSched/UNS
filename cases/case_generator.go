@@ -36,7 +36,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 5
+var jobCount = 10
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -112,30 +112,30 @@ var instance2Count = map[*Instance]int64{
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti},
 	//}): 4,
-	//NewInstance(map[int64][]string{
-	//	0: {V100, V100},
-	//}): 2,
-	//NewInstance(map[int64][]string{
-	//	0: {A100, A100},
-	//}): 2,
-	//NewInstance(map[int64][]string{
-	//	0: {GTX2080Ti, GTX2080Ti},
-	//}): 2,
+	NewInstance(map[int64][]string{
+		0: {V100, V100},
+	}): 1,
+	NewInstance(map[int64][]string{
+		0: {A100, A100},
+	}): 1,
 	NewInstance(map[int64][]string{
 		0: {GTX2080Ti, GTX2080Ti},
-		1: {GTX2080Ti, GTX2080Ti},
 	}): 1,
+	//NewInstance(map[int64][]string{
+	//	0: {GTX2080Ti, GTX2080Ti},
+	//	1: {GTX2080Ti, GTX2080Ti},
+	//}): 1,
 	//NewInstance(map[int64][]string{
 	//	0: {V100, V100},
 	//	1: {V100, V100},
 	//}): 2,
-	NewInstance(map[int64][]string{
-		0: {V100, V100, A100, A100},
-	}): 1,
-	NewInstance(map[int64][]string{
-		0: {A100, A100},
-		1: {A100, A100},
-	}): 1,
+	//NewInstance(map[int64][]string{
+	//	0: {V100, V100, A100, A100},
+	//}): 1,
+	//NewInstance(map[int64][]string{
+	//	0: {A100, A100},
+	//	1: {A100, A100},
+	//}): 1,
 	//NewInstance(map[int64][]string{
 	//	0: {A100, A100, A100, A100},
 	//}): 1,

@@ -31,13 +31,14 @@ func BuildEDF(configuration interface{}, pusher base2.EventPusher, partitionCont
 	//	provideMode = base2.ProvideTypeOnlyNonSpaceSharing
 	//}
 	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(&QueueBasedSchedulerParam{
-		Impl:                   sche,
-		PredictorConfiguration: c.PredictorConfiguration,
-		Pusher:                 pusher,
-		PartitionContextAware:  partitionContextAware,
-		IntervalNano:           c.GetIntervalNano(),
-		SyncMode:               c.GetSyncMode(),
-		AllocationProvideMode:  provideMode,
+		Impl:                         sche,
+		PredictorConfiguration:       c.PredictorConfiguration,
+		Pusher:                       pusher,
+		PartitionContextAware:        partitionContextAware,
+		IntervalNano:                 c.GetIntervalNano(),
+		SyncMode:                     c.GetSyncMode(),
+		AllocationProvideMode:        provideMode,
+		ReturnAllSchedulingDecisions: c.ReturnAllScheduleDecisions,
 	})
 	if err != nil {
 		return nil, err
@@ -70,9 +71,9 @@ func (s *EDFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) Jo
 	possibleAllocation := param.JobAllocation
 	pr := param.PredictResult
 	pc := param.PC
-	if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
-		return JobAllocationScore(math.Inf(-1))
-	}
+	//if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
+	//	return JobAllocationScore(math.Inf(-1))
+	//}
 	r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
 	job := pc.GetUnfinishedJob(possibleAllocation.GetJobID())
 	finishTime := *r.GetFinishNanoTime()

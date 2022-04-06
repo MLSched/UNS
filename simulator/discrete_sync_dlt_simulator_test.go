@@ -27,5 +27,6 @@ func init() {
 
 func TestSimulator(t *testing.T) {
 	simulator := NewDiscreteSyncDLTSimulator(syncConfigPath)
+	simulator.oneShot = true
 	simulator.StartSimulation()
 }

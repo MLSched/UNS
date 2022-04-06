@@ -8,13 +8,13 @@ import (
 )
 
 type RandomPredictor struct {
-	*DLTBasePredictor
+	*BasePredictor
 }
 
 func NewRandomPredictor(configuration *configs.DLTPredictorRandomConfiguration) *RandomPredictor {
 	p := &RandomPredictor{}
 	DLTBase := NewDLTBasePredictor(p)
-	p.DLTBasePredictor = DLTBase
+	p.BasePredictor = DLTBase
 	return p
 }
 
