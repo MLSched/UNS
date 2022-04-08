@@ -71,8 +71,6 @@ type Node struct {
 	ConsolidationScoreStub interface{}
 	ConsolidationScore     score.JobAllocationsScore
 
-	Normalizer benefits.Normalizer
-
 	NotWorthSelect bool
 }
 
@@ -89,7 +87,7 @@ func BuildMCTSMethod(sche *base2.Scheduler, configuration *configs.UNSSchedulerC
 			},
 			ScoreCalculator: score.NewConsolidationScoreCalculator(),
 		},
-		MaxLatency:            1 * time.Second,
+		MaxLatency:            1000 * time.Second,
 		ResourceEfficientMode: true,
 		MaxNodeChildrenCount:  10,
 	}
@@ -162,10 +160,11 @@ type scheduleContext struct {
 	bestBenefit     *atomic.Value
 	bestAllocations []*pb_gen.JobAllocation
 
-	normalizer               benefits.Normalizer
-	normalizationRoutineCtx  context.Context
-	normalizationRoutineChan chan map[interfaces2.Calculator][]float64
-	normalizationFunc        benefits.NormalizationFunc
+	normalizers                    map[interfaces2.Calculator]benefits.Normalizer
+	normalizationRoutineCtx        context.Context
+	normalizationRoutineChan       chan map[interfaces2.Calculator][]float64
+	normalizationFuncReadyInformer chan interface{}
+	normalizationFunc              benefits.NormalizationFunc
 }
 
 type scheduleContextParams struct {
@@ -206,7 +205,14 @@ func newScheduleContext(params *scheduleContextParams) *scheduleContext {
 		bestBenefitMu:   &sync.Mutex{},
 		bestAllocations: nil,
 		C:               params.C,
-		normalizer:      benefits.NewZScoreNormalizer(),
+		normalizers: func() map[interfaces2.Calculator]benefits.Normalizer {
+			r := make(map[interfaces2.Calculator]benefits.Normalizer)
+			for calculator := range params.BenefitCalculator2Weights {
+				r[calculator] = benefits.NewZScoreNormalizer()
+			}
+			return r
+		}(),
+		normalizationFuncReadyInformer: make(chan interface{}),
 	}
 	ctx.JobID2Priority, ctx.SortedJobIDWithPriorities = ctx.PrioritySort(pc.AllocationViews.UnallocatedJobs)
 	predictResult, err := params.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
@@ -214,29 +220,59 @@ func newScheduleContext(params *scheduleContextParams) *scheduleContext {
 		reason := fmt.Sprintf("[UNS Scheduler] MCTS base predict failed, err=[%v]", err)
 		panic(reason)
 	}
-	ctx.RootNode = &Node{}
-	ctx.initNode(ctx.RootNode, nil, 0, pc, predictResult, "")
+	ctx.RootNode = &Node{
+		AllocContext: &types.AllocContext{},
+	}
+	ctx.initReadyNode(&readyNodeInitParam{
+		Node:   ctx.RootNode,
+		Level:  0,
+		PC:     pc,
+		Result: predictResult,
+	})
 	return ctx
 }
 
-func (s *scheduleContext) initNode(node *Node, parent *Node, level int, pc *partition.Context, result interfaces.PredictResult, newJobAllocationsFingerPrint string) {
+type readyNodeInitParam struct {
+	Node                         *Node
+	Parent                       *Node
+	Level                        int
+	PC                           *partition.Context
+	Result                       interfaces.PredictResult
+	NewJobAllocationsFingerPrint string
+	JCTBenefitStub               interface{}
+	ConsolidationScoreStub       interface{}
+}
+
+// initReadyNode 初始化已经可以作为树上节点的节点信息。
+func (s *scheduleContext) initReadyNode(param *readyNodeInitParam) {
+	node := param.Node
 	node.TotalSimulatedBenefitMu = &sync.RWMutex{}
-	node.Parent = parent
-	node.PC = pc
-	node.PredictResult = result
-	node.Level = level
-	node.NewJobAllocationsFingerPrint = newJobAllocationsFingerPrint
+	node.Parent = param.Parent
+	node.PC = param.PC
+	node.PredictResult = param.Result
+	node.Level = param.Level
+	node.NewJobAllocationsFingerPrint = param.NewJobAllocationsFingerPrint
 	node.Modifying = utils.NewAtomic(false)
-	node.JCTBenefitStub = s.JCTCalculator.NewStub()
-	node.ConsolidationScoreStub = s.ConsolidationScoreCalculator.NewStub()
-	node.Normalizer = benefits.NewZScoreNormalizer()
+	if param.JCTBenefitStub == nil {
+		node.JCTBenefitStub = s.JCTCalculator.NewStub()
+	} else {
+		node.JCTBenefitStub = param.JCTBenefitStub
+	}
+	if param.ConsolidationScoreStub == nil {
+		node.ConsolidationScoreStub = s.ConsolidationScoreCalculator.NewStub()
+	} else {
+		node.ConsolidationScoreStub = param.ConsolidationScoreStub
+	}
+	node.TotalSimulatedBenefit = make(map[interfaces2.Calculator]interfaces2.Benefit)
 }
 
 func (s *scheduleContext) Search(timeBudget time.Duration, parallelRoutines int) []*pb_gen.JobAllocation {
 	// 手动将第一层扩展出来
 	s.Expand(s.RootNode)
+	s.playOutAndPropagateForChildren(s.RootNode.Children)
+	<-s.normalizationFuncReadyInformer
 	end := time.Now().Add(timeBudget)
-	totalPlayOutCount := utils.NewAtomicInt(0)
+	totalPlayOutCount := utils.NewAtomicInt(len(s.RootNode.Children))
 	searchRoutine := func() {
 		playOutCount := 0
 		for time.Now().Before(end) {
@@ -281,13 +317,30 @@ func (s *scheduleContext) playOutAndPropagateForChildren(children []*Node) map[i
 			panic("playOutAndPropagateForChildren children don't share a parent.")
 		}
 	}
+	mu := &sync.Mutex{}
 	totalBenefits := make(map[interfaces2.Calculator]interfaces2.Benefit)
-	for _, node := range children {
-		newBenefits := s.PlayOut(node)
-		s.addTotalBenefits(totalBenefits, newBenefits)
-		s.addSimulatedBenefit(node, totalBenefits, 1)
+	playOutBenefitsResults := make(map[interfaces2.Calculator][]float64)
+	for calculator := range s.BenefitCalculator2Weights {
+		playOutBenefitsResults[calculator] = make([]float64, 0)
 	}
-	s.BackPropagation(children[0].Parent, totalBenefits, len(children))
+	wg := &sync.WaitGroup{}
+	for _, node := range children {
+		node := node
+		utils.GoWithWG(wg, 0, func(_ int) {
+			var newBenefits map[interfaces2.Calculator]interfaces2.Benefit
+			newBenefits = s.PlayOut(node)
+			s.addSimulatedBenefit(node, newBenefits, 1)
+			mu.Lock()
+			defer mu.Unlock()
+			s.addUpBenefits(totalBenefits, newBenefits)
+			for calculator, benefit := range newBenefits {
+				playOutBenefitsResults[calculator] = append(playOutBenefitsResults[calculator], float64(benefit))
+			}
+		})
+	}
+	wg.Wait()
+	s.normalizationRoutineChan <- playOutBenefitsResults
+	s.BackPropagation(parent, totalBenefits, len(children))
 	return totalBenefits
 }
 
@@ -298,8 +351,10 @@ func (s *scheduleContext) playOutAndPropagateForMonoNode(node *Node) map[interfa
 	return benefit
 }
 
-func (s *scheduleContext) addTotalBenefits(dst, src map[interfaces2.Calculator]interfaces2.Benefit) {
-
+func (s *scheduleContext) addUpBenefits(dst, src map[interfaces2.Calculator]interfaces2.Benefit) {
+	for calculator, value := range src {
+		dst[calculator] += value
+	}
 }
 
 func (s *scheduleContext) Expand(node *Node) bool {
@@ -400,6 +455,16 @@ func (s *scheduleContext) ExpandForJob(ctx *expandContext) []*Node {
 			possibleAllocations = filtered
 		}
 	}
+	// TODO debug
+	for _, allocation := range possibleAllocations {
+		cancel := pc.TempAllocJob(allocation)
+		_, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
+		if interfaces.IsSpaceSharingMoreThanTwoError(err) {
+			panic(err)
+		}
+		cancel()
+	}
+	//
 	nodes := getPossibleNodes(possibleAllocations)
 	nodes = s.sortAndFilterPossibleNodes(nodes)
 	selectCount := utils.MinInt64(int64(s.MaxJobAllocationsCount), int64(len(nodes)))
@@ -408,7 +473,17 @@ func (s *scheduleContext) ExpandForJob(ctx *expandContext) []*Node {
 	for _, selected := range selectedNodes {
 		cloned := pc.Clone(false)
 		cloned.TempAllocJob(selected.JobAllocation)
-		s.initNode(selected, node, node.Level+1, cloned, ctx.PredictResult.Merge(selected.PartialPredictResult), s.method.GenJobAllocationsFingerPrint(selected.NewJobAllocations))
+		s.initReadyNode(&readyNodeInitParam{
+			//selected, node, node.Level+1, cloned, ctx.PredictResult.Merge(selected.PartialPredictResult), s.method.GenJobAllocationsFingerPrint(selected.NewJobAllocations
+			Node:                         selected,
+			Parent:                       node,
+			Level:                        node.Level + 1,
+			PC:                           cloned,
+			Result:                       ctx.PredictResult.Merge(selected.PartialPredictResult),
+			NewJobAllocationsFingerPrint: s.method.GenJobAllocationsFingerPrint(selected.NewJobAllocations),
+			JCTBenefitStub:               selected.JCTBenefitStub,
+			ConsolidationScoreStub:       selected.ConsolidationScoreStub,
+		})
 	}
 	if ctx.PlayOutMode {
 		return selectedNodes
@@ -468,7 +543,7 @@ func (s *scheduleContext) fingerPrintLocked(f func()) {
 func (s *scheduleContext) addSimulatedBenefit(node *Node, newTotalBenefit map[interfaces2.Calculator]interfaces2.Benefit, count int) {
 	node.TotalSimulatedBenefitMu.Lock()
 	defer node.TotalSimulatedBenefitMu.Unlock()
-	s.addTotalBenefits(node.TotalSimulatedBenefit, newTotalBenefit)
+	s.addUpBenefits(node.TotalSimulatedBenefit, newTotalBenefit)
 	node.TotalVisitedCount += count
 }
 
@@ -504,10 +579,6 @@ func (s *scheduleContext) getPossibleNodes(params *getPossibleNodesParams) []*No
 					// 忽略显存溢出造成的问题和多分布式任务跨节点运行时共享节点的问题
 					return
 				}
-				for _, m := range pc.AllocationViews.AllocationsSlice {
-					st, _ := utils.MarshalJsonPB(m)
-					log.Printf("%s", st)
-				}
 				log.Printf("[UNS Scheduler] MCTS find unproper job allocation, err=[%v]", err)
 				panic("fast fail")
 			}
@@ -519,24 +590,50 @@ func (s *scheduleContext) getPossibleNodes(params *getPossibleNodesParams) []*No
 			newJobAllocations := make([]*pb_gen.JobAllocation, len(node.NewJobAllocations), len(node.NewJobAllocations)+1)
 			copy(newJobAllocations, node.NewJobAllocations)
 			newJobAllocations = append(newJobAllocations, jobAllocation)
-			possibleNodes = append(possibleNodes, &Node{
-				AllocContext: &types.AllocContext{
-					PC:                pc,
-					Job:               job,
-					JobAllocation:     jobAllocation,
-					NewJobAllocations: newJobAllocations,
-				},
+			possibleNodes = append(possibleNodes, s.initPossibleNode(&possibleNodeInitParam{
+				PC:                     pc,
+				Job:                    job,
+				JobAllocation:          jobAllocation,
+				NewJobAllocations:      newJobAllocations,
 				ConsolidationScore:     consolidationScore,
 				ConsolidationScoreStub: consolidationScoreStub,
 				JCTBenefit:             JCTBenefit,
 				JCTBenefitStub:         JCTBenefitStub,
 				PartialPredictResult:   partialPredictResult,
-			})
-			possibleNodes = append(possibleNodes)
+			}))
 		}
 		attemptAlloc()
 	}
 	return possibleNodes
+}
+
+type possibleNodeInitParam struct {
+	PC                     *partition.Context
+	Job                    *objects.Job
+	JobAllocation          *pb_gen.JobAllocation
+	NewJobAllocations      []*pb_gen.JobAllocation
+	ConsolidationScore     score.JobAllocationsScore
+	ConsolidationScoreStub interface{}
+	JCTBenefit             interfaces2.Benefit
+	JCTBenefitStub         interface{}
+	PartialPredictResult   interfaces.PredictResult
+}
+
+// 初始化可能成为树上节点的信息。每个任务会产生一系列可能的节点，在其中筛选性能最好的一些节点。
+func (s *scheduleContext) initPossibleNode(param *possibleNodeInitParam) *Node {
+	return &Node{
+		AllocContext: &types.AllocContext{
+			PC:                param.PC,
+			Job:               param.Job,
+			JobAllocation:     param.JobAllocation,
+			NewJobAllocations: param.NewJobAllocations,
+		},
+		ConsolidationScore:     param.ConsolidationScore,
+		ConsolidationScoreStub: param.ConsolidationScoreStub,
+		JCTBenefit:             param.JCTBenefit,
+		JCTBenefitStub:         param.JCTBenefitStub,
+		PartialPredictResult:   param.PartialPredictResult,
+	}
 }
 
 func (s *scheduleContext) isLeafNode(node *Node) bool {
@@ -655,6 +752,9 @@ nextLevel:
 				}
 				if s.isNodeBeforeLeaf(childNode) {
 					// 该节点是叶子节点前的节点并且它的所有孩子节点（叶子节点）都被扩展了，则所有的叶子节点的benefit已经获得，不需要再进行扩展。
+					for _, grandChildNode := range childNode.Children {
+						s.markNodeNotWorthSelect(grandChildNode)
+					}
 					s.markNodeNotWorthSelect(childNode)
 				}
 				expandedChildren = childNode.Children
@@ -794,9 +894,10 @@ func (s *scheduleContext) UCT(node *Node, parentVisitedCount int, normalizationF
 	}
 	combinedNormalizedBenefit := float64(0)
 	for calculator, avgSimulatedBenefit := range calculator2AvgSimulatedBenefit {
-		normalized := normalizationFunc(avgSimulatedBenefit)
+		normalized := normalizationFunc(calculator, avgSimulatedBenefit)
 		combinedNormalizedBenefit += s.BenefitCalculator2Weights[calculator] * normalized
 	}
+	// value + \sqrt { \log{parent visited count} / current node visited count }
 	v := combinedNormalizedBenefit + math.Sqrt(math.Log(parentVisitedCountF)/float64(totalVisitedCount))
 	return v
 }
@@ -805,13 +906,13 @@ func (s *scheduleContext) reserveModifying(node *Node) bool {
 	return node.Modifying.CompareAndSwap(false, true)
 }
 
-func (s *scheduleContext) tryModify(node *Node, f func()) bool {
+func (s *scheduleContext) tryModify(node *Node, f func()) (failed bool) {
 	if !s.reserveModifying(node) {
-		return false
+		return true
 	}
 	f()
 	s.releaseModifying(node)
-	return true
+	return false
 }
 
 func (s *scheduleContext) modify(node *Node, f func()) bool {
@@ -882,23 +983,27 @@ func (s *scheduleContext) StartNormalizationRoutine() context.CancelFunc {
 	go func() {
 		stubs := make(map[interfaces2.Calculator]interface{})
 		for calculator := range s.BenefitCalculator2Weights {
-			stubs[calculator] = s.normalizer.NewStub()
+			stubs[calculator] = s.normalizers[calculator].NewStub()
 		}
+		once := &sync.Once{}
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case calculator2newBenefits := <-s.normalizationRoutineChan:
 				for calculator, newBenefits := range calculator2newBenefits {
-					s.normalizer.UpdateStub(stubs[calculator], newBenefits...)
+					s.normalizers[calculator].UpdateStub(stubs[calculator], newBenefits...)
 				}
 				clonedStubs := make(map[interfaces2.Calculator]interface{})
 				for calculator, stub := range stubs {
-					clonedStubs[calculator] = s.normalizer.CloneStub(stub, false)
+					clonedStubs[calculator] = s.normalizers[calculator].CloneStub(stub, false)
 				}
-				s.normalizationFunc = func(benefit float64) float64 {
-					return s.normalizer.Normalize(benefit, clonedStubs)
+				s.normalizationFunc = func(calculator interfaces2.Calculator, benefit float64) float64 {
+					return s.normalizers[calculator].Normalize(benefit, clonedStubs[calculator])
 				}
+				once.Do(func() {
+					s.normalizationFuncReadyInformer <- true
+				})
 			}
 		}
 	}()

@@ -29,9 +29,11 @@ func (m *Metrics) CalAvgJCT(eh *partition.ExecutionHistoryManager) {
 	eh.Range(func(history *objects.JobExecutionHistory) {
 		job := m.FinishedJobs[history.GetJobID()]
 		submit := job.GetSubmitTimeNanoSecond()
+		start := history.GetTaskExecutionHistories()[0].GetStartExecutionTimeNanoSecond()
 		finish := history.GetTaskExecutionHistories()[0].GetStartExecutionTimeNanoSecond() + history.GetTaskExecutionHistories()[0].GetDurationNanoSecond()
 		JCT := finish - submit
 		totalJCT += JCT
+		log.Printf("allocation %v, start %v, finish %v, duration %v, JCT = %v", history.GetTaskExecutionHistories()[0], start, finish, finish-start, JCT)
 	})
 	avgJCT := float64(totalJCT) / float64(len(m.FinishedJobs))
 	//log.Printf("avgJCT: %f", avgJCT)

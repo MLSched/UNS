@@ -23,7 +23,7 @@ func (p *RandomPredictor) getDataParallelMiniBatchDurationNanoSecond(ctx *Predic
 		acceleratorID := allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID()
 		return ctx.partitionContext.MetalViews.AcceleratorID2Accelerator[acceleratorID].GetAcceleratorMetaInfo().GetBriefType()
 	}()
-	duration := p.getMiniBatchDurationNanoSecond(ctx, ctx.partitionContext.GetUnfinishedJob(allocation.GetJobID()), acceleratorType)
+	duration := p.getMiniBatchDurationNanoSecond(ctx, ctx.partitionContext.GetJob(allocation.GetJobID()), acceleratorType)
 	consolidationPenalty := p.getDataParallelConsolidationPenalty(ctx, allocation)
 	return int64(float64(duration) * consolidationPenalty)
 }

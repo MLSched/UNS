@@ -236,7 +236,7 @@ nextAlloc:
 }
 
 func (p *BasePredictor) getGangTaskGroupDLTExtra(ctx *PredictSessionContext, jobID string) (*objects.GangTaskGroupDLTExtra, error) {
-	info := ctx.partitionContext.GetUnfinishedJob(jobID).GetTaskGroup().GetGangTaskGroupInfo()
+	info := ctx.partitionContext.GetJob(jobID).GetTaskGroup().GetGangTaskGroupInfo()
 	extraBs := info.GetExtra()
 	extra := &objects.GangTaskGroupDLTExtra{}
 	err := json.Unmarshal(extraBs, extra)
@@ -283,7 +283,14 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 	if currTime > ctx.endNanoTime {
 		return nil, nil
 	}
-	nextStartTimeIdx := 1
+	nextStartTimeIdx := func() int {
+		for i := 0; i < len(sortedStartTime); i++ {
+			if sortedStartTime[i] != currTime {
+				return i
+			}
+		}
+		return len(sortedStartTime)
+	}()
 
 	result := make(map[*pb_gen.JobAllocation]int64)
 	getSpaceSharedAllocations := func(runningAllocation *pb_gen.JobAllocation) []*pb_gen.JobAllocation {
@@ -332,7 +339,7 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 				closestFinishedJobTime = finishTime
 			}
 		}
-		newJobStartTime := int64(math.MaxInt64)
+		newJobStartTime := int64(math.MaxInt64 - 2e9)
 		if nextStartTimeIdx < len(sortedStartTime) {
 			newJobStartTime = sortedStartTime[nextStartTimeIdx]
 		}
@@ -359,10 +366,10 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 			}
 			runningAllocations = resultRunningAllocations
 		}
-		if newJobStartTime+1e9 < closestFinishedJobTime {
+		if nextStartTimeIdx != len(sortedStartTime) && newJobStartTime+1e9 < closestFinishedJobTime {
 			// 新任务到来要比任务结束的早
 			// 当任务结束与任务开始离得很近时，容易出现舍入误差。
-			// 所以，给快要结束的任务提前结束的机会，提前1秒
+			// 所以，给快要结束的任务提前结束的机会，提前100秒
 			nextStartTimeIdx++
 			passedDuration := newJobStartTime - currTime
 			passDurationForRunningAllocations(currTime, passedDuration)
@@ -465,7 +472,7 @@ func (p *BasePredictor) getDataParallelTasksSpaceSharingMiniBatchDuration(ctx *P
 }
 
 func (p *BasePredictor) getTaskGroup(ctx *PredictSessionContext, jobID string) *objects.TaskGroup {
-	return ctx.partitionContext.GetUnfinishedJob(jobID).GetTaskGroup()
+	return ctx.partitionContext.GetJob(jobID).GetTaskGroup()
 }
 
 func (p *BasePredictor) getAllocatedAcceleratorIDs(ctx *PredictSessionContext, allocation *pb_gen.JobAllocation) []string {
@@ -473,7 +480,7 @@ func (p *BasePredictor) getAllocatedAcceleratorIDs(ctx *PredictSessionContext, a
 }
 
 func (p *BasePredictor) getJob(ctx *PredictSessionContext, jobID string) *objects.Job {
-	return ctx.partitionContext.GetUnfinishedJob(jobID)
+	return ctx.partitionContext.GetJob(jobID)
 }
 
 func (p *BasePredictor) getJobs(ctx *PredictSessionContext, jobIDs []string) []*objects.Job {

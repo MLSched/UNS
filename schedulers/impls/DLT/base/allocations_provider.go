@@ -7,6 +7,7 @@ import (
 	"UNS/schedulers/partition"
 	"UNS/utils"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"log"
 	"math"
 	"sort"
 	"strings"
@@ -124,7 +125,7 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 			return false
 		}
 		_, beforeLastFinishTime, lastTaskAllocation, _ := a.getLastFinishTaskAllocationAndJobID(pc, taskAllocations, predictResult)
-		if j := pc.GetUnfinishedJob(lastTaskAllocation.GetJobID()); j.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
+		if j := pc.GetJob(lastTaskAllocation.GetJobID()); j.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
 			// 最后一个Task是gang的，不能与它并行执行，直接放在它的后面。
 			addJobAllocation(accID, finishTime(lastTaskAllocation))
 			return false
@@ -154,6 +155,22 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 			return false
 		}
 	})
+	// TODO debug
+	c := 0
+	for _, allocation := range result {
+		if allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID() == "inst-2-replica-0-cpusocket-0-acc-0" && !allocation.GetTaskAllocations()[0].GetPlaceholder() && allocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond().GetValue() == 0 {
+			c++
+			break
+		}
+	}
+	predictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+		if allocation.GetAcceleratorAllocation().GetAcceleratorID() == "inst-2-replica-0-cpusocket-0-acc-0" && allocation.GetStartExecutionTimeNanoSecond().GetValue() == 0 {
+			c++
+		}
+	})
+	if c == 3 {
+		log.Printf("f")
+	}
 	return result
 }
 

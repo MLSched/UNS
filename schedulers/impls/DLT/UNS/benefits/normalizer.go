@@ -1,10 +1,11 @@
 package benefits
 
 import (
+	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"github.com/gonum/stat"
 )
 
-type NormalizationFunc func(benefit float64) float64
+type NormalizationFunc func(calculator interfaces2.Calculator, benefit float64) float64
 
 type Normalizer interface {
 	CloneStub(stub interface{}, cloneStore bool) interface{}

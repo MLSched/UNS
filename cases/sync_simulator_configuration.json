@@ -17,74 +17,18 @@
 										"inst-1-replica-0-cpusocket-0-acc-0": {
 											"acceleratorID": "inst-1-replica-0-cpusocket-0-acc-0",
 											"acceleratorMetaInfo": {
-												"briefType": "V100",
+												"briefType": "A100",
 												"acceleratorMemory": {
-													"bytesCapacity": "34359738368"
+													"bytesCapacity": "42949672960"
 												}
 											}
 										},
 										"inst-1-replica-0-cpusocket-0-acc-1": {
 											"acceleratorID": "inst-1-replica-0-cpusocket-0-acc-1",
 											"acceleratorMetaInfo": {
-												"briefType": "V100",
-												"acceleratorMemory": {
-													"bytesCapacity": "34359738368"
-												}
-											}
-										}
-									}
-								}
-							]
-						},
-						{
-							"nodeID": "inst-2-replica-0",
-							"CPUSockets": [
-								{
-									"CPUSocketID": "inst-2-replica-0-cpusocket-0",
-									"accelerators": {
-										"inst-2-replica-0-cpusocket-0-acc-0": {
-											"acceleratorID": "inst-2-replica-0-cpusocket-0-acc-0",
-											"acceleratorMetaInfo": {
 												"briefType": "A100",
 												"acceleratorMemory": {
 													"bytesCapacity": "42949672960"
-												}
-											}
-										},
-										"inst-2-replica-0-cpusocket-0-acc-1": {
-											"acceleratorID": "inst-2-replica-0-cpusocket-0-acc-1",
-											"acceleratorMetaInfo": {
-												"briefType": "A100",
-												"acceleratorMemory": {
-													"bytesCapacity": "42949672960"
-												}
-											}
-										}
-									}
-								}
-							]
-						},
-						{
-							"nodeID": "inst-3-replica-0",
-							"CPUSockets": [
-								{
-									"CPUSocketID": "inst-3-replica-0-cpusocket-0",
-									"accelerators": {
-										"inst-3-replica-0-cpusocket-0-acc-0": {
-											"acceleratorID": "inst-3-replica-0-cpusocket-0-acc-0",
-											"acceleratorMetaInfo": {
-												"briefType": "GTX 2080Ti",
-												"acceleratorMemory": {
-													"bytesCapacity": "17179869184"
-												}
-											}
-										},
-										"inst-3-replica-0-cpusocket-0-acc-1": {
-											"acceleratorID": "inst-3-replica-0-cpusocket-0-acc-1",
-											"acceleratorMetaInfo": {
-												"briefType": "GTX 2080Ti",
-												"acceleratorMemory": {
-													"bytesCapacity": "17179869184"
 												}
 											}
 										}
@@ -99,8 +43,8 @@
 		"schedulersConfiguration": {
 			"partitionID2SchedulerConfiguration": {
 				"PARTITION_ID": {
-					"schedulerType": "schedulerTypeUNS",
-					"unsSchedulerConfiguration": {
+					"schedulerType": "schedulerTypeSJF",
+					"sjfSchedulerConfiguration": {
 						"SchedulerID": "SCHEDULER_ID",
 						"resourceManagerID": "RESOURCE_MANAGER_ID",
 						"partitionID": "PARTITION_ID",
@@ -126,13 +70,13 @@
 	},
 	"jobs": [
 		{
-			"jobID": "0763f5964484b5acffb99e89",
+			"jobID": "81749c2e708fc2cd18918846",
 			"jobType": "jobTypeDLT",
 			"taskGroup": {
 				"taskGroupType": "taskGroupTypeSingle",
 				"tasks": [
 					{
-						"taskID": "0763f5964484b5acffb99e89_TASK_0"
+						"taskID": "81749c2e708fc2cd18918846_TASK_0"
 					}
 				],
 				"singleTaskGroupInfo": {
@@ -181,143 +125,6 @@
 				"user": "74238accb90b"
 			},
 			"deadline": "49072159916"
-		},
-		{
-			"jobID": "c0cb989683049a1f41b8d6d2",
-			"jobType": "jobTypeDLT",
-			"taskGroup": {
-				"taskGroupType": "taskGroupTypeSingle",
-				"tasks": [
-					{
-						"taskID": "c0cb989683049a1f41b8d6d2_TASK_0"
-					}
-				],
-				"singleTaskGroupInfo": {
-
-				}
-			},
-			"userGroup": {
-				"user": "74238accb90b"
-			},
-			"deadline": "9223372036854775807"
-		},
-		{
-			"jobID": "51d01202d231f9fae85bceab",
-			"jobType": "jobTypeDLT",
-			"taskGroup": {
-				"taskGroupType": "taskGroupTypeSingle",
-				"tasks": [
-					{
-						"taskID": "51d01202d231f9fae85bceab_TASK_0"
-					}
-				],
-				"singleTaskGroupInfo": {
-
-				}
-			},
-			"userGroup": {
-				"user": "74238accb90b"
-			},
-			"deadline": "9223372036854775807"
-		},
-		{
-			"jobID": "6661e092f01b74b115fd4212",
-			"jobType": "jobTypeDLT",
-			"taskGroup": {
-				"taskGroupType": "taskGroupTypeSingle",
-				"tasks": [
-					{
-						"taskID": "6661e092f01b74b115fd4212_TASK_0"
-					}
-				],
-				"singleTaskGroupInfo": {
-
-				}
-			},
-			"userGroup": {
-				"user": "74238accb90b"
-			},
-			"deadline": "9223372036854775807"
-		},
-		{
-			"jobID": "81749c2e708fc2cd18918846",
-			"jobType": "jobTypeDLT",
-			"taskGroup": {
-				"taskGroupType": "taskGroupTypeSingle",
-				"tasks": [
-					{
-						"taskID": "81749c2e708fc2cd18918846_TASK_0"
-					}
-				],
-				"singleTaskGroupInfo": {
-
-				}
-			},
-			"userGroup": {
-				"user": "74238accb90b"
-			},
-			"deadline": "9223372036854775807"
-		},
-		{
-			"jobID": "ae8f84cd2f1c5d138981a8f9",
-			"jobType": "jobTypeDLT",
-			"taskGroup": {
-				"taskGroupType": "taskGroupTypeSingle",
-				"tasks": [
-					{
-						"taskID": "ae8f84cd2f1c5d138981a8f9_TASK_0"
-					}
-				],
-				"singleTaskGroupInfo": {
-
-				}
-			},
-			"userGroup": {
-				"user": "74238accb90b"
-			},
-			"deadline": "9223372036854775807"
-		},
-		{
-			"jobID": "6ac3373981df75c945f071d8",
-			"jobType": "jobTypeDLT",
-			"taskGroup": {
-				"taskGroupType": "taskGroupTypeSingle",
-				"tasks": [
-					{
-						"taskID": "6ac3373981df75c945f071d8_TASK_0"
-					}
-				],
-				"singleTaskGroupInfo": {
-
-				}
-			},
-			"userGroup": {
-				"user": "74238accb90b"
-			},
-			"deadline": "9223372036854775807"
-		},
-		{
-			"jobID": "3e6cdf99157dd45eacb23445",
-			"jobType": "jobTypeDLT",
-			"taskGroup": {
-				"taskGroupType": "taskGroupTypeGang",
-				"tasks": [
-					{
-						"taskID": "3e6cdf99157dd45eacb23445_TASK_0"
-					},
-					{
-						"taskID": "3e6cdf99157dd45eacb23445_TASK_1"
-					}
-				],
-				"gangTaskGroupInfo": {
-					"taskGroupType": "taskGroupTypeGang",
-					"extra": "eyJETFRHYW5nVHlwZSI6MX0="
-				}
-			},
-			"userGroup": {
-				"user": "74238accb90b"
-			},
-			"deadline": "22984935133"
 		}
 	]
 }

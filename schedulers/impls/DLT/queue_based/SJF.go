@@ -72,7 +72,7 @@ func (s *SJFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) Jo
 	//if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
 	//	return JobAllocationScore(math.Inf(-1))
 	//}
-	job := pc.GetUnfinishedJob(possibleAllocation.GetJobID())
+	job := pc.GetJob(possibleAllocation.GetJobID())
 	JCT := *r.GetFinishNanoTime() - job.GetSubmitTimeNanoSecond()
 	return JobAllocationScore(-JCT)
 }

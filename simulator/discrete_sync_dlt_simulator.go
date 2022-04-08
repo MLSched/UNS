@@ -20,13 +20,15 @@ import (
 )
 
 type DiscreteSyncDLTSimulator struct {
-	config               *configs.DLTSimulatorConfiguration
-	partitionContext     *partition.Context
-	predictor            interfaces.Predictor
-	scheduleIntervalNano int64
-	updateJobAllocations []*pb_gen.JobAllocation
-	nextScheduleTime     int64
-	oneShot              bool
+	config                 *configs.DLTSimulatorConfiguration
+	partitionContext       *partition.Context
+	predictor              interfaces.Predictor
+	scheduleIntervalNano   int64
+	updateJobAllocations   []*pb_gen.JobAllocation
+	finishedJobAllocations []*pb_gen.JobAllocation
+	finishedJobIDs         map[string]bool
+	nextScheduleTime       int64
+	oneShot                bool
 }
 
 func NewDiscreteSyncDLTSimulator(configurationPath string) *DiscreteSyncDLTSimulator {
@@ -40,7 +42,9 @@ func NewDiscreteSyncDLTSimulator(configurationPath string) *DiscreteSyncDLTSimul
 		panic(err)
 	}
 	return &DiscreteSyncDLTSimulator{
-		config: config,
+		config:                 config,
+		finishedJobAllocations: make([]*pb_gen.JobAllocation, 0),
+		finishedJobIDs:         map[string]bool{},
 	}
 }
 
@@ -98,7 +102,7 @@ func (s *DiscreteSyncDLTSimulator) simulateInternal() {
 		s.simulateClosestSubmitJobs(),
 		s.simulateNextIntervalScheduleTime,
 		s.simulateNextActiveScheduleTime,
-		s.simulateOneShot,
+		//s.simulateOneShot,
 	}
 	for {
 		closestTime := int64(math.MaxInt64)
@@ -160,10 +164,18 @@ type timeAndCallback struct {
 func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCallback {
 	allocations := s.partitionContext.AllocationViews.AllocationsSlice
 	//s.printAllocations(allocations)
-	predictResult, err := s.predictor.Predict(s.partitionContext, allocations)
+	predictResult, err := s.predictor.Predict(s.partitionContext, append(allocations, s.finishedJobAllocations...))
 	if err != nil {
 		panic(fmt.Sprintf("DiscreteSyncDLTSimulator Predict err = %s", err))
 	}
+	filterFinishedAllocations := make([]*pb_gen.JobAllocation, 0)
+	for _, allocation := range allocations {
+		if s.finishedJobIDs[allocation.GetJobID()] {
+			continue
+		}
+		filterFinishedAllocations = append(filterFinishedAllocations, allocation)
+	}
+	allocations = filterFinishedAllocations
 	for _, allocation := range allocations {
 		r := predictResult.GetResult(allocation.GetTaskAllocations()[0])
 		if *r.GetFinishNanoTime() == *r.GetStartExecutionNanoTime() {
@@ -213,6 +225,10 @@ func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCal
 			})
 			if err != nil {
 				panic(err)
+			}
+			s.finishedJobAllocations = append(s.finishedJobAllocations, closest2FinishAllocations...)
+			for _, jobID := range finishedJobIDs {
+				s.finishedJobIDs[jobID] = true
 			}
 			log.Printf("simulateClosestFinishAllocation callback called, closest to finish allocations = %+v, current nano time = %d", closest2FinishAllocations, finishTime)
 			s.pushUpdateAllocations(&eventobjs.RMUpdateAllocationsEvent{
@@ -452,11 +468,11 @@ func (s *DiscreteSyncDLTSimulator) handleSSUpdateAllocation(eo *eventobjs.SSUpda
 	nonPlaceholders := make([]*pb_gen.JobAllocation, 0, len(allocations))
 	placeholders := make([]*pb_gen.JobAllocation, 0, len(allocations))
 	for _, allocation := range allocations {
-		if s.partitionContext.Allocations[allocation.GetJobID()] != nil {
-			reason := fmt.Sprintf("simulator ignores allocation of jobID = %s since it is already allocated", allocation.GetJobID())
-			log.Println(reason)
-			panic(reason)
-		}
+		//if s.partitionContext.Allocations[allocation.GetJobID()] != nil {
+		//	reason := fmt.Sprintf("simulator ignores allocation of jobID = %s since it is already allocated", allocation.GetJobID())
+		//	log.Println(reason)
+		//	panic(reason)
+		//}
 		if allocation.GetTaskAllocations()[0].GetPlaceholder() {
 			placeholders = append(placeholders, allocation)
 		} else {
@@ -490,7 +506,7 @@ nextPlaceholderAlloc:
 			}
 		}
 		for _, taskAllocation := range placeholderAllocation.GetTaskAllocations() {
-			taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: now}
+			taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: taskAllocation.GetStartExecutionTimeNanoSecond().GetValue()}
 		}
 		filteredAllocations = append(filteredAllocations, placeholderAllocation)
 	}

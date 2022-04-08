@@ -35,7 +35,7 @@ func New(SupportJobTypes []objects.JobType, SupportTaskGroupTypes []objects.Task
 
 func (p *Base) PrerequisiteCheck(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) error {
 	for _, allocation := range allocations {
-		job := partitionContext.GetUnfinishedJob(allocation.GetJobID())
+		job := partitionContext.GetJob(allocation.GetJobID())
 		if !p.SupportJobTypes[job.GetJobType()] {
 			reason := fmt.Sprintf("Base prerequisiteCheck failed, encounter unsupported job type. jobID = %s, jobType = %s", job.GetJobID(), job.GetJobType())
 			log.Printf(reason)
@@ -185,6 +185,11 @@ func (r *PredictResult) Merge(target interfaces.PredictResult) interfaces.Predic
 	}
 	target.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
 		newPr.Results[allocation] = result.(*EachPredictResult)
+	})
+	newPr.Range(func(taskAllocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+		if *result.GetFinishNanoTime() == 0 {
+			log.Printf("f")
+		}
 	})
 	return newPr
 }

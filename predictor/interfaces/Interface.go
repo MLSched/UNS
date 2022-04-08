@@ -82,3 +82,7 @@ func IsSpaceSharingOutOfMemoryError(err error) bool {
 func IsMultiSpanNodesGangTasksError(err error) bool {
 	return CheckErrorType(err, MultiSpanNodesGangTasks)
 }
+
+func IsSpaceSharingMoreThanTwoError(err error) bool {
+	return CheckErrorType(err, SpaceSharingMoreThanTwo)
+}
