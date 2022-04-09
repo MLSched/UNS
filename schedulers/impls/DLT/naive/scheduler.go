@@ -5,6 +5,8 @@ import (
 	"UNS/pb_gen/configs"
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
+	"UNS/predictor"
+	interfaces2 "UNS/predictor/interfaces"
 	base2 "UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
 	"log"
@@ -14,7 +16,8 @@ import (
 type Scheduler struct {
 	*base2.DLTSchedulerTemplate
 
-	Config *configs.NaiveSchedulerConfiguration
+	Config    *configs.NaiveSchedulerConfiguration
+	Predictor interfaces2.Predictor
 }
 
 func (s *Scheduler) GetSchedulerID() string {
@@ -27,6 +30,7 @@ func Build(configuration interface{}, pusher base2.EventPusher, partitionContext
 		Config: c,
 	}
 	sche.DLTSchedulerTemplate = base2.NewIntervalSchedulerTemplate(sche, c.GetIntervalNano(), partitionContextAware, c.GetSyncMode(), pusher)
+	sche.Predictor = predictor.BuildPredictor(c.GetPredictorConfiguration())
 	return sche, nil
 }
 
@@ -124,4 +128,8 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 		newAllocations = append(newAllocations, newAllocation)
 	}
 	return &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: pb_gen.UnwrapJobAllocations(newAllocations)}
+}
+
+func (s *Scheduler) GetPredictor() interfaces2.Predictor {
+	return s.Predictor
 }

@@ -28,9 +28,6 @@ func printPredictResults(result interfaces.PredictResult, printUnix bool) {
 		}
 		jobIDs[jobID] = true
 		startNano := *result.GetStartExecutionNanoTime()
-		if result.GetFinishNanoTime() == nil {
-			log.Printf("")
-		}
 		endNano := *result.GetFinishNanoTime()
 		if printUnix {
 			log.Printf("predictResult job ID %s, start time %s, predict end time %s\n", jobID, time.Unix(0, startNano).String(), time.Unix(0, endNano))

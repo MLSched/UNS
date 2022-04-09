@@ -3,6 +3,7 @@ module UNS
 go 1.17
 
 require (
+	github.com/deckarep/golang-set v1.8.0
 	github.com/golang/protobuf v1.5.0
 	github.com/gonum/stat v0.0.0-20181125101827-41a0da705a5b
 	google.golang.org/protobuf v1.27.1

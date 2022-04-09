@@ -1,6 +1,7 @@
 package utils
 
 import (
+	mapset "github.com/deckarep/golang-set"
 	"sort"
 )
 
@@ -12,6 +13,21 @@ func SortFloat64(data []float64) {
 func SortInt64(data []int64) {
 	sorter := &Int64Sorter{Data: data}
 	sort.Sort(sorter)
+}
+
+func DeDuplicateSortInt64(data []int64) []int64 {
+	s := mapset.NewThreadUnsafeSet()
+	for _, d := range data {
+		s.Add(d)
+	}
+	r := make([]int64, 0, len(data))
+	for i := range s.Iterator().C {
+		r = append(r, i.(int64))
+	}
+	sort.Slice(r, func(i, j int) bool {
+		return r[i] < r[j]
+	})
+	return r
 }
 
 //func SortExecutionRanges(data []*objects.ExecutionRange) {

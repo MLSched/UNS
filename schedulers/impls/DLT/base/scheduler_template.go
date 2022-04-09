@@ -5,11 +5,14 @@ import (
 	"UNS/pb_gen"
 	eventsobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
+	interfaces2 "UNS/predictor/interfaces"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
+	"UNS/utils"
 	"container/list"
 	"encoding/json"
 	"fmt"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
 	"math"
@@ -32,11 +35,15 @@ type DLTSchedulerTemplate struct {
 	eventPusher           EventPusher
 
 	supportTaskGroupTypes []objects.TaskGroupType
+
+	// 虽然已经结束，但是和某些任务有SpaceSharing关系，导致暂时还没有从partitionContext删除的任务ID。
+	spaceSharingRelatedFinishedJobIDs mapset.Set
 }
 
 type IntervalSchedulerInterface interface {
 	interfaces.Scheduler
 	DoSchedule() *eventsobjs.SSUpdateAllocationsEvent
+	GetPredictor() interfaces2.Predictor
 }
 
 func (i *DLTSchedulerTemplate) HandleEvent(event *events.Event) {
@@ -95,7 +102,26 @@ func (i *DLTSchedulerTemplate) checkSupportJob(job *objects.Job) error {
 }
 
 func (i *DLTSchedulerTemplate) handleUpdatePartitionContext(event *events.Event) (ok bool) {
-	err := UpdatePartitionContext(event, i.GetPartitionContext())
+	pc := i.GetPartitionContext()
+	i.updatePartitionContextTime(event, pc)
+	if e, ok := event.Data.(*eventsobjs.RMUpdateAllocationsEvent); ok {
+		i.extractSpaceSharingRelatedJobIDs(e, pc)
+	}
+	err := func() error {
+		switch eo := event.Data.(type) {
+		case *eventsobjs.RMUpdateAllocationsEvent:
+			return pc.UpdateAllocations(eo)
+		case *eventsobjs.RMUpdateJobsEvent:
+			pc.UpdateCurrentTime(eo.GetCurrentNanoTime())
+			return pc.UpdateJobs(eo)
+		case *eventsobjs.RMUpdateTimeEvent:
+			return pc.UpdateTime(eo)
+		default:
+			reason := fmt.Sprintf("Partition Context ID = [%s] received unknown event = [%v]", pc.Meta.GetPartitionID(), event.Data)
+			log.Println(reason)
+			panic(reason)
+		}
+	}()
 	if err != nil {
 		events.Reply(event, &events.Result{
 			Succeeded: false,
@@ -104,6 +130,72 @@ func (i *DLTSchedulerTemplate) handleUpdatePartitionContext(event *events.Event)
 		return false
 	}
 	return true
+}
+
+func (i *DLTSchedulerTemplate) updatePartitionContextTime(event *events.Event, pc *partition.Context) {
+	switch eo := event.Data.(type) {
+	case *eventsobjs.RMUpdateAllocationsEvent:
+		pc.UpdateCurrentTime(eo.GetCurrentNanoTime())
+	case *eventsobjs.RMUpdateJobsEvent:
+		pc.UpdateCurrentTime(eo.GetCurrentNanoTime())
+	case *eventsobjs.RMUpdateTimeEvent:
+		_ = pc.UpdateTime(eo)
+	}
+}
+
+func (i *DLTSchedulerTemplate) extractSpaceSharingRelatedJobIDs(e *eventsobjs.RMUpdateAllocationsEvent, pc *partition.Context) {
+	pc = pc.Clone(false)
+	now := pc.FixedNow()
+	pc.Time = &now
+	finishedJobIDs := mapset.NewThreadUnsafeSet()
+	for _, newFinishedJobID := range e.FinishedJobIDs {
+		finishedJobIDs.Add(newFinishedJobID)
+	}
+	for i := range i.spaceSharingRelatedFinishedJobIDs.Iterator().C {
+		jobID := i.(string)
+		finishedJobIDs.Add(jobID)
+		e.FinishedJobIDs = append(e.FinishedJobIDs, jobID)
+	}
+	unfinishedJobIDs := mapset.NewThreadUnsafeSet()
+	for jobID := range pc.Allocations {
+		if !finishedJobIDs.Contains(jobID) {
+			unfinishedJobIDs.Add(jobID)
+		}
+	}
+	predictor := i.impl.GetPredictor()
+	spaceSharingSets, err := predictor.GetSpaceSharingSets(pc, pc.AllocationViews.AllocationsSlice)
+	if err != nil {
+		panic(err)
+	}
+	spaceSharingRelatedFinishedJobIDs := mapset.NewThreadUnsafeSet()
+	addSetToSpaceSharingRelated := func() func(idx int, set mapset.Set) {
+		addedSet := make(map[int]bool)
+		return func(idx int, set mapset.Set) {
+			if addedSet[idx] {
+				return
+			}
+			set.Each(func(i interface{}) bool {
+				jobID := i.(string)
+				if finishedJobIDs.Contains(jobID) {
+					spaceSharingRelatedFinishedJobIDs.Add(jobID)
+				}
+				return false
+			})
+		}
+	}()
+	for idx, set := range spaceSharingSets {
+		unfinishedJobIDs.Each(func(i interface{}) bool {
+			unfinishedJobID := i.(string)
+			if set.Contains(unfinishedJobID) {
+				addSetToSpaceSharingRelated(idx, set)
+			}
+			return false
+		})
+	}
+	finishedJobIDs = finishedJobIDs.Difference(spaceSharingRelatedFinishedJobIDs)
+	finishedJobIDsSlice := utils.MapSet2StringSlice(finishedJobIDs)
+	e.FinishedJobIDs = finishedJobIDsSlice
+	i.spaceSharingRelatedFinishedJobIDs = spaceSharingRelatedFinishedJobIDs
 }
 
 func (i *DLTSchedulerTemplate) SyncSchedule() {
@@ -118,13 +210,14 @@ func (i *DLTSchedulerTemplate) AsyncSchedule() {
 
 func NewIntervalSchedulerTemplate(intervalScheduler IntervalSchedulerInterface, intervalNano int64, aware PartitionContextAware, syncMode bool, pusher EventPusher) *DLTSchedulerTemplate {
 	return &DLTSchedulerTemplate{
-		syncMode:              syncMode,
-		intervalNano:          intervalNano,
-		scheduleAble:          make(chan chan interface{}, 1024),
-		impl:                  intervalScheduler,
-		partitionContextAware: aware,
-		eventPusher:           pusher,
-		supportTaskGroupTypes: []objects.TaskGroupType{objects.TaskGroupType_taskGroupTypeSingle, objects.TaskGroupType_taskGroupTypeGang},
+		syncMode:                          syncMode,
+		intervalNano:                      intervalNano,
+		scheduleAble:                      make(chan chan interface{}, 1024),
+		impl:                              intervalScheduler,
+		partitionContextAware:             aware,
+		eventPusher:                       pusher,
+		supportTaskGroupTypes:             []objects.TaskGroupType{objects.TaskGroupType_taskGroupTypeSingle, objects.TaskGroupType_taskGroupTypeGang},
+		spaceSharingRelatedFinishedJobIDs: mapset.NewThreadUnsafeSet(),
 	}
 }
 

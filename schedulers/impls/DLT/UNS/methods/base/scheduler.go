@@ -20,8 +20,13 @@ type Scheduler struct {
 	ScheduleMethod ScheduleMethod
 }
 
+func (s *Scheduler) GetPredictor() predictorinterfaces.Predictor {
+	return s.ScheduleMethod.GetPredictor()
+}
+
 type ScheduleMethod interface {
 	DoSchedule() *eventobjs.SSUpdateAllocationsEvent
+	GetPredictor() predictorinterfaces.Predictor
 }
 
 type CommonMethodParams struct {

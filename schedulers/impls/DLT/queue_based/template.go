@@ -128,6 +128,10 @@ func (s *QueueBasedSchedulerTemplate) GetSchedulerID() string {
 	return s.impl.GetSchedulerID()
 }
 
+func (s *QueueBasedSchedulerTemplate) GetPredictor() interfaces2.Predictor {
+	return s.Predictor
+}
+
 type JobAllocationScorerParam struct {
 	PC            *partition.Context
 	PredictResult interfaces2.PredictResult

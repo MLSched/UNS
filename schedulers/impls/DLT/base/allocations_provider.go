@@ -7,7 +7,6 @@ import (
 	"UNS/schedulers/partition"
 	"UNS/utils"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"log"
 	"math"
 	"sort"
 	"strings"
@@ -156,21 +155,21 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 		}
 	})
 	// TODO debug
-	c := 0
-	for _, allocation := range result {
-		if allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID() == "inst-2-replica-0-cpusocket-0-acc-0" && !allocation.GetTaskAllocations()[0].GetPlaceholder() && allocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond().GetValue() == 0 {
-			c++
-			break
-		}
-	}
-	predictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
-		if allocation.GetAcceleratorAllocation().GetAcceleratorID() == "inst-2-replica-0-cpusocket-0-acc-0" && allocation.GetStartExecutionTimeNanoSecond().GetValue() == 0 {
-			c++
-		}
-	})
-	if c == 3 {
-		log.Printf("f")
-	}
+	//c := 0
+	//for _, allocation := range result {
+	//	if allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID() == "inst-2-replica-0-cpusocket-0-acc-0" && !allocation.GetTaskAllocations()[0].GetPlaceholder() && allocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond().GetValue() == 0 {
+	//		c++
+	//		break
+	//	}
+	//}
+	//predictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+	//	if allocation.GetAcceleratorAllocation().GetAcceleratorID() == "inst-2-replica-0-cpusocket-0-acc-0" && allocation.GetStartExecutionTimeNanoSecond().GetValue() == 0 {
+	//		c++
+	//	}
+	//})
+	//if c == 3 {
+	//	log.Printf("f")
+	//}
 	return result
 }
 
@@ -203,30 +202,17 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 		}
 	}()
 	sortAccsByFinishTime := func(accIDs []string) {
-		sorter := &utils.Sorter{
-			LenFunc: func() int {
-				return len(accIDs)
-			},
-			LessFunc: func(i, j int) bool {
-				iFinish, _ := getLastTaskFinishTimeAndJobID(accIDs[i])
-				jFinish, _ := getLastTaskFinishTimeAndJobID(accIDs[j])
-				if iFinish < jFinish {
-					return true
-				}
-				if iFinish == jFinish {
-					return accIDs[i] < accIDs[j]
-				}
-				return false
-			},
-			SwapFunc: func(i, j int) {
-				t := accIDs[i]
-				accIDs[i] = accIDs[j]
-				accIDs[j] = t
-			},
-		}
-		if !sort.IsSorted(sorter) {
-			sort.Stable(sorter)
-		}
+		sort.SliceStable(accIDs, func(i, j int) bool {
+			iFinish, _ := getLastTaskFinishTimeAndJobID(accIDs[i])
+			jFinish, _ := getLastTaskFinishTimeAndJobID(accIDs[j])
+			if iFinish < jFinish {
+				return true
+			}
+			if iFinish == jFinish {
+				return accIDs[i] < accIDs[j]
+			}
+			return false
+		})
 	}
 	resultAllocations := make([]*pb_gen.JobAllocation, 0)
 	addNewJobAllocation := func() func(accIDs []string) bool {
@@ -239,7 +225,7 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 			}
 			allocationTime, latest, latestWaitingAccIDs := func() (earliest int64, latest int64, latestWaitingAccIDs map[string]bool) {
 				earliest = math.MaxInt64
-				latest = -1
+				latest = pc.FixedNow()
 				latestWaitingAccIDs = make(map[string]bool)
 				for _, accID := range accIDs {
 					lastFinishTime, _ := getLastTaskFinishTimeAndJobID(accID)
@@ -254,6 +240,9 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 						latestWaitingAccIDs[accID] = true
 						latest = lastFinishTime
 					}
+				}
+				if earliest < pc.FixedNow() {
+					earliest = pc.FixedNow()
 				}
 				return earliest, latest, latestWaitingAccIDs
 			}()
@@ -436,8 +425,12 @@ func (a *AllocationsProviderImpl) PrepareAccID2SortedTaskAllocations(pc *partiti
 }
 
 func buildJobAllocation(pc *partition.Context, job *objects.Job, accIDs []string, startTime *int64, allocationTime int64, placeholder bool, placeholderWaitingJobIDs []string) *pb_gen.JobAllocation {
+	fixedNow := pc.FixedNow()
 	var start *wrappers.Int64Value = nil
 	if startTime != nil {
+		if *startTime < pc.FixedNow() {
+			startTime = &fixedNow
+		}
 		start = &wrappers.Int64Value{Value: *startTime}
 	}
 	buildTaskAllocation := func(taskID string, accID string) *objects.TaskAllocation {

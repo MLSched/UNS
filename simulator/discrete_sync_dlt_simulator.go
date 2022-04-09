@@ -164,6 +164,7 @@ type timeAndCallback struct {
 func (s *DiscreteSyncDLTSimulator) simulateClosestFinishAllocation() *timeAndCallback {
 	allocations := s.partitionContext.AllocationViews.AllocationsSlice
 	//s.printAllocations(allocations)
+	// TODO 需要把Space sharing related job allocations缓存下来，否则某些space sharing的任务的结束时间计算会有误。
 	predictResult, err := s.predictor.Predict(s.partitionContext, append(allocations, s.finishedJobAllocations...))
 	if err != nil {
 		panic(fmt.Sprintf("DiscreteSyncDLTSimulator Predict err = %s", err))

@@ -87,7 +87,7 @@ func BuildMCTSMethod(sche *base2.Scheduler, configuration *configs.UNSSchedulerC
 			},
 			ScoreCalculator: score.NewConsolidationScoreCalculator(),
 		},
-		MaxLatency:            1000 * time.Second,
+		MaxLatency:            5 * time.Second,
 		ResourceEfficientMode: true,
 		MaxNodeChildrenCount:  10,
 	}
@@ -96,6 +96,10 @@ func BuildMCTSMethod(sche *base2.Scheduler, configuration *configs.UNSSchedulerC
 		method.AllocationProvideTypeMode |= base.ProvideTypeOnlyNonSpaceSharing
 	}
 	return method
+}
+
+func (s *Method) GetPredictor() interfaces.Predictor {
+	return s.Predictor
 }
 
 func (s *Method) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
@@ -267,12 +271,16 @@ func (s *scheduleContext) initReadyNode(param *readyNodeInitParam) {
 }
 
 func (s *scheduleContext) Search(timeBudget time.Duration, parallelRoutines int) []*pb_gen.JobAllocation {
-	// 手动将第一层扩展出来
+	// 手动将第一层扩展出来，避免第一层扩展时多goroutine的抢占开销。
 	s.Expand(s.RootNode)
 	s.playOutAndPropagateForChildren(s.RootNode.Children)
 	<-s.normalizationFuncReadyInformer
 	end := time.Now().Add(timeBudget)
 	totalPlayOutCount := utils.NewAtomicInt(len(s.RootNode.Children))
+	defer log.Printf("total PlayOutCount %d", totalPlayOutCount.Get())
+	if len(s.InitialPC.AllocationViews.UnallocatedJobs) == 1 {
+		return s.bestAllocations
+	}
 	searchRoutine := func() {
 		playOutCount := 0
 		for time.Now().Before(end) {
@@ -301,7 +309,6 @@ func (s *scheduleContext) Search(timeBudget time.Duration, parallelRoutines int)
 		})
 	}
 	wg.Wait()
-	log.Printf("total PlayOutCount %d", totalPlayOutCount.Get())
 	return s.bestAllocations
 }
 
@@ -967,7 +974,7 @@ func (s *scheduleContext) removeNodeCascade(node *Node) {
 
 func (s *scheduleContext) isNodeWorthSelect(node *Node) bool {
 	if s.isLeafNode(node) {
-		panic("leaf node should never be tried to be selected")
+		panic(fmt.Sprintf("leaf node should never be tried to be selected, node %v, parent is root %v", node.Level, node.Parent == s.RootNode))
 	}
 	return !node.NotWorthSelect
 }

@@ -105,7 +105,7 @@ func (c *Context) UpdateAllocations(eo *eventobjs.RMUpdateAllocationsEvent) erro
 		c.RefreshAllocationViews()
 		c.mu.Unlock()
 	}()
-	c.updateCurrentTime(eo.GetCurrentNanoTime())
+	c.UpdateCurrentTime(eo.GetCurrentNanoTime())
 	for _, updatedJobAllocation := range eo.UpdatedJobAllocations {
 		jobID := updatedJobAllocation.GetJobID()
 		if _, ok := c.UnfinishedJobs[jobID]; !ok {
@@ -137,7 +137,7 @@ func (c *Context) UpdateJobs(eo *eventobjs.RMUpdateJobsEvent) error {
 		c.RefreshAllocationViews()
 		c.mu.Unlock()
 	}()
-	c.updateCurrentTime(eo.GetCurrentNanoTime())
+	c.UpdateCurrentTime(eo.GetCurrentNanoTime())
 	for _, job := range eo.GetNewJobs() {
 		if _, duplicated := c.UnfinishedJobs[job.GetJobID()]; duplicated {
 			reason := fmt.Sprintf("MockPartition Context ID = [%s] update jobs, add new jobs, encounter duplicated job ID = [%s]", c.Meta.GetPartitionID(), job.GetJobID())
@@ -168,7 +168,7 @@ func (c *Context) UpdateTime(eo *eventobjs.RMUpdateTimeEvent) error {
 	return nil
 }
 
-func (c *Context) updateCurrentTime(currentNanoTime *wrappers.Int64Value) {
+func (c *Context) UpdateCurrentTime(currentNanoTime *wrappers.Int64Value) {
 	if currentNanoTime == nil {
 		return
 	}
@@ -242,6 +242,12 @@ func (c *Context) GetUnfinishedJob(jobID string) *objects.Job {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.UnfinishedJobs[jobID]
+}
+
+func (c *Context) GetUnfinishedJobs() map[string]*objects.Job {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.UnfinishedJobs
 }
 
 func (c *Context) GetJob(jobID string) *objects.Job {

@@ -4,12 +4,14 @@ import (
 	"UNS/pb_gen"
 	"UNS/pb_gen/objects"
 	"UNS/schedulers/partition"
+	mapset "github.com/deckarep/golang-set"
 )
 
 type Predictor interface {
 	// Predict a set of job allocations duration seconds on a specific partition.
 	// The start time of each allocation must be provided.
 	Predict(partition *partition.Context, allocations []*pb_gen.JobAllocation) (PredictResult, error)
+	GetSpaceSharingSets(partition *partition.Context, allocations []*pb_gen.JobAllocation) ([]mapset.Set, error)
 	PredictSolely(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) (PredictResult, error)
 	PredictSolelyFastestExecutionTime(job *objects.Job) int64
 }

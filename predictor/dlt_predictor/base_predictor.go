@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set"
 	"log"
 	"math"
 )
@@ -36,6 +37,8 @@ type PredictSessionContext struct {
 	endNanoTime               int64
 	result                    *base.PredictResult
 	acceleratorID2Allocations map[string][]*pb_gen.JobAllocation
+	recordSpaceSharingSets    bool
+	spaceSharingSets          []mapset.Set
 }
 
 func NewDLTBasePredictor(impl DLTPredictorTemplate) *BasePredictor {
@@ -92,6 +95,21 @@ func (p *BasePredictor) PredictByEndTime(partitionContext *partition.Context, al
 	}
 
 	return ctx.result, nil
+}
+
+func (p *BasePredictor) GetSpaceSharingSets(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) ([]mapset.Set, error) {
+	if err := p.PrerequisiteCheck(partitionContext, allocations); err != nil {
+		return nil, err
+	}
+	ctx := p.buildPredictSessionContext(partitionContext, allocations, math.MaxInt64)
+	ctx.recordSpaceSharingSets = true
+	ctx.spaceSharingSets = make([]mapset.Set, 0)
+	// firstly, predict allocations with start execution time already known
+	err := p.predictAllocationsWithStartExecutionTimeKnown(ctx, allocations)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.spaceSharingSets, nil
 }
 
 func (p *BasePredictor) PredictSolely(partitionContext *partition.Context, allocations []*pb_gen.JobAllocation) (interfaces.PredictResult, error) {
@@ -185,6 +203,9 @@ func (p *BasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Predi
 		return err
 	}
 	for allocation, finishTime := range r {
+		if finishTime == *p.getStartExecutionNanoTimeInSession(ctx, allocation) {
+			log.Printf("")
+		}
 		p.updateJobFinishTime(ctx, allocation, finishTime)
 	}
 	return nil
@@ -274,7 +295,7 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 		//log.Printf("allocation job ID = %s, remaining mini batches = %f\n", allocation.GetJobID(), remainingMiniBatches)
 		jobID2RemainingMiniBatches[allocation.GetJobID()] = remainingMiniBatches
 	}
-	utils.SortInt64(sortedStartTime)
+	sortedStartTime = utils.DeDuplicateSortInt64(sortedStartTime)
 	runningAllocations := make(map[string]*pb_gen.JobAllocation)
 	for _, allocation := range startNanoTime2Allocations[sortedStartTime[0]] {
 		runningAllocations[allocation.GetJobID()] = allocation
@@ -308,8 +329,10 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 		for _, a := range spaceSharedRunningAllocationsMap {
 			spaceSharedRunningAllocations = append(spaceSharedRunningAllocations, a)
 		}
+		p.recordSpaceSharingSet(ctx, spaceSharedRunningAllocations)
 		return spaceSharedRunningAllocations
 	}
+	// 主时间循环
 	for len(result) != len(allocations) {
 		jobID2MiniBatchDuration := make(map[string]int64)
 		if err := p.checkRunningAllocations(ctx, runningAllocations); err != nil {
@@ -320,6 +343,9 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 				continue
 			}
 			spaceSharedRunningAllocations := getSpaceSharedAllocations(runningAllocation)
+			if len(spaceSharedRunningAllocations) == 3 {
+				log.Printf("space sharing more then 2")
+			}
 			r, err := p.getSpaceSharingMiniBatchDuration(ctx, spaceSharedRunningAllocations)
 			if err != nil {
 				return nil, err
@@ -334,6 +360,9 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 			miniBatches := jobID2RemainingMiniBatches[runningJobID]
 			miniBatchDuration := jobID2MiniBatchDuration[runningJobID]
 			finishTime := currTime + int64(math.Ceil(miniBatches*float64(miniBatchDuration)))
+			if finishTime == currTime {
+				log.Printf("")
+			}
 			runningJobFinishTimes[runningJobID] = finishTime
 			if finishTime < closestFinishedJobTime {
 				closestFinishedJobTime = finishTime
@@ -357,6 +386,9 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 					// finished job.
 					jobID2RemainingMiniBatches[allocation.GetJobID()] = 0
 					result[allocation] = currTime + duration2Finish
+					if result[allocation] == *p.getStartExecutionNanoTimeInSession(ctx, allocation) {
+						log.Printf("")
+					}
 					continue
 				}
 				passedMiniBatches := float64(duration) / float64(jobID2MiniBatchDuration[allocation.GetJobID()])
@@ -366,25 +398,94 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 			}
 			runningAllocations = resultRunningAllocations
 		}
-		if nextStartTimeIdx != len(sortedStartTime) && newJobStartTime+1e9 < closestFinishedJobTime {
+		if nextStartTimeIdx != len(sortedStartTime) && newJobStartTime+10000 < closestFinishedJobTime {
 			// 新任务到来要比任务结束的早
 			// 当任务结束与任务开始离得很近时，容易出现舍入误差。
 			// 所以，给快要结束的任务提前结束的机会，提前100秒
 			nextStartTimeIdx++
 			passedDuration := newJobStartTime - currTime
-			passDurationForRunningAllocations(currTime, passedDuration)
-			currTime = newJobStartTime
+			newStartedAllocations := make(map[string]*pb_gen.JobAllocation)
 			for _, allocation := range startNanoTime2Allocations[newJobStartTime] {
-				runningAllocations[allocation.GetJobID()] = allocation
+				newStartedAllocations[allocation.GetJobID()] = allocation
 			}
+			if passedDuration < 0 {
+				passedDuration = 0
+			}
+			currTime = currTime + passedDuration
+
+			passDurationForRunningAllocations(currTime, passedDuration)
+			for jobID, allocation := range newStartedAllocations {
+				runningAllocations[jobID] = allocation
+			}
+			//if m, ok := jobID2RemainingMiniBatches["3e6cdf99157dd45eacb23445"]; ok && m == 0 {
+			//	if m, ok := jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"]; ok && m == 0 {
+			//		if m, ok := jobID2RemainingMiniBatches["6ac3373981df75c945f071d8"]; ok && m == 10 {
+			//			log.Printf("")
+			//		}
+			//	}
+			//}
 		} else {
 			// new job comes in is later than other job finishes.
+			//if jobID2RemainingMiniBatches["6ac3373981df75c945f071d8"] == 10 && jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"] == 0 && closestFinishedJobTime == 6259563820 {
+			//	if _, ok := jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"]; ok {
+			//		log.Printf("")
+			//	}
+			//}
+			//log.Printf("%v %d", jobID2RemainingMiniBatches, closestFinishedJobTime)
 			passedDuration := closestFinishedJobTime - currTime
 			passDurationForRunningAllocations(currTime, passedDuration)
 			currTime = closestFinishedJobTime
+			//if jobID2RemainingMiniBatches["3e6cdf99157dd45eacb23445"] == 0 && jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"] == 0 && closestFinishedJobTime == 6259563820 {
+			//	if m, ok := jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"]; ok && m == 0 {
+			//		if m, ok := jobID2RemainingMiniBatches["6ac3373981df75c945f071d8"]; ok && m == 10 {
+			//			log.Printf("")
+			//		}
+			//	}
+			//}
+			//if m, ok := jobID2RemainingMiniBatches["3e6cdf99157dd45eacb23445"]; ok && m == 0 {
+			//	if m, ok := jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"]; ok && m == 0 {
+			//		if m, ok := jobID2RemainingMiniBatches["6ac3373981df75c945f071d8"]; ok && m == 10 {
+			//			log.Printf("")
+			//		}
+			//	}
+			//}
 		}
 	}
 	return result, nil
+}
+
+func (p *BasePredictor) recordSpaceSharingSet(ctx *PredictSessionContext, spaceSharedRunningAllocations []*pb_gen.JobAllocation) {
+	if !ctx.recordSpaceSharingSets {
+		return
+	}
+	if len(spaceSharedRunningAllocations) <= 1 {
+		return
+	}
+	if len(spaceSharedRunningAllocations) > 2 {
+		panic("len(spaceSharedRunningAllocations) > 2")
+	}
+	var existsSet = false
+	for _, set := range ctx.spaceSharingSets {
+		var foundSet mapset.Set = nil
+		for _, al := range spaceSharedRunningAllocations {
+			if set.Contains(al.GetJobID()) {
+				foundSet = set
+			}
+		}
+		if foundSet != nil {
+			existsSet = true
+			for _, al := range spaceSharedRunningAllocations {
+				set.Add(al.GetJobID())
+			}
+		}
+	}
+	if !existsSet {
+		newSet := mapset.NewThreadUnsafeSet()
+		for _, al := range spaceSharedRunningAllocations {
+			newSet.Add(al.GetJobID())
+		}
+		ctx.spaceSharingSets = append(ctx.spaceSharingSets, newSet)
+	}
 }
 
 func (p *BasePredictor) getJobTotalMiniBatches(jobID string) int64 {

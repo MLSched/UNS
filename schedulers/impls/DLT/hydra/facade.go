@@ -93,3 +93,7 @@ func initHydraBABHeuristicScheduler(latency time.Duration) types.Scheduler {
 			cost.NewSimpleAddCostSolverMaker(cost.DDLCostTypeStrict, 1e20))),
 	)
 }
+
+func (s *Scheduler) GetPredictor() interfaces2.Predictor {
+	return s.Predictor
+}

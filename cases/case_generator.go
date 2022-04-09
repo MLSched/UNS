@@ -36,7 +36,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 3
+var jobCount = 30
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -51,13 +51,13 @@ var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 //var submitTimeScaleFactor = float64(10)
 //var submitTimeScaleFactor = float64(5)
 
-var submitTimeScaleFactor = float64(0)
+var submitTimeScaleFactor = float64(1)
 
 //var submitTimeScaleFactor = float64(0)
 
-var jobExecutionTimeScaleFactor = float64(0.00001)
+//var jobExecutionTimeScaleFactor = float64(0.00001)
 
-//var jobExecutionTimeScaleFactor = float64(1)
+var jobExecutionTimeScaleFactor = float64(1)
 
 //var jobExecutionTimeScaleFactor = float64(5)
 
@@ -112,15 +112,15 @@ var instance2Count = map[*Instance]int64{
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti},
 	//}): 4,
-	//NewInstance(map[int64][]string{
-	//	0: {V100, V100},
-	//}): 1,
+	NewInstance(map[int64][]string{
+		0: {V100, V100},
+	}): 1,
 	NewInstance(map[int64][]string{
 		0: {A100, A100},
 	}): 1,
-	//NewInstance(map[int64][]string{
-	//	0: {GTX2080Ti, GTX2080Ti},
-	//}): 1,
+	NewInstance(map[int64][]string{
+		0: {GTX2080Ti, GTX2080Ti},
+	}): 1,
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti, GTX2080Ti},
 	//	1: {GTX2080Ti, GTX2080Ti},
@@ -255,11 +255,11 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 
 //var schedulerConfiguration = naiveSchedulerConfiguration
 
-var schedulerConfiguration = unsSchedulerConfiguration
+//var schedulerConfiguration = unsSchedulerConfiguration
 
 //var schedulerConfiguration = hydraSchedulerConfiguration
 
-//var schedulerConfiguration = sjfSchedulerConfiguration
+var schedulerConfiguration = sjfSchedulerConfiguration
 
 //var schedulerConfiguration = edfSchedulerConfiguration
 

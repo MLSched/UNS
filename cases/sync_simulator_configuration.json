@@ -17,18 +17,74 @@
 										"inst-1-replica-0-cpusocket-0-acc-0": {
 											"acceleratorID": "inst-1-replica-0-cpusocket-0-acc-0",
 											"acceleratorMetaInfo": {
-												"briefType": "A100",
+												"briefType": "V100",
 												"acceleratorMemory": {
-													"bytesCapacity": "42949672960"
+													"bytesCapacity": "34359738368"
 												}
 											}
 										},
 										"inst-1-replica-0-cpusocket-0-acc-1": {
 											"acceleratorID": "inst-1-replica-0-cpusocket-0-acc-1",
 											"acceleratorMetaInfo": {
+												"briefType": "V100",
+												"acceleratorMemory": {
+													"bytesCapacity": "34359738368"
+												}
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"nodeID": "inst-2-replica-0",
+							"CPUSockets": [
+								{
+									"CPUSocketID": "inst-2-replica-0-cpusocket-0",
+									"accelerators": {
+										"inst-2-replica-0-cpusocket-0-acc-0": {
+											"acceleratorID": "inst-2-replica-0-cpusocket-0-acc-0",
+											"acceleratorMetaInfo": {
 												"briefType": "A100",
 												"acceleratorMemory": {
 													"bytesCapacity": "42949672960"
+												}
+											}
+										},
+										"inst-2-replica-0-cpusocket-0-acc-1": {
+											"acceleratorID": "inst-2-replica-0-cpusocket-0-acc-1",
+											"acceleratorMetaInfo": {
+												"briefType": "A100",
+												"acceleratorMemory": {
+													"bytesCapacity": "42949672960"
+												}
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"nodeID": "inst-3-replica-0",
+							"CPUSockets": [
+								{
+									"CPUSocketID": "inst-3-replica-0-cpusocket-0",
+									"accelerators": {
+										"inst-3-replica-0-cpusocket-0-acc-0": {
+											"acceleratorID": "inst-3-replica-0-cpusocket-0-acc-0",
+											"acceleratorMetaInfo": {
+												"briefType": "GTX 2080Ti",
+												"acceleratorMemory": {
+													"bytesCapacity": "17179869184"
+												}
+											}
+										},
+										"inst-3-replica-0-cpusocket-0-acc-1": {
+											"acceleratorID": "inst-3-replica-0-cpusocket-0-acc-1",
+											"acceleratorMetaInfo": {
+												"briefType": "GTX 2080Ti",
+												"acceleratorMemory": {
+													"bytesCapacity": "17179869184"
 												}
 											}
 										}
@@ -43,8 +99,8 @@
 		"schedulersConfiguration": {
 			"partitionID2SchedulerConfiguration": {
 				"PARTITION_ID": {
-					"schedulerType": "schedulerTypeSJF",
-					"sjfSchedulerConfiguration": {
+					"schedulerType": "schedulerTypeUNS",
+					"unsSchedulerConfiguration": {
 						"SchedulerID": "SCHEDULER_ID",
 						"resourceManagerID": "RESOURCE_MANAGER_ID",
 						"partitionID": "PARTITION_ID",
@@ -55,8 +111,7 @@
 							"DLTPredictorDataOrientedConfiguration": {
 								"dataSourcePath": "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
 							}
-						},
-						"returnAllScheduleDecisions": true
+						}
 					}
 				}
 			}
@@ -69,6 +124,26 @@
 		}
 	},
 	"jobs": [
+		{
+			"jobID": "963e14597a569879dec92537",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "963e14597a569879dec92537_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "20056000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
 		{
 			"jobID": "81749c2e708fc2cd18918846",
 			"jobType": "jobTypeDLT",
@@ -89,23 +164,164 @@
 			"deadline": "9223372036854775807"
 		},
 		{
-			"jobID": "6d942b15622d001d9edacb8e",
+			"jobID": "c0cb989683049a1f41b8d6d2",
 			"jobType": "jobTypeDLT",
 			"taskGroup": {
 				"taskGroupType": "taskGroupTypeSingle",
 				"tasks": [
 					{
-						"taskID": "6d942b15622d001d9edacb8e_TASK_0"
+						"taskID": "c0cb989683049a1f41b8d6d2_TASK_0"
 					}
 				],
 				"singleTaskGroupInfo": {
 
 				}
 			},
+			"submitTimeNanoSecond": "7584000000000",
 			"userGroup": {
 				"user": "74238accb90b"
 			},
 			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "9e66e03fb57432ff484838d3",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "9e66e03fb57432ff484838d3_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "13961000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "225469633988198"
+		},
+		{
+			"jobID": "5945a8f652a75895a9b2c98c",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "5945a8f652a75895a9b2c98c_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "20053000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "a2eb1050f6cbb6ac041a07d5",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "a2eb1050f6cbb6ac041a07d5_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "20056000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "250d4489b2b142c27cd9f723",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "250d4489b2b142c27cd9f723_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "17148000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "2d91199618980980723f3d89",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "2d91199618980980723f3d89_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "20056000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "98708db96ca1a1575c6e788d",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "98708db96ca1a1575c6e788d_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "20057000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "b6bac06ff84c086206171e87",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "b6bac06ff84c086206171e87_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "21476000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "168152836143073"
 		},
 		{
 			"jobID": "f6304007ef3e25fc37150d2c",
@@ -121,10 +337,395 @@
 
 				}
 			},
+			"submitTimeNanoSecond": "3272000000000",
 			"userGroup": {
 				"user": "74238accb90b"
 			},
-			"deadline": "49072159916"
+			"deadline": "197514330596538"
+		},
+		{
+			"jobID": "e6fbc0b25267595b15fd9ce0",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "e6fbc0b25267595b15fd9ce0_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "13063000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "160223797296382"
+		},
+		{
+			"jobID": "27d29764ca70365e92cb1ccb",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "27d29764ca70365e92cb1ccb_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "14768000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "a049f5da99868e3ee3e91835",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "a049f5da99868e3ee3e91835_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "16855000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "ae8f84cd2f1c5d138981a8f9",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "ae8f84cd2f1c5d138981a8f9_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "6211000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "51d01202d231f9fae85bceab",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "51d01202d231f9fae85bceab_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "8266000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "6661e092f01b74b115fd4212",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "6661e092f01b74b115fd4212_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "12179000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "d19357ab93a751e353923655",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "d19357ab93a751e353923655_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "14700000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "6ac3373981df75c945f071d8",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "6ac3373981df75c945f071d8_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "7801000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "d436f8106a02a2ddb385947d",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "d436f8106a02a2ddb385947d_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "14209000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "0763f5964484b5acffb99e89",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "0763f5964484b5acffb99e89_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "12132000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "c86fa3a41c9fcf9611d4f6e6",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "c86fa3a41c9fcf9611d4f6e6_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "13901000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "151454090762778"
+		},
+		{
+			"jobID": "3e6cdf99157dd45eacb23445",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeGang",
+				"tasks": [
+					{
+						"taskID": "3e6cdf99157dd45eacb23445_TASK_0"
+					},
+					{
+						"taskID": "3e6cdf99157dd45eacb23445_TASK_1"
+					}
+				],
+				"gangTaskGroupInfo": {
+					"taskGroupType": "taskGroupTypeGang",
+					"extra": "eyJETFRHYW5nVHlwZSI6MX0="
+				}
+			},
+			"submitTimeNanoSecond": "10662000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "267651962738033"
+		},
+		{
+			"jobID": "058a19e3095578771546d72b",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "058a19e3095578771546d72b_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "20056000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "dd3a0a978475dfd449bdd136",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "dd3a0a978475dfd449bdd136_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "20057000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "134116179196734"
+		},
+		{
+			"jobID": "6d942b15622d001d9edacb8e",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "6d942b15622d001d9edacb8e_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "491000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "6103c3f5b9cba56317e22e9b",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "6103c3f5b9cba56317e22e9b_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "13945000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
+		},
+		{
+			"jobID": "695ff54bb17951f7a9468608",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "695ff54bb17951f7a9468608_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "14098000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "158604097040853"
+		},
+		{
+			"jobID": "10ff84e15b2c42a736f4e3e5",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "10ff84e15b2c42a736f4e3e5_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "15347000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "160689666436242"
+		},
+		{
+			"jobID": "3ed06aae456a3ddadf87ffdb",
+			"jobType": "jobTypeDLT",
+			"taskGroup": {
+				"taskGroupType": "taskGroupTypeSingle",
+				"tasks": [
+					{
+						"taskID": "3ed06aae456a3ddadf87ffdb_TASK_0"
+					}
+				],
+				"singleTaskGroupInfo": {
+
+				}
+			},
+			"submitTimeNanoSecond": "17411000000000",
+			"userGroup": {
+				"user": "74238accb90b"
+			},
+			"deadline": "9223372036854775807"
 		}
 	]
 }
