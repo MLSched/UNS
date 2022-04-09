@@ -1,9 +1,12 @@
 package makespan
 
 import (
+	"UNS/pb_gen/objects"
+	predictorinterfaces "UNS/predictor/interfaces"
 	"UNS/schedulers/impls/DLT/UNS/benefits/base"
 	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"UNS/schedulers/partition"
+	"sort"
 )
 
 type Calculator struct {
@@ -18,86 +21,75 @@ func NewCalculator() *Calculator {
 	return c
 }
 
-func (c *Calculator) Calculate(stub interface{}) interfaces2.Benefit {
-	makeSpan := c.calculateMakeSpan(stub.(*Stub))
-	return c.makeSpan2Benefit(makeSpan)
-}
-
-func (c *Calculator) NewStub() interface{} {
-	return &Stub{JobID2FinishTime: make(map[string]int64)}
-}
-
-func (c *Calculator) UpdateStub(pc *partition.Context, contexts map[string]*base.BenefitCalculationContext, stub interface{}) {
-	s := stub.(*Stub)
-	for jobID, ctx := range contexts {
-		finishTime := ctx.FinishTime
-		s.JobID2FinishTime[jobID] = finishTime
-	}
-}
-
 type Stub struct {
-	JobID2FinishTime map[string]int64
+	JobID2JCT map[string]int64
 }
 
-//
-//func (c *Calculator) ByPredictIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit interfaces2.Benefit, stub interface{}) {
-//	s := prevStub.(*Stub)
-//	s = c.CloneStub(s).(*Stub)
-//	c.updateStub(pc, allocationsPredictResult, s)
-//	makeSpan := c.calculateMakeSpan(s)
-//	return c.makeSpan2Benefit(makeSpan), s
-//}
+func (c *Calculator) ByHistory(pc *partition.Context, histories map[string]*objects.JobExecutionHistory) (benefit interfaces2.Benefit, stub interface{}) {
+	return 0, nil
+}
 
 func (c *Calculator) CloneStub(stub interface{}) interface{} {
-	s := &Stub{JobID2FinishTime: make(map[string]int64)}
+	s := &Stub{JobID2JCT: make(map[string]int64)}
 	oStub := stub.(*Stub)
-	for jobID, finishTime := range oStub.JobID2FinishTime {
-		s.JobID2FinishTime[jobID] = finishTime
+	for jobID, JCT := range oStub.JobID2JCT {
+		s.JobID2JCT[jobID] = JCT
 	}
 	return s
 }
 
-//
-//func (c *Calculator) ByPredict(pc *partition.Context, allocationsPredictResult interfaces.PredictResult) (benefit interfaces2.Benefit, stub interface{}) {
-//	s := &Stub{JobID2FinishTime: make(map[string]int64)}
-//	c.updateStub(pc, allocationsPredictResult, s)
-//	makeSpan := c.calculateMakeSpan(s)
-//	return c.makeSpan2Benefit(makeSpan), s
-//}
-
-//func (c *Calculator) updateStubByPredict(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, stub *Stub) {
-//	if allocationsPredictResult == nil {
-//		return
-//	}
-//	allocationsPredictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
-//		job := pc.GetUnfinishedJob(allocation.GetJobID())
-//		finishTime := *result.GetFinishNanoTime()
-//		stub.JobID2FinishTime[job.GetJobID()] = finishTime
-//	})
-//}
-
-//func (c *Calculator) updateStub(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, stub *Stub) {
-//	if allocationsPredictResult == nil {
-//		return
-//	}
-//	allocationsPredictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
-//		job := pc.GetUnfinishedJob(allocation.GetJobID())
-//		finishTime := *result.GetFinishNanoTime()
-//		stub.JobID2FinishTime[job.GetJobID()] = finishTime
-//	})
-//}
-
-// calculateMakeSpan MakeSpan定义为：所有任务最终全部完成时，最大的任务完成时间。
-func (c *Calculator) calculateMakeSpan(stub *Stub) float64 {
-	maximumFinishTime := int64(-1)
-	for _, finishTime := range stub.JobID2FinishTime {
-		if finishTime > maximumFinishTime {
-			maximumFinishTime = finishTime
-		}
+func (c *Calculator) UpdateStub(pc *partition.Context, contexts map[string]*base.BenefitCalculationContext, stub interface{}) {
+	s := stub.(*Stub)
+	for _, ctx := range contexts {
+		job := ctx.Job
+		submitTime := job.GetSubmitTimeNanoSecond()
+		finishTime := ctx.FinishTime
+		s.JobID2JCT[job.GetJobID()] = finishTime - submitTime
 	}
-	return float64(maximumFinishTime)
 }
 
-func (c *Calculator) makeSpan2Benefit(makeSpan float64) interfaces2.Benefit {
+func (c *Calculator) calculateMakeSpan(stub *Stub) int64 {
+	maximumJCT := int64(0)
+	for _, JCT := range stub.JobID2JCT {
+		if JCT > maximumJCT {
+			maximumJCT = JCT
+		}
+	}
+	return maximumJCT
+}
+
+func (c *Calculator) avgJCT2Benefit(avgJCT float64) interfaces2.Benefit {
+	return interfaces2.Benefit(-avgJCT)
+}
+
+func (c *Calculator) NewStub() interface{} {
+	return &Stub{JobID2JCT: make(map[string]int64)}
+}
+
+func (c *Calculator) Calculate(prevStub interface{}) interfaces2.Benefit {
+	makeSpan := c.calculateMakeSpan(prevStub.(*Stub))
 	return interfaces2.Benefit(-makeSpan)
+}
+
+func (c *Calculator) PrioritySort(pc *partition.Context, jobs map[string]*objects.Job, predictor predictorinterfaces.Predictor) map[string]int {
+	type JobAndTime struct {
+		Job  *objects.Job
+		Time int64
+	}
+	jobAndTimes := make([]*JobAndTime, 0, len(jobs))
+	for _, job := range jobs {
+		et := predictor.PredictSolelyFastestExecutionTime(job)
+		jobAndTimes = append(jobAndTimes, &JobAndTime{
+			Job:  job,
+			Time: et,
+		})
+	}
+	sort.Slice(jobAndTimes, func(i, j int) bool {
+		return jobAndTimes[i].Time < jobAndTimes[j].Time
+	})
+	result := make(map[string]int)
+	for i, jat := range jobAndTimes {
+		result[jat.Job.GetJobID()] = i
+	}
+	return result
 }

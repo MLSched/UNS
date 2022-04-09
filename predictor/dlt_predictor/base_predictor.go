@@ -343,9 +343,6 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 				continue
 			}
 			spaceSharedRunningAllocations := getSpaceSharedAllocations(runningAllocation)
-			if len(spaceSharedRunningAllocations) == 3 {
-				log.Printf("space sharing more then 2")
-			}
 			r, err := p.getSpaceSharingMiniBatchDuration(ctx, spaceSharedRunningAllocations)
 			if err != nil {
 				return nil, err
@@ -417,38 +414,10 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 			for jobID, allocation := range newStartedAllocations {
 				runningAllocations[jobID] = allocation
 			}
-			//if m, ok := jobID2RemainingMiniBatches["3e6cdf99157dd45eacb23445"]; ok && m == 0 {
-			//	if m, ok := jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"]; ok && m == 0 {
-			//		if m, ok := jobID2RemainingMiniBatches["6ac3373981df75c945f071d8"]; ok && m == 10 {
-			//			log.Printf("")
-			//		}
-			//	}
-			//}
 		} else {
-			// new job comes in is later than other job finishes.
-			//if jobID2RemainingMiniBatches["6ac3373981df75c945f071d8"] == 10 && jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"] == 0 && closestFinishedJobTime == 6259563820 {
-			//	if _, ok := jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"]; ok {
-			//		log.Printf("")
-			//	}
-			//}
-			//log.Printf("%v %d", jobID2RemainingMiniBatches, closestFinishedJobTime)
 			passedDuration := closestFinishedJobTime - currTime
 			passDurationForRunningAllocations(currTime, passedDuration)
 			currTime = closestFinishedJobTime
-			//if jobID2RemainingMiniBatches["3e6cdf99157dd45eacb23445"] == 0 && jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"] == 0 && closestFinishedJobTime == 6259563820 {
-			//	if m, ok := jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"]; ok && m == 0 {
-			//		if m, ok := jobID2RemainingMiniBatches["6ac3373981df75c945f071d8"]; ok && m == 10 {
-			//			log.Printf("")
-			//		}
-			//	}
-			//}
-			//if m, ok := jobID2RemainingMiniBatches["3e6cdf99157dd45eacb23445"]; ok && m == 0 {
-			//	if m, ok := jobID2RemainingMiniBatches["0763f5964484b5acffb99e89"]; ok && m == 0 {
-			//		if m, ok := jobID2RemainingMiniBatches["6ac3373981df75c945f071d8"]; ok && m == 10 {
-			//			log.Printf("")
-			//		}
-			//	}
-			//}
 		}
 	}
 	return result, nil

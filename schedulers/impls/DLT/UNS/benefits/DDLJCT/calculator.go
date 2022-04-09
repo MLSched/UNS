@@ -1,4 +1,4 @@
-package JCT
+package DDLJCT
 
 import (
 	"UNS/pb_gen/objects"
@@ -6,6 +6,7 @@ import (
 	"UNS/schedulers/impls/DLT/UNS/benefits/base"
 	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"UNS/schedulers/partition"
+	"math"
 	"sort"
 )
 
@@ -22,24 +23,23 @@ func NewCalculator() *Calculator {
 }
 
 type Stub struct {
-	JobID2JCT map[string]int64
+	JobID2JCT      map[string]int64
+	JobID2Deadline map[string]int64
 }
-
-//func (c *Calculator) ByPredictIncrementally(pc *partition.Context, allocationsPredictResult interfaces.PredictResult, prevStub interface{}) (benefit interfaces2.Benefit, stub interface{}) {
-//	return c.Cal(pc, prevStub, func() map[string]*base.BenefitCalculationContext {
-//		return c.ExtractContextByPredict(pc, allocationsPredictResult)
-//	})
-//}
 
 func (c *Calculator) ByHistory(pc *partition.Context, histories map[string]*objects.JobExecutionHistory) (benefit interfaces2.Benefit, stub interface{}) {
 	return 0, nil
 }
 
 func (c *Calculator) CloneStub(stub interface{}) interface{} {
-	s := &Stub{JobID2JCT: make(map[string]int64)}
+	s := &Stub{
+		JobID2JCT:      make(map[string]int64),
+		JobID2Deadline: make(map[string]int64),
+	}
 	oStub := stub.(*Stub)
 	for jobID, JCT := range oStub.JobID2JCT {
 		s.JobID2JCT[jobID] = JCT
+		s.JobID2Deadline[jobID] = oStub.JobID2Deadline[jobID]
 	}
 	return s
 }
@@ -51,29 +51,43 @@ func (c *Calculator) UpdateStub(pc *partition.Context, contexts map[string]*base
 		submitTime := job.GetSubmitTimeNanoSecond()
 		finishTime := ctx.FinishTime
 		s.JobID2JCT[job.GetJobID()] = finishTime - submitTime
+		s.JobID2Deadline[job.GetJobID()] = job.GetDeadline()
 	}
 }
 
-func (c *Calculator) calculateAvgJCT(stub *Stub) float64 {
+func (c *Calculator) calculateTotalDeadlineViolation(stub *Stub) int64 {
+	totalDeadlineViolation := int64(0)
+	for jobID, JCT := range stub.JobID2JCT {
+		if deadline := stub.JobID2Deadline[jobID]; deadline != math.MaxInt64 {
+			if JCT-deadline > 0 {
+				totalDeadlineViolation += JCT - deadline
+			}
+		}
+	}
+	return totalDeadlineViolation
+}
+
+func (c *Calculator) calculateTotalJCT(stub *Stub) int64 {
 	totalJCT := int64(0)
 	for _, JCT := range stub.JobID2JCT {
 		totalJCT += JCT
 	}
-	avgJCT := float64(totalJCT) / float64(len(stub.JobID2JCT))
-	return avgJCT
-}
-
-func (c *Calculator) avgJCT2Benefit(avgJCT float64) interfaces2.Benefit {
-	return interfaces2.Benefit(-avgJCT)
+	return totalJCT
 }
 
 func (c *Calculator) NewStub() interface{} {
-	return &Stub{JobID2JCT: make(map[string]int64)}
+	return &Stub{
+		JobID2JCT:      make(map[string]int64),
+		JobID2Deadline: make(map[string]int64),
+	}
 }
 
 func (c *Calculator) Calculate(prevStub interface{}) interfaces2.Benefit {
-	avgJCT := c.calculateAvgJCT(prevStub.(*Stub))
-	return c.avgJCT2Benefit(avgJCT)
+	stub := prevStub.(*Stub)
+	totalDeadlineViolation := float64(c.calculateTotalDeadlineViolation(stub))
+	totalJCT := float64(c.calculateTotalJCT(stub))
+	benefit := -1e9*totalDeadlineViolation + -totalJCT
+	return interfaces2.Benefit(benefit)
 }
 
 func (c *Calculator) PrioritySort(pc *partition.Context, jobs map[string]*objects.Job, predictor predictorinterfaces.Predictor) map[string]int {
@@ -90,11 +104,25 @@ func (c *Calculator) PrioritySort(pc *partition.Context, jobs map[string]*object
 		})
 	}
 	sort.Slice(jobAndTimes, func(i, j int) bool {
-		return jobAndTimes[i].Time < jobAndTimes[j].Time
+		ji := jobAndTimes[i]
+		jj := jobAndTimes[j]
+		if c.jobHasDeadline(ji.Job) && !c.jobHasDeadline(jj.Job) {
+			return true
+		} else if !c.jobHasDeadline(ji.Job) && c.jobHasDeadline(jj.Job) {
+			return false
+		} else if c.jobHasDeadline(ji.Job) && c.jobHasDeadline(jj.Job) {
+			return ji.Job.GetDeadline() < jj.Job.GetDeadline()
+		} else {
+			return jobAndTimes[i].Time < jobAndTimes[j].Time
+		}
 	})
 	result := make(map[string]int)
 	for i, jat := range jobAndTimes {
 		result[jat.Job.GetJobID()] = i
 	}
 	return result
+}
+
+func (c *Calculator) jobHasDeadline(job *objects.Job) bool {
+	return job.GetDeadline() != math.MaxInt64
 }

@@ -9,23 +9,23 @@ func NewAtomic(initValue interface{}) *atomic.Value {
 }
 
 type AtomicInt struct {
-	atomic.Value
+	v *atomic.Value
 }
 
 func NewAtomicInt(initValue int) *AtomicInt {
 	a := NewAtomic(initValue)
-	return &AtomicInt{*a}
+	return &AtomicInt{v: a}
 }
 
 func (a *AtomicInt) GetAndIncrement(delta int) int {
 	for {
-		v := a.Load().(int)
-		if a.CompareAndSwap(v, v+delta) {
+		v := a.v.Load().(int)
+		if a.v.CompareAndSwap(v, v+delta) {
 			return v
 		}
 	}
 }
 
 func (a *AtomicInt) Get() int {
-	return a.Load().(int)
+	return a.v.Load().(int)
 }

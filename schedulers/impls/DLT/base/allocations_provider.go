@@ -7,6 +7,7 @@ import (
 	"UNS/schedulers/partition"
 	"UNS/utils"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"log"
 	"math"
 	"sort"
 	"strings"
@@ -30,7 +31,6 @@ const (
 	ProvideTypeDefault             ProvideType = 0
 	ProvideTypeOnlyUnoccupied      ProvideType = 0x0000_0010
 	ProvideTypeOnlyNonSpaceSharing ProvideType = 0x0000_0100
-	ProvideTypeResourceEfficient   ProvideType = 0x0000_1000
 )
 
 type AllocationsProviderImpl struct {
@@ -99,22 +99,6 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 			return true
 		}
 		taskAllocations := pc.AllocationViews.AcceleratorID2TaskAllocations[accID]
-		////taskAllocations := accID2SortedTaskAllocations[accID]
-		//// TODO debug
-		//{
-		//	//cachedTaskAllocations := pc.AllocationViews.AcceleratorID2TaskAllocations[accID]
-		//	//sort.Slice(cachedTaskAllocations, func(i, j int) bool {
-		//	//	return cachedTaskAllocations[i].TaskID < cachedTaskAllocations[j].TaskID
-		//	//})
-		//	sort.Slice(taskAllocations, func(i, j int) bool {
-		//		return taskAllocations[i].TaskID < taskAllocations[j].TaskID
-		//	})
-		//	//for i := 0; i < len(cachedTaskAllocations); i++ {
-		//	//	if cachedTaskAllocations[i] != taskAllocations[i] {
-		//	//		log.Printf("")
-		//	//	}
-		//	//}
-		//}
 		if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyUnoccupied) && len(taskAllocations) != 0 {
 			return false
 		}
@@ -154,22 +138,6 @@ func (a *AllocationsProviderImpl) GetSingleTaskJobPossibleAllocations(params *Ge
 			return false
 		}
 	})
-	// TODO debug
-	//c := 0
-	//for _, allocation := range result {
-	//	if allocation.GetTaskAllocations()[0].GetAcceleratorAllocation().GetAcceleratorID() == "inst-2-replica-0-cpusocket-0-acc-0" && !allocation.GetTaskAllocations()[0].GetPlaceholder() && allocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond().GetValue() == 0 {
-	//		c++
-	//		break
-	//	}
-	//}
-	//predictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
-	//	if allocation.GetAcceleratorAllocation().GetAcceleratorID() == "inst-2-replica-0-cpusocket-0-acc-0" && allocation.GetStartExecutionTimeNanoSecond().GetValue() == 0 {
-	//		c++
-	//	}
-	//})
-	//if c == 3 {
-	//	log.Printf("f")
-	//}
 	return result
 }
 
@@ -261,15 +229,6 @@ func (a *AllocationsProviderImpl) GetGangJobPossibleAllocations(params *GetPossi
 			}()
 			if a.isProvideTypeMode(provideTypeMode, ProvideTypeOnlyUnoccupied) && (startTime == nil || *startTime != pc.FixedNow()) {
 				return false
-			}
-			if a.isProvideTypeMode(provideTypeMode, ProvideTypeResourceEfficient) {
-				for _, waitingJobID := range placeholderWaitingJobIDs {
-					if pc.Allocations[waitingJobID].GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond().GetValue() > pc.FixedNow() {
-						// 当该allocation等待的一个任务的开始时间比pc的FixedNow更晚，这时该allocation不是ResourceEfficient类型的，
-						// 因为此时它等待了一个还没有真正开始运行的任务。
-						continue
-					}
-				}
 			}
 			na := buildJobAllocation(pc, job, accIDs, startTime, allocationTime, placeholder, placeholderWaitingJobIDs)
 			resultAllocations = append(resultAllocations, na)
@@ -471,6 +430,11 @@ func (a *AllocationsProviderImpl) getLastFinishTaskAllocationAndJobID(pc *partit
 	maxJobID := ""
 	var maxTaskAllocation *objects.TaskAllocation = nil
 	for _, taskAllocation := range taskAllocations {
+		f := result.GetResult(taskAllocation).GetFinishNanoTime()
+		if f == nil {
+			r := result.GetResult(taskAllocation)
+			log.Printf("nil, r = %v, taskAllocation = %v", r, taskAllocation)
+		}
 		t := *result.GetResult(taskAllocation).GetFinishNanoTime()
 		if t >= max {
 			beforeMax = max

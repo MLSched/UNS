@@ -47,6 +47,7 @@ message NaiveSchedulerConfiguration {
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
   bool nonSpaceSharing = 7;
+  bool returnAllScheduleDecisions = 8;
 }
 
 message SJFSchedulerConfiguration {
@@ -77,6 +78,7 @@ message HydraSchedulerConfiguration {
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
   bool nonSpaceSharing = 7;
+  bool returnAllScheduleDecisions = 8;
 }
 
 message UNSSchedulerConfiguration {

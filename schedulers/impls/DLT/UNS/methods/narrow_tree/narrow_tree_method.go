@@ -56,7 +56,7 @@ func BuildNarrowTreeMethod(sche *base2.Scheduler, configuration *configs.UNSSche
 			BenefitsCalculator2Weights: map[benefitsinterfaces.Calculator]float64{
 				benefits.NewJCTCalculator(): 1,
 			},
-			//BenefitsCalculator: benefits.NewDDLCalculator(),
+			//BenefitsCalculator: benefits.NewDDLJCTCalculator(),
 			ScoreCalculator: score.NewConsolidationScoreCalculator(),
 		},
 		MainBenefitCalculator: benefits.NewJCTCalculator(),

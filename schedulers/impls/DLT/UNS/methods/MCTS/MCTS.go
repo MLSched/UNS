@@ -83,11 +83,14 @@ func BuildMCTSMethod(sche *base2.Scheduler, configuration *configs.UNSSchedulerC
 				RandomMode: true,
 			},
 			BenefitsCalculator2Weights: map[interfaces2.Calculator]float64{
-				benefits.NewJCTCalculator(): 1,
+				//benefits.NewJCTCalculator(): 1,
+				benefits.NewDDLJCTCalculator(): 1,
+				//benefits.NewDDLCalculator(false): 1,
+				//benefits.NewMakeSpanCalculator(): 1,
 			},
 			ScoreCalculator: score.NewConsolidationScoreCalculator(),
 		},
-		MaxLatency:            5 * time.Second,
+		MaxLatency:            60 * time.Second,
 		ResourceEfficientMode: true,
 		MaxNodeChildrenCount:  10,
 	}
@@ -113,7 +116,7 @@ func (s *Method) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
 	scheduleCtx := newScheduleContext(&scheduleContextParams{
 		Method:                    s,
 		PC:                        pc,
-		MaxJobAllocationsCount:    10,
+		MaxJobAllocationsCount:    3,
 		Predictor:                 s.Predictor,
 		Provider:                  s.AllocationsProvider,
 		ProvideTypeMode:           s.AllocationProvideTypeMode,
@@ -121,6 +124,7 @@ func (s *Method) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
 		C:                         0.5,
 	})
 	closeFunc := scheduleCtx.StartNormalizationRoutine()
+	//jobAllocations := scheduleCtx.Search(s.MaxLatency, runtime.NumCPU())
 	jobAllocations := scheduleCtx.Search(s.MaxLatency, 1)
 	filteredJobAllocations := jobAllocations
 	if !s.Config.GetReturnAllScheduleDecisions() {
@@ -143,8 +147,9 @@ type scheduleContext struct {
 	// MaxJobAllocationsCount 限制了一个任务在一个partition context下，最多可能的allocation的可能性。这个数字限制了每一层树的最大宽度。
 	MaxJobAllocationsCount int
 
-	FingerPrints  map[string]*Node
-	FingerPrintMu *sync.Mutex
+	//FingerPrints  map[string]*Node
+	//FingerPrintMu *sync.Mutex
+	FingerPrints *sync.Map
 
 	InitialPC                    *partition.Context
 	Predictor                    interfaces.Predictor
@@ -186,12 +191,13 @@ func newScheduleContext(params *scheduleContextParams) *scheduleContext {
 	pc := params.PC
 	unallocatedJobsCount := len(pc.AllocationViews.UnallocatedJobs)
 	ctx := &scheduleContext{
-		method:                       params.Method,
-		FingerPrints:                 make(map[string]*Node),
-		FingerPrintMu:                &sync.Mutex{},
+		method:       params.Method,
+		FingerPrints: &sync.Map{},
+		//FingerPrints:                 make(map[string]*Node),
+		//FingerPrintMu:                &sync.Mutex{},
 		InitialPC:                    pc,
 		MaxLevel:                     unallocatedJobsCount,
-		PlayOutExpandMaxCount:        5,
+		PlayOutExpandMaxCount:        10,
 		MaxJobAllocationsCount:       params.MaxJobAllocationsCount,
 		Predictor:                    params.Predictor,
 		Provider:                     params.Provider,
@@ -277,11 +283,13 @@ func (s *scheduleContext) Search(timeBudget time.Duration, parallelRoutines int)
 	<-s.normalizationFuncReadyInformer
 	end := time.Now().Add(timeBudget)
 	totalPlayOutCount := utils.NewAtomicInt(len(s.RootNode.Children))
-	defer log.Printf("total PlayOutCount %d", totalPlayOutCount.Get())
+	defer func() {
+		log.Printf("total PlayOutCount %d", totalPlayOutCount.Get())
+	}()
 	if len(s.InitialPC.AllocationViews.UnallocatedJobs) == 1 {
 		return s.bestAllocations
 	}
-	searchRoutine := func() {
+	searchRoutine := func(id int) {
 		playOutCount := 0
 		for time.Now().Before(end) {
 			children, ok := s.SelectNodes()
@@ -301,11 +309,13 @@ func (s *scheduleContext) Search(timeBudget time.Duration, parallelRoutines int)
 			//}
 		}
 		totalPlayOutCount.GetAndIncrement(playOutCount)
+		log.Printf("search routine %d playout for %d", id, playOutCount)
 	}
 	wg := &sync.WaitGroup{}
 	for i := 0; i < parallelRoutines; i++ {
-		utils.GoWithWG(wg, 0, func(_ int) {
-			searchRoutine()
+		i := i
+		utils.GoWithWG(wg, i, func(id int) {
+			searchRoutine(id)
 		})
 	}
 	wg.Wait()
@@ -378,39 +388,27 @@ func (s *scheduleContext) Expand(node *Node) bool {
 	// 当JCT分数一致时，使用consolidation评分
 	JCTBenefitStub := node.JCTBenefitStub
 	consolidationScoreStub := node.ConsolidationScoreStub
-	wg := &sync.WaitGroup{}
 	index := 0
 	// 将扩展出的节点个数：未分配的任务数量*每个任务最多产生的分配个数。
 	resultNodes := make([]*Node, len(unallocatedJobs)*s.MaxJobAllocationsCount)
 	sortedUnallocatedJobs := s.sortJobsByPriority(unallocatedJobs)
+	wg := &sync.WaitGroup{}
 	for _, job := range sortedUnallocatedJobs {
 		innerIndex := index
-		job := job
-		cloned := node.PC.Clone(false)
-		expandedNodes := s.ExpandForJob(&expandContext{
-			PC:                     cloned,
-			Node:                   node,
-			NodeID2TaskAllocations: nodeID2TaskAllocations,
-			Job:                    job,
-			JCTBenefitStub:         JCTBenefitStub,
-			ConsolidationScoreStub: consolidationScoreStub,
-			PredictResult:          predictResult,
-			PlayOutMode:            false,
-		})
-		copy(resultNodes[innerIndex*s.MaxJobAllocationsCount:(innerIndex+1)*s.MaxJobAllocationsCount], expandedNodes)
-		utils.GoWithWG(wg, innerIndex, func(i int) {
-			//cloned := node.PC.Clone(false)
-			//expandedNodes := s.ExpandForJob(&expandContext{
-			//	PC:                     cloned,
-			//	Node:                   node,
-			//	NodeID2TaskAllocations: nodeID2TaskAllocations,
-			//	Job:                    job,
-			//	JCTBenefitStub:         JCTBenefitStub,
-			//	ConsolidationScoreStub: consolidationScoreStub,
-			//	PredictResult:          predictResult,
-			//	PlayOutMode:            false,
-			//})
-			//copy(resultNodes[i*s.MaxJobAllocationsCount:(i+1)*s.MaxJobAllocationsCount], expandedNodes)
+		utils.GoWithWG(wg, innerIndex, func(idx int) {
+			job := job
+			cloned := node.PC.Clone(false)
+			expandedNodes := s.ExpandForJob(&expandContext{
+				PC:                     cloned,
+				Node:                   node,
+				NodeID2TaskAllocations: nodeID2TaskAllocations,
+				Job:                    job,
+				JCTBenefitStub:         JCTBenefitStub,
+				ConsolidationScoreStub: consolidationScoreStub,
+				PredictResult:          predictResult,
+				PlayOutMode:            false,
+			})
+			copy(resultNodes[innerIndex*s.MaxJobAllocationsCount:(innerIndex+1)*s.MaxJobAllocationsCount], expandedNodes)
 		})
 		index++
 	}
@@ -448,6 +446,21 @@ func (s *scheduleContext) ExpandForJob(ctx *expandContext) []*Node {
 		}
 		return math.MaxInt64
 	}()
+	for _, ja := range pc.AllocationViews.AllocationsSlice {
+		taskAllocation := ja.GetTaskAllocations()[0]
+		r := ctx.PredictResult.GetResult(taskAllocation)
+		if r.GetFinishNanoTime() == nil {
+			log.Printf("before get possible allocaitons, r is nil, r = %v, taskAllocation %v, ctx.Job = %v, start = %v", r, taskAllocation, ctx.Job, r.GetStartExecutionNanoTime())
+			ctx.PredictResult.Range(func(allocation *objects.TaskAllocation, result interfaces.EachPredictResult) {
+				log.Printf("pr allocation %v, result %v", allocation, result)
+			})
+			for _, allocation := range pc.AllocationViews.AllocationsSlice {
+				for _, taskAllocation := range allocation.GetTaskAllocations() {
+					log.Printf("pc allocation %v", taskAllocation)
+				}
+			}
+		}
+	}
 	possibleAllocations := s.Provider.GetPossibleAllocations(&base.GetPossibleAllocationsParams{
 		PC:            pc,
 		PredictResult: ctx.PredictResult,
@@ -463,14 +476,14 @@ func (s *scheduleContext) ExpandForJob(ctx *expandContext) []*Node {
 		}
 	}
 	// TODO debug
-	for _, allocation := range possibleAllocations {
-		cancel := pc.TempAllocJob(allocation)
-		_, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
-		if interfaces.IsSpaceSharingMoreThanTwoError(err) {
-			panic(err)
-		}
-		cancel()
-	}
+	//for _, allocation := range possibleAllocations {
+	//	cancel := pc.TempAllocJob(allocation)
+	//	_, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
+	//	if interfaces.IsSpaceSharingMoreThanTwoError(err) {
+	//		panic(err)
+	//	}
+	//	cancel()
+	//}
 	//
 	nodes := getPossibleNodes(possibleAllocations)
 	nodes = s.sortAndFilterPossibleNodes(nodes)
@@ -480,13 +493,21 @@ func (s *scheduleContext) ExpandForJob(ctx *expandContext) []*Node {
 	for _, selected := range selectedNodes {
 		cloned := pc.Clone(false)
 		cloned.TempAllocJob(selected.JobAllocation)
+		merged := ctx.PredictResult.Merge(selected.PartialPredictResult)
+		for _, ja := range cloned.AllocationViews.AllocationsSlice {
+			taskAllocation := ja.GetTaskAllocations()[0]
+			r := merged.GetResult(taskAllocation)
+			if r.GetFinishNanoTime() == nil {
+				log.Printf("r is nil, taskAllocation %v, start = %d", taskAllocation, r.GetStartExecutionNanoTime())
+			}
+		}
 		s.initReadyNode(&readyNodeInitParam{
 			//selected, node, node.Level+1, cloned, ctx.PredictResult.Merge(selected.PartialPredictResult), s.method.GenJobAllocationsFingerPrint(selected.NewJobAllocations
 			Node:                         selected,
 			Parent:                       node,
 			Level:                        node.Level + 1,
 			PC:                           cloned,
-			Result:                       ctx.PredictResult.Merge(selected.PartialPredictResult),
+			Result:                       merged,
 			NewJobAllocationsFingerPrint: s.method.GenJobAllocationsFingerPrint(selected.NewJobAllocations),
 			JCTBenefitStub:               selected.JCTBenefitStub,
 			ConsolidationScoreStub:       selected.ConsolidationScoreStub,
@@ -497,14 +518,18 @@ func (s *scheduleContext) ExpandForJob(ctx *expandContext) []*Node {
 	}
 	// 如果不是play-out模式，还需要过滤重复的节点。
 	s.fingerPrintLocked(func() {
-		for i, node := range selectedNodes {
-			if _, ok := s.FingerPrints[node.NewJobAllocationsFingerPrint]; ok {
-				selectedNodes[i] = nil
-				//selectedNodes[i] = cached
-			} else {
-				s.FingerPrints[node.NewJobAllocationsFingerPrint] = node
-			}
-		}
+		//for i, node := range selectedNodes {
+		//_, ok := s.FingerPrints.LoadOrStore(node.NewJobAllocationsFingerPrint, node)
+		//if ok {
+		//	selectedNodes[i] = nil
+		//}
+		//if _, ok := s.FingerPrints[node.NewJobAllocationsFingerPrint]; ok {
+		//	selectedNodes[i] = nil
+		//	//selectedNodes[i] = cached
+		//} else {
+		//	s.FingerPrints[node.NewJobAllocationsFingerPrint] = node
+		//}
+		//}
 	})
 	filteredDuplicatedSelectedNodes := func() []*Node {
 		r := make([]*Node, 0, len(selectedNodes))
@@ -542,8 +567,8 @@ type getPossibleNodesParams struct {
 }
 
 func (s *scheduleContext) fingerPrintLocked(f func()) {
-	s.FingerPrintMu.Lock()
-	defer s.FingerPrintMu.Unlock()
+	//s.FingerPrintMu.Lock()
+	//defer s.FingerPrintMu.Unlock()
 	f()
 }
 
@@ -905,7 +930,8 @@ func (s *scheduleContext) UCT(node *Node, parentVisitedCount int, normalizationF
 		combinedNormalizedBenefit += s.BenefitCalculator2Weights[calculator] * normalized
 	}
 	// value + \sqrt { \log{parent visited count} / current node visited count }
-	v := combinedNormalizedBenefit + math.Sqrt(math.Log(parentVisitedCountF)/float64(totalVisitedCount))
+	scaled := math.Ceil(float64(totalVisitedCount) / float64(len(node.Children)))
+	v := combinedNormalizedBenefit + math.Sqrt(math.Log(parentVisitedCountF)/float64(scaled))
 	return v
 }
 

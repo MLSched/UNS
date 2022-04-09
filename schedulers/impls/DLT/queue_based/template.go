@@ -72,7 +72,7 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 	for _, job := range sorted {
 		basePredictResult, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
 		if err != nil {
-			log.Printf("[SJF Scheduler] predict failed, err=%v", err)
+			log.Printf("[Queue Based Scheduler] predict failed, err=%v", err)
 			return nil
 		}
 		nodeID2TaskAllocations := pc.AllocationViews.NodeID2TaskAllocations
@@ -83,37 +83,50 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 			ProvideType:   s.AllocationProvideMode,
 			MaxCount:      math.MaxInt64,
 		})
-		var bestScore *JobAllocationScore = nil
-		var bestJobAllocation *pb_gen.JobAllocation = nil
-		for _, possibleAllocation := range possibleAllocations {
-			cancel := s.TempAllocJob(pc, possibleAllocation)
-			pr, err := s.Predictor.Predict(pc, s.RelatedJobAllocationsByNodes(pc, nodeID2TaskAllocations, possibleAllocation))
-			if err != nil {
-				if interfaces2.IsMultiSpanNodesGangTasksError(err) || interfaces2.IsSpaceSharingOutOfMemoryError(err) {
-					continue
-				}
-				log.Printf("[Queue Based Scheduler] predict failed inside, err=%v", err)
-				continue
-			}
-			if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
-				s.MarkGangJobStartTime(possibleAllocation, *pr.GetResult(possibleAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime())
-			}
-			score := s.impl.GetJobAllocationScore(&JobAllocationScorerParam{
-				PC:            pc,
-				PredictResult: pr,
-				Job:           job,
-				JobAllocation: possibleAllocation,
-			})
-			if bestScore == nil {
-				bestScore = &score
-				bestJobAllocation = possibleAllocation
-			} else if score > *bestScore {
-				bestScore = &score
-				bestJobAllocation = possibleAllocation
+		for _, allocation := range possibleAllocations {
+			cancel := pc.TempAllocJob(allocation)
+			_, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
+			if interfaces2.IsSpaceSharingMoreThanTwoError(err) {
+				panic(err)
 			}
 			cancel()
 		}
+
+		var bestScore *JobAllocationScore = nil
+		var bestJobAllocation *pb_gen.JobAllocation = nil
+		for _, possibleAllocation := range possibleAllocations {
+			tryAlloc := func() {
+				cancel := s.TempAllocJob(pc, possibleAllocation)
+				defer cancel()
+				pr, err := s.Predictor.Predict(pc, s.RelatedJobAllocationsByNodes(pc, nodeID2TaskAllocations, possibleAllocation))
+				if err != nil {
+					if interfaces2.IsMultiSpanNodesGangTasksError(err) || interfaces2.IsSpaceSharingOutOfMemoryError(err) {
+						return
+					}
+					log.Printf("[Queue Based Scheduler] predict failed inside, err=%v", err)
+					return
+				}
+				if job.GetTaskGroup().GetTaskGroupType() == objects.TaskGroupType_taskGroupTypeGang {
+					s.MarkGangJobStartTime(possibleAllocation, *pr.GetResult(possibleAllocation.GetTaskAllocations()[0]).GetStartExecutionNanoTime())
+				}
+				score := s.impl.GetJobAllocationScore(&JobAllocationScorerParam{
+					PC:            pc,
+					PredictResult: pr,
+					Job:           job,
+					JobAllocation: possibleAllocation,
+				})
+				if bestScore == nil {
+					bestScore = &score
+					bestJobAllocation = possibleAllocation
+				} else if score > *bestScore {
+					bestScore = &score
+					bestJobAllocation = possibleAllocation
+				}
+			}
+			tryAlloc()
+		}
 		s.TempAllocJob(pc, bestJobAllocation)
+		//log.Printf("add allocation %v", bestJobAllocation)
 		unallocatedJobs = pc.AllocationViews.UnallocatedJobs
 	}
 
