@@ -75,8 +75,8 @@ func TestOneShotSchedule(t *testing.T) {
 			events.ReplySucceeded(event)
 		}()
 	}
-	scheduler := MockUNS(pusher, pc)
-	//scheduler := MockSJF(pusher, pc)
+	//scheduler := MockUNS(pusher, pc)
+	scheduler := MockSJF(pusher, pc)
 	//scheduler := MockEDF(pusher, pc)
 	scheduler.StartService()
 	//for _, job := range config.GetJobs() {

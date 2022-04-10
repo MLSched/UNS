@@ -36,7 +36,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 30
+var jobCount = 50
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -49,11 +49,11 @@ var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 //var submitTimeScaleFactor = float64(0.001)
 
 //var submitTimeScaleFactor = float64(10)
-//var submitTimeScaleFactor = float64(5)
+var submitTimeScaleFactor = float64(5)
 
 //var submitTimeScaleFactor = float64(1)
 
-var submitTimeScaleFactor = float64(0)
+//var submitTimeScaleFactor = float64(0)
 
 //var jobExecutionTimeScaleFactor = float64(0.00001)
 
@@ -64,7 +64,7 @@ var jobExecutionTimeScaleFactor = float64(1)
 //var syncMode = false
 var syncMode = true
 
-var deadlineProb = float64(0.3)
+var deadlineProb = float64(0.8)
 var deadlineDistribution = []float64{1.2, 2}
 
 var onlySingleTaskJob = false
@@ -118,9 +118,9 @@ var instance2Count = map[*Instance]int64{
 	NewInstance(map[int64][]string{
 		0: {A100, A100},
 	}): 1,
-	NewInstance(map[int64][]string{
-		0: {GTX2080Ti, GTX2080Ti},
-	}): 1,
+	//NewInstance(map[int64][]string{
+	//	0: {GTX2080Ti, GTX2080Ti},
+	//}): 1,
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti, GTX2080Ti},
 	//	1: {GTX2080Ti, GTX2080Ti},
@@ -128,7 +128,7 @@ var instance2Count = map[*Instance]int64{
 	//NewInstance(map[int64][]string{
 	//	0: {V100, V100},
 	//	1: {V100, V100},
-	//}): 2,
+	//}): 1,
 	//NewInstance(map[int64][]string{
 	//	0: {V100, V100, A100, A100},
 	//}): 1,

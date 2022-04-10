@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"runtime"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -48,10 +49,14 @@ type Node struct {
 	Parent *Node
 	// Children 表示Node的孩子节点。当为nil时，表示当前节点暂时未被扩展。
 	Children []*Node
-
-	Level int // 节点所在的层级
 	// Modifying 表示当前节点正在被某个goroutine修改，不能被其他goroutine同时修改
 	Modifying *atomic.Value
+	// UnexpandedJobs 表示该节点尚未扩展的jobID
+	// 扩展当前节点时，才能修改该数据。
+	// 当该切片为空时，则说明该节点不能再进行扩展了。
+	UnexpandedJobs []*objects.Job
+
+	Level int // 节点所在的层级
 
 	// TotalSimulatedBenefitMu, TotalSimulatedBenefit, TotalVisitedCount
 	// 记录了该节点所拥有的叶子节点的总共的benefit，以及从该节点向下模拟的访问次数。
@@ -90,8 +95,9 @@ func BuildMCTSMethod(sche *base2.Scheduler, configuration *configs.UNSSchedulerC
 			},
 			ScoreCalculator: score.NewConsolidationScoreCalculator(),
 		},
-		MaxLatency:            10 * time.Second,
-		ResourceEfficientMode: true,
+		MaxLatency: 10 * time.Second,
+		//ResourceEfficientMode: true,
+		ResourceEfficientMode: false,
 		MaxNodeChildrenCount:  10,
 	}
 	method.AllocationProvideTypeMode = base.ProvideTypeDefault
@@ -122,10 +128,11 @@ func (s *Method) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
 		ProvideTypeMode:           s.AllocationProvideTypeMode,
 		BenefitCalculator2Weights: s.BenefitsCalculator2Weights,
 		C:                         0.5,
+		ExpandStep:                1,
 	})
 	closeFunc := scheduleCtx.StartNormalizationRoutine()
-	//jobAllocations := scheduleCtx.Search(s.MaxLatency, runtime.NumCPU())
-	jobAllocations := scheduleCtx.Search(s.MaxLatency, 10)
+	jobAllocations := scheduleCtx.Search(s.MaxLatency, runtime.NumCPU())
+	//jobAllocations := scheduleCtx.Search(s.MaxLatency, 1)
 	filteredJobAllocations := jobAllocations
 	if !s.Config.GetReturnAllScheduleDecisions() {
 		filteredJobAllocations = s.FilterScheduleAbleJobAllocations(jobAllocations, pc)
@@ -163,6 +170,8 @@ type scheduleContext struct {
 	// C 在普通的MCTS中，C作为经验参数是不变量，但是对于我们的应用来说，不同的benefit定义会造成C的最优取值发生变化。
 	// 所以我们动态地计算出该参数的大小，它定义为：每当计算出一个叶子节点的Benefit时，该参数为C乘上曾经得到过的全部的Benefit的值的平均。
 	C float64
+	// 在扩展节点时，一次最多扩展多少个任务的孩子节点
+	ExpandStep int
 
 	// bestBenefit, bestAllocations 当playOut遇到叶子节点时，更新最佳收益和allocations作为调度结果
 	bestBenefitMu   *sync.Mutex
@@ -185,6 +194,7 @@ type scheduleContextParams struct {
 	ProvideTypeMode           base.ProvideType
 	BenefitCalculator2Weights map[interfaces2.Calculator]float64
 	C                         float64
+	ExpandStep                int
 }
 
 func newScheduleContext(params *scheduleContextParams) *scheduleContext {
@@ -203,6 +213,7 @@ func newScheduleContext(params *scheduleContextParams) *scheduleContext {
 		Provider:                     params.Provider,
 		AllocationProvideTypeMode:    params.ProvideTypeMode,
 		BenefitCalculator2Weights:    params.BenefitCalculator2Weights,
+		ExpandStep:                   params.ExpandStep,
 		JCTCalculator:                JCT.NewCalculator(),
 		ConsolidationScoreCalculator: score.NewConsolidationScoreCalculator(),
 		bestBenefit: func() *atomic.Value {
@@ -259,6 +270,7 @@ func (s *scheduleContext) initReadyNode(param *readyNodeInitParam) {
 	node.TotalSimulatedBenefitMu = &sync.RWMutex{}
 	node.Parent = param.Parent
 	node.PC = param.PC
+	node.Children = make([]*Node, 0)
 	node.PredictResult = param.Result
 	node.Level = param.Level
 	node.NewJobAllocationsFingerPrint = param.NewJobAllocationsFingerPrint
@@ -274,11 +286,17 @@ func (s *scheduleContext) initReadyNode(param *readyNodeInitParam) {
 		node.ConsolidationScoreStub = param.ConsolidationScoreStub
 	}
 	node.TotalSimulatedBenefit = make(map[interfaces2.Calculator]interfaces2.Benefit)
+	unallocatedJobs := node.PC.AllocationViews.UnallocatedJobs
+	node.UnexpandedJobs = make([]*objects.Job, 0, len(unallocatedJobs))
+	prioritizedJobs := s.sortJobsByPriority(unallocatedJobs)
+	for _, unallocatedJob := range prioritizedJobs {
+		node.UnexpandedJobs = append(node.UnexpandedJobs, unallocatedJob)
+	}
 }
 
 func (s *scheduleContext) Search(timeBudget time.Duration, parallelRoutines int) []*pb_gen.JobAllocation {
 	// 手动将第一层扩展出来，避免第一层扩展时多goroutine的抢占开销。
-	s.Expand(s.RootNode)
+	s.Expand(s.RootNode, -1)
 	_, playOutSuccessCount := s.playOutAndPropagate(s.RootNode.Children)
 	<-s.normalizationFuncReadyInformer
 	end := time.Now().Add(timeBudget)
@@ -298,9 +316,9 @@ func (s *scheduleContext) Search(timeBudget time.Duration, parallelRoutines int)
 			if !ok {
 				return
 			}
-			if !s.isLeafNode(children[0]) {
-				children = []*Node{children[0]}
-			}
+			//if !s.isLeafNode(children[0]) {
+			//	children = []*Node{children[0]}
+			//}
 			_, playOutSuccessCount := s.playOutAndPropagate(children)
 			playOutCount += playOutSuccessCount
 			//if leaves != nil {
@@ -388,14 +406,21 @@ func (s *scheduleContext) addUpBenefits(dst, src map[interfaces2.Calculator]inte
 	}
 }
 
-func (s *scheduleContext) Expand(node *Node) bool {
+func (s *scheduleContext) Expand(node *Node, expandJobsCount int) bool {
 	if s.isLeafNode(node) {
 		panic("leaf node cannot be expanded.")
 	}
-	if node.Children != nil {
-		panic("node already expanded.")
+	if len(node.UnexpandedJobs) == 0 {
+		panic("node has no more jobs to be expanded.")
 	}
-	unallocatedJobs := node.PC.AllocationViews.UnallocatedJobs
+	unexpandedJobs := node.UnexpandedJobs
+	if expandJobsCount < 0 {
+		expandJobsCount = len(unexpandedJobs)
+	}
+	defer func() {
+		node.UnexpandedJobs = unexpandedJobs[expandJobsCount:]
+	}()
+	candidateExpandJobs := unexpandedJobs[:expandJobsCount]
 	predictResult := node.PredictResult
 	nodeID2TaskAllocations := node.PC.AllocationViews.NodeID2TaskAllocations
 	// 使用固定的JCTCalculator作为node选择标准
@@ -404,10 +429,9 @@ func (s *scheduleContext) Expand(node *Node) bool {
 	consolidationScoreStub := node.ConsolidationScoreStub
 	index := 0
 	// 将扩展出的节点个数：未分配的任务数量*每个任务最多产生的分配个数。
-	resultNodes := make([]*Node, len(unallocatedJobs)*s.MaxJobAllocationsCount)
-	sortedUnallocatedJobs := s.sortJobsByPriority(unallocatedJobs)
+	resultNodes := make([]*Node, len(candidateExpandJobs)*s.MaxJobAllocationsCount)
 	wg := &sync.WaitGroup{}
-	for _, job := range sortedUnallocatedJobs {
+	for _, job := range candidateExpandJobs {
 		innerIndex := index
 		job := job
 		utils.GoWithWG(wg, innerIndex, func(idx int) {
@@ -427,16 +451,15 @@ func (s *scheduleContext) Expand(node *Node) bool {
 		index++
 	}
 	wg.Wait()
-	node.Children = make([]*Node, 0, len(unallocatedJobs)*s.MaxJobAllocationsCount)
 	for _, resultNode := range resultNodes {
 		if resultNode != nil {
 			node.Children = append(node.Children, resultNode)
 		}
 	}
-	if len(node.Children) > 0 {
-		return true
+	if len(node.UnexpandedJobs) == 0 && len(node.Children) == 0 {
+		return false
 	}
-	return false
+	return true
 }
 
 func (s *scheduleContext) ExpandForJob(ctx *expandContext) []*Node {
@@ -595,6 +618,10 @@ func (s *scheduleContext) fingerPrintLocked(f func()) {
 	//s.FingerPrintMu.Lock()
 	//defer s.FingerPrintMu.Unlock()
 	f()
+}
+
+func (s *scheduleContext) isNodeExpandable(node *Node) bool {
+	return len(node.UnexpandedJobs) > 0
 }
 
 func (s *scheduleContext) addSimulatedBenefit(node *Node, newTotalBenefit map[interfaces2.Calculator]interfaces2.Benefit, count int) {
@@ -783,14 +810,25 @@ nextLevel:
 		hasWorthSelectChild := false
 		for _, childNodeWithUCT := range nodesWithUCT {
 			childNode := childNodeWithUCT.Node
+			if s.isLeafNode(childNode) {
+				node = root
+				continue nextLevel
+			}
 			if !s.isNodeWorthSelect(childNode) {
 				continue
 			}
-			hasWorthSelectChild = true
-			if childNode.Children != nil {
-				node = childNode
-				continue nextLevel
+			// 如果节点不可扩展时，说明它的所有孩子节点已经生成。
+			if !s.isNodeExpandable(childNode) {
+				// 若当前节点的孩子为叶子节点，则不向下延伸，在同级延伸。
+				if s.isNodeBeforeLeaf(childNode) {
+					continue
+				} else {
+					// 若当前节点的孩子不是叶子节点，则说明该节点的孩子还有延伸的价值，向下延伸。
+					node = childNode
+					continue nextLevel
+				}
 			}
+			hasWorthSelectChild = true
 			var nextChild = false
 			var retryFromRoot = false
 			var expandedChildren []*Node
@@ -800,8 +838,13 @@ nextLevel:
 					nextChild = true
 					return
 				}
+				if !s.isNodeExpandable(childNode) {
+					// 避免并发问题，获取锁后double-check
+					nextChild = true
+					return
+				}
 				// 预定成功，选择该节点，扩展它，然后修改Expanding状态。
-				ok := s.Expand(childNode)
+				ok := s.Expand(childNode, s.ExpandStep)
 				if !ok {
 					// 当扩展失败时，说明该节点没有孩子节点，即失去了存在的价值，直接级联删除该节点。
 					s.removeNodeCascade(childNode)
@@ -810,7 +853,7 @@ nextLevel:
 					retryFromRoot = true
 					return
 				}
-				if s.isNodeBeforeLeaf(childNode) {
+				if s.isNodeBeforeLeaf(childNode) && !s.isNodeExpandable(childNode) {
 					// 该节点是叶子节点前的节点并且它的所有孩子节点（叶子节点）都被扩展了，则所有的叶子节点的benefit即将获得，不需要再进行扩展。
 					// 所以将标记为notWorthSelect
 					for _, grandChildNode := range childNode.Children {
@@ -1049,9 +1092,6 @@ func (s *scheduleContext) removeNodeCascade(node *Node) {
 }
 
 func (s *scheduleContext) isNodeWorthSelect(node *Node) bool {
-	if s.isLeafNode(node) {
-		panic(fmt.Sprintf("leaf node should never be tried to be selected, node %v, parent is root %v", node.Level, node.Parent == s.RootNode))
-	}
 	return !node.NotWorthSelect
 }
 
