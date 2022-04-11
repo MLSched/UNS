@@ -2,6 +2,7 @@ package queue_based
 
 import (
 	"UNS/pb_gen/configs"
+	eventobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
 	base2 "UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
@@ -75,4 +76,8 @@ func (s *SJFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) Jo
 	job := pc.GetJob(possibleAllocation.GetJobID())
 	JCT := *r.GetFinishNanoTime() - job.GetSubmitTimeNanoSecond()
 	return JobAllocationScore(-JCT)
+}
+
+func (s *SJFScheduler) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
+	return s.QueueBasedSchedulerTemplate.DoScheduleTemplate()
 }

@@ -22,11 +22,14 @@ type QueueBasedSchedulerTemplate struct {
 	AllocationProvideMode        base2.ProvideType
 	ReturnAllSchedulingDecisions bool
 
+	MaxPossibleAllocationsCount int
+
 	impl QueueBasedSchedulerInterface
 }
 
 type QueueBasedSchedulerInterface interface {
 	interfaces.Scheduler
+	DoSchedule() *eventobjs.SSUpdateAllocationsEvent
 	PrioritySort(pc *partition.Context, jobs map[string]*objects.Job) []*objects.Job
 	GetJobAllocationScore(param *JobAllocationScorerParam) JobAllocationScore
 }
@@ -38,17 +41,30 @@ type QueueBasedSchedulerParam struct {
 	PartitionContextAware        base2.PartitionContextAware
 	IntervalNano                 int64
 	SyncMode                     bool
+	AllocationsProvider          base2.AllocationsProvider
 	AllocationProvideMode        base2.ProvideType
 	ReturnAllSchedulingDecisions bool
+	MaxPossibleAllocationsCount  int
 }
 
 func BuildTemplate(param *QueueBasedSchedulerParam) (*QueueBasedSchedulerTemplate, error) {
 	sche := &QueueBasedSchedulerTemplate{
-		Predictor:                    predictor.BuildPredictor(param.PredictorConfiguration),
-		AllocationsProvider:          &base2.AllocationsProviderImpl{},
+		Predictor: predictor.BuildPredictor(param.PredictorConfiguration),
+		AllocationsProvider: func() base2.AllocationsProvider {
+			if param.AllocationsProvider == nil {
+				return &base2.AllocationsProviderImpl{}
+			}
+			return param.AllocationsProvider
+		}(),
 		impl:                         param.Impl,
 		AllocationProvideMode:        param.AllocationProvideMode,
 		ReturnAllSchedulingDecisions: param.ReturnAllSchedulingDecisions,
+		MaxPossibleAllocationsCount: func() int {
+			if param.MaxPossibleAllocationsCount == 0 {
+				return math.MaxInt64
+			}
+			return param.MaxPossibleAllocationsCount
+		}(),
 	}
 	sche.DLTSchedulerTemplate = base2.NewIntervalSchedulerTemplate(sche, param.IntervalNano, param.PartitionContextAware, param.SyncMode, param.Pusher)
 	return sche, nil
@@ -59,6 +75,10 @@ func (s *QueueBasedSchedulerTemplate) PrioritySort(pc *partition.Context, jobs m
 }
 
 func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
+	return s.impl.DoSchedule()
+}
+
+func (s *QueueBasedSchedulerTemplate) DoScheduleTemplate() *eventobjs.SSUpdateAllocationsEvent {
 	originalPC := s.GetPartitionContext().Clone(false)
 	log.Printf("unallocated accIDs = %v", originalPC.AllocationViews.UnallocatedAcceleratorIDs)
 	t := originalPC.Now()
@@ -81,16 +101,16 @@ func (s *QueueBasedSchedulerTemplate) DoSchedule() *eventobjs.SSUpdateAllocation
 			PredictResult: basePredictResult,
 			Job:           job,
 			ProvideType:   s.AllocationProvideMode,
-			MaxCount:      math.MaxInt64,
+			MaxCount:      s.MaxPossibleAllocationsCount,
 		})
-		for _, allocation := range possibleAllocations {
-			cancel := pc.TempAllocJob(allocation)
-			_, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
-			if interfaces2.IsSpaceSharingMoreThanTwoError(err) {
-				panic(err)
-			}
-			cancel()
-		}
+		//for _, allocation := range possibleAllocations {
+		//	cancel := pc.TempAllocJob(allocation)
+		//	_, err := s.Predictor.Predict(pc, pc.AllocationViews.AllocationsSlice)
+		//	if interfaces2.IsSpaceSharingMoreThanTwoError(err) {
+		//		panic(err)
+		//	}
+		//	cancel()
+		//}
 
 		var bestScore *JobAllocationScore = nil
 		var bestJobAllocation *pb_gen.JobAllocation = nil

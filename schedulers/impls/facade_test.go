@@ -9,6 +9,7 @@ import (
 	predictorinterfaces "UNS/predictor/interfaces"
 	UNSMethods "UNS/schedulers/impls/DLT/UNS/methods"
 	"UNS/schedulers/impls/DLT/base"
+	"UNS/schedulers/impls/DLT/hydra"
 	"UNS/schedulers/impls/DLT/queue_based"
 	"UNS/schedulers/interfaces"
 	"UNS/schedulers/partition"
@@ -58,6 +59,32 @@ func MockEDF(eventPusher base.EventPusher, pc *partition.Context) interfaces.Sch
 	return sche
 }
 
+func MockEDFFast(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
+	config := mock.DLTSimulatorConfiguration()
+	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetEdfFastSchedulerConfiguration()
+	c.ReturnAllScheduleDecisions = true
+	sche, err := queue_based.BuildEDFFast(c, eventPusher, func() *partition.Context {
+		return pc
+	})
+	if err != nil {
+		panic(err)
+	}
+	return sche
+}
+
+func MockHydra(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
+	config := mock.DLTSimulatorConfiguration()
+	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetHydraSchedulerConfiguration()
+	c.ReturnAllScheduleDecisions = true
+	sche, err := hydra.Build(c, eventPusher, func() *partition.Context {
+		return pc
+	})
+	if err != nil {
+		panic(err)
+	}
+	return sche
+}
+
 func TestOneShotSchedule(t *testing.T) {
 	pc := partition.MockPartition()
 	localPC := partition.MockPartition()
@@ -76,8 +103,10 @@ func TestOneShotSchedule(t *testing.T) {
 		}()
 	}
 	//scheduler := MockUNS(pusher, pc)
-	scheduler := MockSJF(pusher, pc)
+	//scheduler := MockSJF(pusher, pc)
 	//scheduler := MockEDF(pusher, pc)
+	//scheduler := MockEDFFast(pusher, pc)
+	scheduler := MockHydra(pusher, pc)
 	scheduler.StartService()
 	//for _, job := range config.GetJobs() {
 	//	job.SubmitTimeNanoSecond = 0

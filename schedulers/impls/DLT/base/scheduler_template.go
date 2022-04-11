@@ -17,6 +17,7 @@ import (
 	"log"
 	"math"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -473,4 +474,25 @@ func (i *DLTSchedulerTemplate) GetNewJobAllocations(newPC *partition.Context, cu
 // 仅针对DLT任务，因为只有gang和single类型的任务，所以job开始时间就是task的开始时间。
 func (i *DLTSchedulerTemplate) GetJobAllocationStartTime(allocation *pb_gen.JobAllocation) *wrappers.Int64Value {
 	return allocation.GetTaskAllocations()[0].GetStartExecutionTimeNanoSecond()
+}
+
+func (s *DLTSchedulerTemplate) GenJobAllocationFingerPrint(jobAllocation *pb_gen.JobAllocation) string {
+	b := &strings.Builder{}
+	b.WriteString(jobAllocation.GetJobID())
+	for _, taskAllocation := range jobAllocation.GetTaskAllocations() {
+		b.WriteByte('|')
+		b.WriteString(taskAllocation.GetAcceleratorAllocation().GetAcceleratorID())
+		b.WriteString(taskAllocation.GetStartExecutionTimeNanoSecond().String())
+		//b.WriteString(taskAllocation.GetPlaceholder())
+	}
+	return b.String()
+}
+
+func (s *DLTSchedulerTemplate) GenJobAllocationsFingerPrint(jobAllocations []*pb_gen.JobAllocation) string {
+	fingerPrints := make([]string, 0, len(jobAllocations))
+	for _, jobAllocation := range jobAllocations {
+		fingerPrints = append(fingerPrints, s.GenJobAllocationFingerPrint(jobAllocation))
+	}
+	sort.Strings(fingerPrints)
+	return strings.Join(fingerPrints, "\n")
 }

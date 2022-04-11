@@ -2,6 +2,7 @@ package queue_based
 
 import (
 	"UNS/pb_gen/configs"
+	eventobjs "UNS/pb_gen/events"
 	"UNS/pb_gen/objects"
 	base2 "UNS/schedulers/impls/DLT/base"
 	"UNS/schedulers/interfaces"
@@ -27,9 +28,6 @@ func BuildEDF(configuration interface{}, pusher base2.EventPusher, partitionCont
 	}
 	var err error
 	provideMode := base2.ProvideTypeDefault | base2.ProvideTypeOnlyNonSpaceSharing
-	//if c.GetNonSpaceSharing() {
-	//	provideMode = base2.ProvideTypeOnlyNonSpaceSharing
-	//}
 	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(&QueueBasedSchedulerParam{
 		Impl:                         sche,
 		PredictorConfiguration:       c.PredictorConfiguration,
@@ -39,6 +37,8 @@ func BuildEDF(configuration interface{}, pusher base2.EventPusher, partitionCont
 		SyncMode:                     c.GetSyncMode(),
 		AllocationProvideMode:        provideMode,
 		ReturnAllSchedulingDecisions: c.ReturnAllScheduleDecisions,
+		//AllocationsProvider:          &base2.AllocationsProviderImpl{RandomMode: true},
+		//MaxPossibleAllocationsCount:  10,
 	})
 	if err != nil {
 		return nil, err
@@ -51,14 +51,26 @@ func (s *EDFScheduler) PrioritySort(pc *partition.Context, jobs map[string]*obje
 	for _, job := range jobs {
 		result = append(result, job)
 	}
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].GetDeadline() == 0 && result[j].GetDeadline() == 0 {
-			return true
+	type jobWithExecutionTime struct {
+		Job           *objects.Job
+		ExecutionTime int64
+	}
+	jobWithETs := make(map[string]*jobWithExecutionTime)
+	for _, job := range jobs {
+		jobWithETs[job.GetJobID()] = &jobWithExecutionTime{
+			Job:           job,
+			ExecutionTime: s.Predictor.PredictSolelyFastestExecutionTime(job),
 		}
-		if result[i].GetDeadline() != 0 && result[j].GetDeadline() != 0 {
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].GetDeadline() == math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
+			//return result[i].GetSubmitTimeNanoSecond() < result[j].GetSubmitTimeNanoSecond()
+			return jobWithETs[result[i].GetJobID()].ExecutionTime < jobWithETs[result[j].GetJobID()].ExecutionTime
+		}
+		if result[i].GetDeadline() != math.MaxInt64 && result[j].GetDeadline() != math.MaxInt64 {
 			return result[i].GetDeadline() < result[j].GetDeadline()
 		}
-		if result[i].GetDeadline() != 0 {
+		if result[i].GetDeadline() != math.MaxInt64 {
 			return true
 		} else {
 			return false
@@ -70,17 +82,23 @@ func (s *EDFScheduler) PrioritySort(pc *partition.Context, jobs map[string]*obje
 func (s *EDFScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) JobAllocationScore {
 	possibleAllocation := param.JobAllocation
 	pr := param.PredictResult
-	pc := param.PC
+	//pc := param.PC
 	//if possibleAllocation.GetTaskAllocations()[0].GetAllocationTimeNanoSecond() != pc.FixedNow() {
 	//	return JobAllocationScore(math.Inf(-1))
 	//}
 	r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
-	job := pc.GetJob(possibleAllocation.GetJobID())
+	//job := pc.GetJob(possibleAllocation.GetJobID())
 	finishTime := *r.GetFinishNanoTime()
-	if job.GetDeadline() == math.MaxInt64 {
-		// 当没有deadline时，结束时间越早，分越高
-		return -JobAllocationScore(finishTime)
-	}
-	vioDeadline := finishTime - job.GetDeadline()
-	return -JobAllocationScore(vioDeadline)
+	//startTime := *r.GetStartExecutionNanoTime()
+	return -JobAllocationScore(finishTime)
+	//if job.GetDeadline() == math.MaxInt64 {
+	//	当没有deadline时，结束时间越早，分越高
+	//return -JobAllocationScore(finishTime)
+	//}
+	//vioDeadline := finishTime - job.GetDeadline()
+	//return -JobAllocationScore(vioDeadline)
+}
+
+func (s *EDFScheduler) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
+	return s.QueueBasedSchedulerTemplate.DoScheduleTemplate()
 }

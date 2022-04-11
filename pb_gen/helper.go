@@ -20,6 +20,9 @@ var extractSchedulerConfigurationMap = map[configs.SchedulerType]func(configurat
 	configs.SchedulerType_schedulerTypeHydra: func(configuration *configs.SchedulerConfiguration) interface{} {
 		return configuration.GetHydraSchedulerConfiguration()
 	},
+	configs.SchedulerType_schedulerTypeEDFFast: func(configuration *configs.SchedulerConfiguration) interface{} {
+		return configuration.GetEdfFastSchedulerConfiguration()
+	},
 }
 
 func GetNaiveSchedulerConfiguration(configuration *configs.SchedulerConfiguration) *configs.NaiveSchedulerConfiguration {

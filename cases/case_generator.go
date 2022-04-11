@@ -36,7 +36,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulat
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 50
+var jobCount = 400
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -49,11 +49,11 @@ var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 //var submitTimeScaleFactor = float64(0.001)
 
 //var submitTimeScaleFactor = float64(10)
-var submitTimeScaleFactor = float64(5)
+//var submitTimeScaleFactor = float64(5)
 
 //var submitTimeScaleFactor = float64(1)
 
-//var submitTimeScaleFactor = float64(0)
+var submitTimeScaleFactor = float64(0)
 
 //var jobExecutionTimeScaleFactor = float64(0.00001)
 
@@ -64,10 +64,10 @@ var jobExecutionTimeScaleFactor = float64(1)
 //var syncMode = false
 var syncMode = true
 
-var deadlineProb = float64(0.8)
+var deadlineProb = float64(0.5)
 var deadlineDistribution = []float64{1.2, 2}
 
-var onlySingleTaskJob = false
+var onlySingleTaskJob = true
 
 const (
 	A100      = "A100"
@@ -113,14 +113,14 @@ var instance2Count = map[*Instance]int64{
 	//	0: {GTX2080Ti},
 	//}): 4,
 	NewInstance(map[int64][]string{
-		0: {V100, V100},
-	}): 1,
+		0: {V100},
+	}): 20,
 	NewInstance(map[int64][]string{
-		0: {A100, A100},
-	}): 1,
-	//NewInstance(map[int64][]string{
-	//	0: {GTX2080Ti, GTX2080Ti},
-	//}): 1,
+		0: {A100},
+	}): 25,
+	NewInstance(map[int64][]string{
+		0: {GTX2080Ti},
+	}): 15,
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti, GTX2080Ti},
 	//	1: {GTX2080Ti, GTX2080Ti},
@@ -183,7 +183,7 @@ var hydraSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2S
 					},
 				},
 			},
-			NonSpaceSharing: false,
+			NonSpaceSharing: true,
 		}},
 	},
 }}
@@ -230,6 +230,27 @@ var edfSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 	},
 }}
 
+var edfFastSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+	partitionID: {
+		SchedulerType: configs.SchedulerType_schedulerTypeEDFFast,
+		Configuration: &configs.SchedulerConfiguration_EdfFastSchedulerConfiguration{EdfFastSchedulerConfiguration: &configs.EDFFastSchedulerConfiguration{
+			SchedulerID:       schedulerID,
+			ResourceManagerID: resourceManagerID,
+			PartitionID:       partitionID,
+			IntervalNano:      1e16,
+			SyncMode:          syncMode,
+			PredictorConfiguration: &configs.PredictorConfiguration{
+				PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+				Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+					DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+						DataSourcePath: predictorDataPath,
+					},
+				},
+			},
+		}},
+	},
+}}
+
 var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
 	partitionID: {
 		SchedulerType: configs.SchedulerType_schedulerTypeUNS,
@@ -258,12 +279,14 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 
 //var schedulerConfiguration = hydraSchedulerConfiguration
 
-var schedulerConfiguration = sjfSchedulerConfiguration
+//var schedulerConfiguration = sjfSchedulerConfiguration
 
 //var schedulerConfiguration = edfSchedulerConfiguration
 
+var schedulerConfiguration = edfFastSchedulerConfiguration
+
 func init() {
-	rand.Seed(3)
+	rand.Seed(1)
 }
 
 func main() {

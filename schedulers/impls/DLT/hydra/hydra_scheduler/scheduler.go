@@ -288,6 +288,7 @@ func (s *BasicScheduleScheme) FillKMeansCluster(scheduler *Scheduler, kMeansClus
 		var bestJobIdx int
 		var bestGPU types.GPU
 		var bestJobsSeq []types.Job
+		//s.Parallel = false
 		if s.Parallel {
 			bestJobIdx, bestGPU, bestJobsSeq = s.KMeansRoundInParallel(scheduler, kMeansCluster)
 		} else {
@@ -483,7 +484,9 @@ func (s *jobDistanceSolver) Distance(kMeansCenterGPU types.GPU, kMeansPointJobs 
 	distanceResp := s.distanceAlgo.Distance(s.scheduler.gpuCluster, kMeansCenterGPU, copiedSlice, jobNotInKMeansCluster)
 	duration := time.Since(start)
 	s.distanceMemo.Store(memoKey, distanceResp)
-
+	if distanceResp.distance < 0 {
+		log.Printf("<0?")
+	}
 	record.UseMemorized = false
 	record.DistanceAlgoCallDuration = duration
 	locked(func() {
@@ -547,14 +550,6 @@ func (m *MinCostDistanceAlgo) Distance(gpuCluster types.Cluster, kMeansCenterGPU
 	defer locked(func() {
 		m.Record.CallCount++
 	})
-	// 不关心一个簇中任务的顺序。
-	jobs := append(kMeansPointJobs, jobNotInKMeansCluster)
-	// 首先尝试将jobs使用SRTF排序，并计算一次cost。如果发现ddl没有被违反，则使用这个排序即可。
-	//（实际上，算法之所以在总体上不是最优的（由于NP-hard，且不知道任务的到来，所以算不出最优），
-	// 也是由于在不违反ddl时，只能使用SJF去思考，无法预测将来的任务到来是否会打散当前的SJF排序。
-	// 这是一种贪心的思想。不过只要无法预测将来任务的到来，就不可能做出最优解。）
-	// 不过是否可以再用一个度量指标，用于描述这个job有多么容易违反ddl？（离违反ddl有多近）这可以作为之后的改进思路。
-	jobs_util.GetJobsSliceUtil().ReorderToSRTF(kMeansCenterGPU.Type(), jobs)
 	costSolver := m.costSolverMaker(func(gpu types.GPU) types.Time {
 		jctOffset := gpuCluster.Now()
 		// 考虑到非抢占式调度，要将当前正在运行的任务剩余运行时间考虑进来。
@@ -564,6 +559,15 @@ func (m *MinCostDistanceAlgo) Distance(gpuCluster types.Cluster, kMeansCenterGPU
 		}
 		return jctOffset
 	})
+	//beforeCostResp := costSolver.Cost(kMeansCenterGPU, kMeansPointJobs)
+	// 不关心一个簇中任务的顺序。
+	jobs := append(kMeansPointJobs, jobNotInKMeansCluster)
+	// 首先尝试将jobs使用SRTF排序，并计算一次cost。如果发现ddl没有被违反，则使用这个排序即可。
+	//（实际上，算法之所以在总体上不是最优的（由于NP-hard，且不知道任务的到来，所以算不出最优），
+	// 也是由于在不违反ddl时，只能使用SJF去思考，无法预测将来的任务到来是否会打散当前的SJF排序。
+	// 这是一种贪心的思想。不过只要无法预测将来任务的到来，就不可能做出最优解。）
+	// 不过是否可以再用一个度量指标，用于描述这个job有多么容易违反ddl？（离违反ddl有多近）这可以作为之后的改进思路。
+	jobs_util.GetJobsSliceUtil().ReorderToSRTF(kMeansCenterGPU.Type(), jobs)
 	costResp := costSolver.Cost(kMeansCenterGPU, jobs)
 	if !costResp.DDLViolated {
 		if costResp.Cost == 0 {
@@ -585,12 +589,11 @@ func (m *MinCostDistanceAlgo) Distance(gpuCluster types.Cluster, kMeansCenterGPU
 		m.Record.UseMinCostAlgoCount++
 		m.Record.SumMinCostAlgoDuration += duration
 	})
-	if minCost == 0 {
-		log.Printf("")
-	}
+	//costIncrement := minCost - beforeCostResp.Cost
 	return &distanceResp{
 		jobsSeq:  optimus,
 		distance: minCost,
+		//distance: costIncrement,
 	}
 }
 

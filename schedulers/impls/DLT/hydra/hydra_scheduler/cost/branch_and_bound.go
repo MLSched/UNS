@@ -286,6 +286,11 @@ func (m *BranchAndBoundTemplate) MinCost(params *MinCostParams) (float64, []type
 			start:         time.Now(),
 			latency:       m.AlgoLatency,
 		})
+		//babCost, babJobs = m.minCostV2(&BranchAndBoundMinCostParams{
+		//	MinCostParams: params1,
+		//	start:         time.Now(),
+		//	latency:       m.AlgoLatency,
+		//})
 	})
 	var fallbackCost float64
 	var fallbackJobs []types.Job
@@ -297,11 +302,37 @@ func (m *BranchAndBoundTemplate) MinCost(params *MinCostParams) (float64, []type
 		return babCost, babJobs
 	} else {
 		m.lockRecording(func() {
-			m.Record.UseFallBackCount++
-			m.Record.JobsCount2SummaryRecordMap[len(params.Jobs)].UseFallBackCount++
+			//m.Record.UseFallBackCount++
+			//m.Record.JobsCount2SummaryRecordMap[len(params.Jobs)].UseFallBackCount++
 		})
 		return fallbackCost, fallbackJobs
 	}
+}
+
+func (m *BranchAndBoundTemplate) minCostV2(params *BranchAndBoundMinCostParams) (float64, []types.Job) {
+	withDeadlines := make([]types.Job, 0, len(params.Jobs))
+	withoutDeadlines := make([]types.Job, 0, len(params.Jobs))
+	for _, job := range params.Jobs {
+		if job.JobMeta().DDL() != math.MaxInt64 {
+			withDeadlines = append(withDeadlines, job)
+		} else {
+			withoutDeadlines = append(withoutDeadlines, job)
+		}
+	}
+	jobs_util.GetJobsSliceUtil().ReorderToSRTF(params.GPU.Type(), withoutDeadlines)
+	innerParams := &BranchAndBoundMinCostParams{
+		MinCostParams: &MinCostParams{
+			CostSolver: params.CostSolver,
+			GPU:        params.GPU,
+			Jobs:       withDeadlines,
+		},
+		start:   params.start,
+		latency: params.latency,
+	}
+	_, withDeadlinesSearched := m.minCost(innerParams)
+	jobs := append(withDeadlinesSearched, withoutDeadlines...)
+	costResp := params.CostSolver.Cost(params.GPU, jobs)
+	return costResp.Cost, jobs
 }
 
 func (m *BranchAndBoundTemplate) minCost(params *BranchAndBoundMinCostParams) (float64, []types.Job) {

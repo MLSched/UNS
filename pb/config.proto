@@ -27,6 +27,7 @@ message SchedulerConfiguration {
     SJFSchedulerConfiguration sjfSchedulerConfiguration = 4;
     EDFSchedulerConfiguration edfSchedulerConfiguration = 5;
     HydraSchedulerConfiguration hydraSchedulerConfiguration = 6;
+    EDFFastSchedulerConfiguration edfFastSchedulerConfiguration = 7;
   }
 }
 
@@ -37,6 +38,7 @@ enum SchedulerType {
   schedulerTypeSJF = 2;
   schedulerTypeEDF = 3;
   schedulerTypeHydra = 4;
+  schedulerTypeEDFFast = 5;
 }
 
 message NaiveSchedulerConfiguration {
@@ -57,6 +59,7 @@ message SJFSchedulerConfiguration {
   int64 intervalNano = 4;
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
   bool returnAllScheduleDecisions = 8;
 }
 
@@ -67,6 +70,18 @@ message EDFSchedulerConfiguration {
   int64 intervalNano = 4;
   bool syncMode = 5;
   PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
+  bool returnAllScheduleDecisions = 8;
+}
+
+message EDFFastSchedulerConfiguration {
+  string SchedulerID = 1;
+  string resourceManagerID = 2;
+  string partitionID = 3;
+  int64 intervalNano = 4;
+  bool syncMode = 5;
+  PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
   bool returnAllScheduleDecisions = 8;
 }
 

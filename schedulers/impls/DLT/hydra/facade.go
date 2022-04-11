@@ -13,6 +13,8 @@ import (
 	"UNS/schedulers/impls/DLT/hydra/hydra_scheduler/cost"
 	"UNS/schedulers/impls/DLT/hydra/types"
 	"UNS/schedulers/interfaces"
+	"fmt"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"time"
 )
 
@@ -47,7 +49,11 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 	}
 
 	ctx := adapter.BuildScheduleContext(pc, s.Predictor)
-	scheduler := initHydraBABHeuristicScheduler(10000 * time.Millisecond)
+	//scheduler := initHydraBABHeuristicScheduler(10000 * time.Millisecond)
+	//initHydraBABHeuristicScheduler(100 * time.Millisecond)
+	//scheduler := initHydraHeuristicScheduler()
+	//scheduler := initHydraBABHeuristicScheduler(1000 * time.Millisecond)
+	scheduler := initHydraBABHeuristicScheduler(5 * time.Millisecond)
 	scheduler.SetCluster(ctx.Cluster)
 	scheduler.OnScheduleEvent(types.NewScheduleEventJobsArrived(ctx.UnallocatedJobMetas))
 	unallocatedJobs := ctx.PC.AllocationViews.UnallocatedJobs
@@ -56,8 +62,12 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 		if len(queue.Jobs()) == 0 {
 			continue
 		}
-		j := queue.Jobs()[0].(*adapter.Job).Job
-		if _, ok := unallocatedJobs[j.GetJobID()]; ok {
+		start := pc.FixedNow()
+		for _, job := range queue.Jobs() {
+			j := job.(*adapter.Job).Job
+			if _, ok := unallocatedJobs[j.GetJobID()]; !ok {
+				panic(fmt.Sprintf("unallocated job ? %v", j))
+			}
 			task := j.GetTaskGroup().GetTasks()[0]
 			accID := adapter.AccID(queue.GPU().ID())
 
@@ -70,7 +80,7 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 					AcceleratorID: accID,
 				},
 			}
-			newJobAllocations = append(newJobAllocations, &pb_gen.JobAllocation{
+			jobAllocation := &pb_gen.JobAllocation{
 				JobAllocation: &objects.JobAllocation{
 					JobID:             j.GetJobID(),
 					ResourceManagerID: ctx.PC.Meta.GetResourceManagerID(),
@@ -78,7 +88,15 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 					TaskAllocations:   []*objects.TaskAllocation{taskAllocation},
 					Extra:             nil,
 				},
-			})
+			}
+			taskAllocation.StartExecutionTimeNanoSecond = &wrappers.Int64Value{Value: start}
+			pr, err := s.Predictor.PredictSolely(ctx.PC, []*pb_gen.JobAllocation{jobAllocation})
+			if err != nil {
+				panic(err)
+			}
+			r := pr.GetResult(taskAllocation)
+			start = *r.GetFinishNanoTime()
+			newJobAllocations = append(newJobAllocations, jobAllocation)
 		}
 	}
 	return &eventsobjs.SSUpdateAllocationsEvent{NewJobAllocations: pb_gen.UnwrapJobAllocations(newJobAllocations)}
@@ -90,7 +108,17 @@ func initHydraBABHeuristicScheduler(latency time.Duration) types.Scheduler {
 		hydra_scheduler.WithDistanceAlgo(hydra_scheduler.NewMinCostDistanceAlgo(
 			//cost.NewBranchAndBoundAlgoWithLatency(cost.BranchAndBoundLCStandardPredictCost, cost.BranchAndBoundAlgoTypeFixNonDDL, time.Duration(latencySec)*time.Second, cost.NewSwapHeuristic()),
 			cost.NewBranchAndBoundAlgoWithLatency(cost.BranchAndBoundLCStandardPredictCost, cost.BranchAndBoundAlgoTypeFixNonDDL, latency, cost.NewSwapHeuristic()),
-			cost.NewSimpleAddCostSolverMaker(cost.DDLCostTypeStrict, 1e20))),
+			cost.NewSimpleAddCostSolverMaker(cost.DDLCostTypeStrict, 1e9))),
+	)
+}
+
+func initHydraHeuristicScheduler() types.Scheduler {
+	return hydra_scheduler.New(
+		hydra_scheduler.WithScheme(hydra_scheduler.NewBasicScheduleScheme(true, false, -1, true)),
+		hydra_scheduler.WithDistanceAlgo(hydra_scheduler.NewMinCostDistanceAlgo(
+			//cost.NewBranchAndBoundAlgoWithLatency(cost.BranchAndBoundLCStandardPredictCost, cost.BranchAndBoundAlgoTypeFixNonDDL, time.Duration(latencySec)*time.Second, cost.NewSwapHeuristic()),
+			cost.NewSwapHeuristic(),
+			cost.NewSimpleAddCostSolverMaker(cost.DDLCostTypeStrict, 1e9))),
 	)
 }
 
