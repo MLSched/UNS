@@ -25,18 +25,15 @@ var schedulerID = "SCHEDULER_ID"
 
 var dataDir = "/Users/purchaser/datasets/ali-cluster/cluster-trace-gpu-v2020/data"
 
-//var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/async_predictor_data.json"
-//var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/async_simulator_configuration.json"
+var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/async_predictor_data.json"
+var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/async_simulator_configuration.json"
 
-var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
-var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
-
-//var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data_test.json"
-//var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration_test.json"
+//var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
+//var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 400
+var jobCount = 10
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -55,14 +52,15 @@ var maxSpaceSharingPenaltyDistribution = []float64{1.5, 4}
 
 var submitTimeScaleFactor = float64(0)
 
-//var jobExecutionTimeScaleFactor = float64(0.00001)
+var jobExecutionTimeScaleFactor = float64(0.00001)
 
-var jobExecutionTimeScaleFactor = float64(1)
+//var jobExecutionTimeScaleFactor = float64(1)
 
 //var jobExecutionTimeScaleFactor = float64(5)
 
-//var syncMode = false
-var syncMode = true
+var syncMode = false
+
+//var syncMode = true
 
 var deadlineProb = float64(0.5)
 var deadlineDistribution = []float64{1.2, 2}
@@ -247,6 +245,7 @@ var edfFastSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID
 					},
 				},
 			},
+			ReturnAllScheduleDecisions: true,
 		}},
 	},
 }}

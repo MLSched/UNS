@@ -146,7 +146,7 @@ func (i *DLTSchedulerTemplate) updatePartitionContextTime(event *events.Event, p
 
 func (i *DLTSchedulerTemplate) extractSpaceSharingRelatedJobIDs(e *eventsobjs.RMUpdateAllocationsEvent, pc *partition.Context) {
 	pc = pc.Clone(false)
-	now := pc.FixedNow()
+	now := pc.Now()
 	pc.Time = &now
 	finishedJobIDs := mapset.NewThreadUnsafeSet()
 	for _, newFinishedJobID := range e.FinishedJobIDs {
