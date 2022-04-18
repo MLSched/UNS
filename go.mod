@@ -1,4 +1,4 @@
-module UNS
+module github.com/MLSched/UNS
 
 go 1.17
 
