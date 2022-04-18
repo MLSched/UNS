@@ -1,22 +1,22 @@
 package narrow_tree
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/configs"
-	eventobjs "UNS/pb_gen/events"
-	"UNS/pb_gen/objects"
-	"UNS/predictor"
-	predictorinterfaces "UNS/predictor/interfaces"
-	"UNS/schedulers/impls/DLT/UNS/benefits"
-	benefitsinterfaces "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
-	base2 "UNS/schedulers/impls/DLT/UNS/methods/base"
-	"UNS/schedulers/impls/DLT/UNS/sampler"
-	"UNS/schedulers/impls/DLT/UNS/score"
-	"UNS/schedulers/impls/DLT/UNS/types"
-	"UNS/schedulers/impls/DLT/base"
-	"UNS/schedulers/partition"
-	"UNS/utils"
 	"fmt"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	eventobjs "github.com/MLSched/UNS/pb_gen/events"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/predictor"
+	predictorinterfaces "github.com/MLSched/UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits"
+	benefitsinterfaces "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
+	base2 "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/methods/base"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/sampler"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/score"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/types"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/base"
+	"github.com/MLSched/UNS/schedulers/partition"
+	"github.com/MLSched/UNS/utils"
 	"log"
 	"math"
 	"sort"
@@ -150,7 +150,7 @@ func (s *Method) fallbackSchedule(originalPC *partition.Context, pc *partition.C
 		})
 		return jas
 	default:
-		panic("Unsupported fallback mode.")
+		panic("github.com/MLSched/UNSupported fallback mode.")
 	}
 }
 

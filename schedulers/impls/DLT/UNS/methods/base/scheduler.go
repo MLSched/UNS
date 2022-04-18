@@ -1,15 +1,15 @@
 package base
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/configs"
-	eventobjs "UNS/pb_gen/events"
-	"UNS/pb_gen/objects"
-	predictorinterfaces "UNS/predictor/interfaces"
-	benefitsinterfaces "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
-	"UNS/schedulers/impls/DLT/UNS/score"
-	"UNS/schedulers/impls/DLT/base"
-	"UNS/schedulers/partition"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	eventobjs "github.com/MLSched/UNS/pb_gen/events"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	predictorinterfaces "github.com/MLSched/UNS/predictor/interfaces"
+	benefitsinterfaces "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/score"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/base"
+	"github.com/MLSched/UNS/schedulers/partition"
 	"sort"
 	"strings"
 )

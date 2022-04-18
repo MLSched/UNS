@@ -1,9 +1,9 @@
 package cost
 
 import (
-	"UNS/schedulers/impls/DLT/hydra/jobs_util"
-	"UNS/schedulers/impls/DLT/hydra/types"
-	"UNS/utils"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/jobs_util"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
+	"github.com/MLSched/UNS/utils"
 	"sort"
 )
 

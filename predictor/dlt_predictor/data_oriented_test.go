@@ -1,13 +1,13 @@
 package dlt_predictor
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/configs"
-	"UNS/pb_gen/events"
-	"UNS/pb_gen/objects"
-	"UNS/predictor/interfaces"
-	"UNS/schedulers/partition"
-	"UNS/utils"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/pb_gen/events"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/schedulers/partition"
+	"github.com/MLSched/UNS/utils"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"io/ioutil"
 	"math/rand"

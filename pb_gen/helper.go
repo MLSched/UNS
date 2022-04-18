@@ -1,7 +1,7 @@
 package pb_gen
 
 import (
-	"UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/pb_gen/configs"
 )
 
 var extractSchedulerConfigurationMap = map[configs.SchedulerType]func(configuration *configs.SchedulerConfiguration) interface{}{

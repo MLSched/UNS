@@ -1,12 +1,12 @@
 package adapter
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/objects"
-	predictorinterfaces "UNS/predictor/interfaces"
-	"UNS/schedulers/impls/DLT/hydra/types"
-	"UNS/schedulers/partition"
 	"fmt"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	predictorinterfaces "github.com/MLSched/UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
+	"github.com/MLSched/UNS/schedulers/partition"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"strconv"
 )

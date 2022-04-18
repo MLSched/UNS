@@ -1,8 +1,8 @@
 package simulator
 
 import (
-	"UNS/pb_gen/objects"
-	"UNS/schedulers/partition"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/schedulers/partition"
 	"log"
 	"math"
 )

@@ -1,11 +1,11 @@
 package cost
 
 import (
-	"UNS/schedulers/impls/DLT/hydra/jobs_util"
-	"UNS/schedulers/impls/DLT/hydra/types"
-	"UNS/utils"
 	"container/heap"
 	"fmt"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/jobs_util"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
+	"github.com/MLSched/UNS/utils"
 	"math"
 	"sync"
 	"time"
@@ -175,7 +175,7 @@ func newBranchAndBoundImpl(algoType BranchAndBoundAlgoType, template *BranchAndB
 		case BranchAndBoundAlgoTypeFixNonDDL:
 			return &BranchAndBoundFixNonDDL{&BranchAndBoundAllPermutation{template}}
 		default:
-			panic("Unsupported algoType")
+			panic("github.com/MLSched/UNSupported algoType")
 		}
 	}()
 	template.impl = impl
@@ -418,7 +418,7 @@ func (m *BranchAndBoundTemplate) minCost(params *BranchAndBoundMinCostParams) (f
 			case BranchAndBoundLCStandardPredictCost:
 				return nodes[i].predictCost < nodes[j].predictCost
 			default:
-				panic("Unsupported LCStandard")
+				panic("github.com/MLSched/UNSupported LCStandard")
 			}
 		},
 		SwapFunc: func(i, j int) {

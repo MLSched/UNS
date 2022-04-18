@@ -1,6 +1,6 @@
 package sampler
 
-import "UNS/schedulers/impls/DLT/UNS/types"
+import "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/types"
 
 type FixSampler struct {
 	MaxCount int

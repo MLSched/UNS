@@ -1,8 +1,8 @@
 package cost
 
 import (
-	"UNS/schedulers/impls/DLT/hydra/types"
-	"UNS/utils"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
+	"github.com/MLSched/UNS/utils"
 	"strconv"
 	"strings"
 	"sync"
@@ -149,7 +149,7 @@ func (s *SimpleAddSolver) Cost(gpu types.GPU, jobs []types.Job) *Resp {
 			case DDLCostTypeSoft:
 				// TODO
 			default:
-				panic("Unsupported ddlCostType")
+				panic("github.com/MLSched/UNSupported ddlCostType")
 			}
 		}
 		return utils.SumFloat64(func(item interface{}) float64 {

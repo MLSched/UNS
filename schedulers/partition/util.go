@@ -1,8 +1,8 @@
 package partition
 
 import (
-	"UNS/pb_gen/objects"
 	"encoding/json"
+	"github.com/MLSched/UNS/pb_gen/objects"
 )
 
 type Util struct {

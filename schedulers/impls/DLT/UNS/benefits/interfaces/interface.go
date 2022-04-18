@@ -1,9 +1,9 @@
 package interfaces
 
 import (
-	"UNS/pb_gen/objects"
-	"UNS/predictor/interfaces"
-	"UNS/schedulers/partition"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/schedulers/partition"
 )
 
 type Benefit float64

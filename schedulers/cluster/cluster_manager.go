@@ -1,8 +1,8 @@
 package cluster
 
 import (
-	"UNS/schedulers/partition"
 	"fmt"
+	"github.com/MLSched/UNS/schedulers/partition"
 )
 
 type Manager struct {

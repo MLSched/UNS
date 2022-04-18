@@ -1,11 +1,11 @@
 package methods
 
 import (
-	"UNS/pb_gen/configs"
-	"UNS/schedulers/impls/DLT/UNS/methods/MCTS"
-	base2 "UNS/schedulers/impls/DLT/UNS/methods/base"
-	"UNS/schedulers/impls/DLT/base"
-	"UNS/schedulers/interfaces"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/methods/MCTS"
+	base2 "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/methods/base"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/base"
+	"github.com/MLSched/UNS/schedulers/interfaces"
 )
 
 func Build(configuration interface{}, pusher base.EventPusher, partitionContextAware base.PartitionContextAware) (interfaces.Scheduler, error) {

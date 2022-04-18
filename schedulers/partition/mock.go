@@ -1,6 +1,6 @@
 package partition
 
-import "UNS/mock"
+import "github.com/MLSched/UNS/mock"
 
 func MockPartition() *Context {
 	config := mock.DLTSimulatorConfiguration()

@@ -1,11 +1,11 @@
 package base
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/objects"
-	"UNS/predictor/interfaces"
-	"UNS/schedulers/partition"
-	"UNS/utils"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/schedulers/partition"
+	"github.com/MLSched/UNS/utils"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
 	"math"

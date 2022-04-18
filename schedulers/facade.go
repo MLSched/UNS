@@ -1,8 +1,8 @@
 package schedulers
 
 import (
-	"UNS/schedulers/interfaces"
-	"UNS/schedulers/service"
+	"github.com/MLSched/UNS/schedulers/interfaces"
+	"github.com/MLSched/UNS/schedulers/service"
 )
 
 func InitLocalSchedulersService() {

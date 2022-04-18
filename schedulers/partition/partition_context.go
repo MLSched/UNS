@@ -1,11 +1,11 @@
 package partition
 
 import (
-	"UNS/pb_gen"
-	eventobjs "UNS/pb_gen/events"
-	"UNS/pb_gen/objects"
 	"errors"
 	"fmt"
+	"github.com/MLSched/UNS/pb_gen"
+	eventobjs "github.com/MLSched/UNS/pb_gen/events"
+	"github.com/MLSched/UNS/pb_gen/objects"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
 	"sort"

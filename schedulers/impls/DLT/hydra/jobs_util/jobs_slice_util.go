@@ -1,8 +1,8 @@
 package jobs_util
 
 import (
-	"UNS/schedulers/impls/DLT/hydra/types"
-	"UNS/utils"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
+	"github.com/MLSched/UNS/utils"
 	"math"
 	"sort"
 )

@@ -1,9 +1,9 @@
 package base
 
 import (
-	"UNS/events"
-	"UNS/pb_gen/configs"
-	"UNS/schedulers/partition"
+	"github.com/MLSched/UNS/events"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/schedulers/partition"
 )
 
 type EventPusher func(SchedulerID string, event *events.Event)

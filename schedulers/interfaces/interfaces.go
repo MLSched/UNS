@@ -1,9 +1,9 @@
 package interfaces
 
 import (
-	"UNS/events"
-	eventsobjs "UNS/pb_gen/events"
-	"UNS/resourcemgr"
+	"github.com/MLSched/UNS/events"
+	eventsobjs "github.com/MLSched/UNS/pb_gen/events"
+	"github.com/MLSched/UNS/resourcemgr"
 )
 
 type Scheduler interface {

@@ -1,16 +1,16 @@
 package dlt_predictor
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/configs"
-	"UNS/pb_gen/objects"
-	"UNS/predictor/base"
-	"UNS/predictor/interfaces"
-	"UNS/schedulers/partition"
-	"UNS/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/predictor/base"
+	"github.com/MLSched/UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/schedulers/partition"
+	"github.com/MLSched/UNS/utils"
 	mapset "github.com/deckarep/golang-set"
 	"log"
 	"math"
@@ -520,11 +520,11 @@ func (p *BasePredictor) getSpaceSharingMiniBatchDuration(ctx *PredictSessionCont
 		if gangType == objects.DLTGangType_DLTGangTypeDataParallel {
 			return p.impl.getDataParallelTasksSpaceSharingMiniBatchDuration(ctx, acceleratorIDs, getJobIDs(allocations)), nil
 		} else {
-			reason := fmt.Sprintf("unsupported DLT gang type %s", gangType)
+			reason := fmt.Sprintf("github.com/MLSched/UNSupported DLT gang type %s", gangType)
 			return nil, interfaces.UnsupportedDLTGangTypeError.Set(reason)
 		}
 	} else {
-		reason := fmt.Sprintf("unsupported task group type %s", taskGroupType)
+		reason := fmt.Sprintf("github.com/MLSched/UNSupported task group type %s", taskGroupType)
 		return nil, interfaces.UnsupportedTaskGroupTypeError.Set(reason)
 	}
 }

@@ -2,9 +2,9 @@ package dlt_predictor
 
 //
 //import (
-//	"UNS/pb_gen/events"
-//	"UNS/pb_gen/objects"
-//	"UNS/schedulers/partition"
+//	"github.com/MLSched/UNS/pb_gen/events"
+//	"github.com/MLSched/UNS/pb_gen/objects"
+//	"github.com/MLSched/UNS/schedulers/partition"
 //	"encoding/json"
 //	"github.com/golang/protobuf/ptypes/wrappers"
 //	"hash/crc32"

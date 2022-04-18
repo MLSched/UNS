@@ -1,11 +1,11 @@
 package hydra_scheduler
 
 import (
-	interfaces2 "UNS/predictor/interfaces"
-	"UNS/schedulers/impls/DLT/hydra/adapter"
-	"UNS/schedulers/impls/DLT/hydra/hydra_scheduler/cost"
-	"UNS/schedulers/impls/DLT/hydra/types"
-	"UNS/schedulers/partition"
+	interfaces2 "github.com/MLSched/UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/adapter"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/hydra_scheduler/cost"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
+	"github.com/MLSched/UNS/schedulers/partition"
 	"testing"
 	"time"
 )

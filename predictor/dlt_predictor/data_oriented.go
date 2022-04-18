@@ -1,11 +1,11 @@
 package dlt_predictor
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/configs"
-	"UNS/pb_gen/objects"
-	"UNS/utils"
 	"fmt"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/utils"
 	"hash/crc32"
 	"io/ioutil"
 	"math"

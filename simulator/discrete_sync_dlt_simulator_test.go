@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-var syncConfigPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
-var logDir = "/Users/purchaser/go/src/UNS/logs"
+var syncConfigPath = "/Users/purchaser/go/src/github.com/MLSched/UNS/cases/sync_simulator_configuration.json"
+var logDir = "/Users/purchaser/go/src/github.com/MLSched/UNS/logs"
 var enableLog = false
 
 func init() {

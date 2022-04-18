@@ -1,10 +1,10 @@
 package base
 
 import (
-	"UNS/pb_gen/objects"
-	"UNS/predictor/interfaces"
-	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
-	"UNS/schedulers/partition"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/predictor/interfaces"
+	interfaces2 "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
+	"github.com/MLSched/UNS/schedulers/partition"
 )
 
 type CalculatorCommon struct {

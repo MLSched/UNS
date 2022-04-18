@@ -1,15 +1,15 @@
 package service
 
 import (
-	"UNS/events"
-	eventsobjs "UNS/pb_gen/events"
-	"UNS/resourcemgr"
-	"UNS/schedulers/cluster"
-	"UNS/schedulers/impls"
-	"UNS/schedulers/impls/DLT/base"
-	"UNS/schedulers/interfaces"
-	"UNS/schedulers/partition"
 	"fmt"
+	"github.com/MLSched/UNS/events"
+	eventsobjs "github.com/MLSched/UNS/pb_gen/events"
+	"github.com/MLSched/UNS/resourcemgr"
+	"github.com/MLSched/UNS/schedulers/cluster"
+	"github.com/MLSched/UNS/schedulers/impls"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/base"
+	"github.com/MLSched/UNS/schedulers/interfaces"
+	"github.com/MLSched/UNS/schedulers/partition"
 	"sync"
 )
 

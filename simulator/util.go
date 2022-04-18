@@ -1,10 +1,10 @@
 package simulator
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/objects"
-	"UNS/predictor/interfaces"
-	"UNS/utils"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/utils"
 	"log"
 	"math"
 	"sort"

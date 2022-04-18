@@ -1,11 +1,11 @@
 package benefits
 
 import (
-	"UNS/schedulers/impls/DLT/UNS/benefits/DDL"
-	"UNS/schedulers/impls/DLT/UNS/benefits/DDLJCT"
-	"UNS/schedulers/impls/DLT/UNS/benefits/JCT"
-	"UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
-	"UNS/schedulers/impls/DLT/UNS/benefits/makespan"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/DDL"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/DDLJCT"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/JCT"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/makespan"
 )
 
 func NewJCTCalculator() interfaces.Calculator {

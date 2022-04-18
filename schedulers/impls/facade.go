@@ -1,15 +1,15 @@
 package impls
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/configs"
-	UNSMethods "UNS/schedulers/impls/DLT/UNS/methods"
-	"UNS/schedulers/impls/DLT/base"
-	"UNS/schedulers/impls/DLT/hydra"
-	"UNS/schedulers/impls/DLT/naive"
-	"UNS/schedulers/impls/DLT/queue_based"
-	"UNS/schedulers/interfaces"
 	"fmt"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	UNSMethods "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/methods"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/base"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/naive"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/queue_based"
+	"github.com/MLSched/UNS/schedulers/interfaces"
 )
 
 type Factory func(configuration interface{}, pusher base.EventPusher, partitionContextAware base.PartitionContextAware) (interfaces.Scheduler, error)
@@ -27,5 +27,5 @@ func Build(schedulerBuildParams *base.SchedulerBuildParams) (interfaces.Schedule
 	if factory, ok := factories[schedulerBuildParams.SchedulerConfiguration.GetSchedulerType()]; ok {
 		return factory(pb_gen.ExtractSchedulerConfiguration(schedulerBuildParams.SchedulerConfiguration), schedulerBuildParams.EventPusher, schedulerBuildParams.PartitionContextAware)
 	}
-	return nil, fmt.Errorf("unsupported scheduler type, type is [%s]", schedulerBuildParams.SchedulerConfiguration.GetSchedulerType())
+	return nil, fmt.Errorf("github.com/MLSched/UNSupported scheduler type, type is [%s]", schedulerBuildParams.SchedulerConfiguration.GetSchedulerType())
 }

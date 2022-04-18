@@ -1,7 +1,7 @@
 package benefits
 
 import (
-	interfaces2 "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
+	interfaces2 "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
 	"github.com/gonum/stat"
 )
 

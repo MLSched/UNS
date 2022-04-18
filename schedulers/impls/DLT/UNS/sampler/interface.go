@@ -1,7 +1,7 @@
 package sampler
 
 import (
-	"UNS/schedulers/impls/DLT/UNS/types"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/types"
 )
 
 type Sampler interface {

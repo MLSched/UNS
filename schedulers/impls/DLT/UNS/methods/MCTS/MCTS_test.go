@@ -1,8 +1,8 @@
 package MCTS
 
 import (
-	"UNS/utils"
 	"context"
+	"github.com/MLSched/UNS/utils"
 	"testing"
 	"time"
 )

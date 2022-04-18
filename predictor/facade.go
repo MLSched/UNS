@@ -1,10 +1,10 @@
 package predictor
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/configs"
-	"UNS/predictor/dlt_predictor"
-	"UNS/predictor/interfaces"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/predictor/dlt_predictor"
+	"github.com/MLSched/UNS/predictor/interfaces"
 )
 
 func BuildPredictor(configuration *configs.PredictorConfiguration) interfaces.Predictor {
@@ -15,6 +15,6 @@ func BuildPredictor(configuration *configs.PredictorConfiguration) interfaces.Pr
 	case configs.PredictorType_predictorTypeDLTDataOriented:
 		return dlt_predictor.NewDataOrientedPredictor(pb_gen.GetDataOrientedPredictorConfiguration(configuration))
 	default:
-		panic("Unsupported predictor type.")
+		panic("github.com/MLSched/UNSupported predictor type.")
 	}
 }

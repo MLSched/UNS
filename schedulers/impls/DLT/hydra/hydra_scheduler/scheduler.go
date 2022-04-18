@@ -1,11 +1,11 @@
 package hydra_scheduler
 
 import (
-	"UNS/schedulers/impls/DLT/hydra/hydra_scheduler/cost"
-	"UNS/schedulers/impls/DLT/hydra/jobs_util"
-	"UNS/schedulers/impls/DLT/hydra/types"
-	"UNS/utils"
 	"fmt"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/hydra_scheduler/cost"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/jobs_util"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
+	"github.com/MLSched/UNS/utils"
 	"log"
 	"math"
 	"sort"

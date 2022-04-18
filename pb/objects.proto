@@ -1,7 +1,7 @@
 syntax = "proto3";
 package pb_gen;
 
-option go_package = "UNS/pb_gen/objects";
+option go_package = "github.com/MLSched/UNS/pb_gen/objects";
 
 import "google/protobuf/wrappers.proto";
 

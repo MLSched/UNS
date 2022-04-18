@@ -1,12 +1,12 @@
 package main
 
 import (
-	"UNS/pb_gen/configs"
-	"UNS/pb_gen/objects"
-	"UNS/utils"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/utils"
 	"github.com/golang/protobuf/proto"
 	"hash/crc32"
 	"io/ioutil"

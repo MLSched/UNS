@@ -1,9 +1,9 @@
 package cluster
 
 import (
-	"UNS/pb_gen/objects"
-	"UNS/schedulers/partition"
 	"fmt"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/schedulers/partition"
 )
 
 type Context struct {

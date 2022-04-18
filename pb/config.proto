@@ -3,7 +3,7 @@ package pb_gen;
 
 import "objects.proto";
 
-option go_package = "UNS/pb_gen/configs";
+option go_package = "github.com/MLSched/UNS/pb_gen/configs";
 
 // 资源管理器配置
 message RMConfiguration {

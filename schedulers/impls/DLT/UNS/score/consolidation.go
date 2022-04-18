@@ -1,9 +1,9 @@
 package score
 
 import (
-	"UNS/pb_gen"
-	"UNS/schedulers/partition"
-	"UNS/utils"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/schedulers/partition"
+	"github.com/MLSched/UNS/utils"
 )
 
 type JobAllocationsScore float64

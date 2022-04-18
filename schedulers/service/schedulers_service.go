@@ -1,8 +1,8 @@
 package service
 
 import (
-	"UNS/events"
-	"UNS/schedulers/interfaces"
+	"github.com/MLSched/UNS/events"
+	"github.com/MLSched/UNS/schedulers/interfaces"
 )
 
 var instance interfaces.Service

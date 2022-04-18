@@ -1,12 +1,12 @@
 package types
 
 import (
-	"UNS/pb_gen"
-	"UNS/pb_gen/objects"
-	"UNS/predictor/interfaces"
-	benefitsinterfaces "UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
-	"UNS/schedulers/impls/DLT/UNS/score"
-	"UNS/schedulers/partition"
+	"github.com/MLSched/UNS/pb_gen"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/predictor/interfaces"
+	benefitsinterfaces "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/benefits/interfaces"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/UNS/score"
+	"github.com/MLSched/UNS/schedulers/partition"
 )
 
 type AllocContext struct {

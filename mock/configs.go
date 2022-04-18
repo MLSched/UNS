@@ -1,8 +1,8 @@
 package mock
 
 import (
-	"UNS/pb_gen/configs"
-	"UNS/utils"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	"github.com/MLSched/UNS/utils"
 	"io/ioutil"
 )
 

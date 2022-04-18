@@ -1,7 +1,7 @@
 syntax = "proto3";
 package pb_gen;
 
-option go_package = "UNS/pb_gen/events";
+option go_package = "github.com/MLSched/UNS/pb_gen/events";
 
 import "objects.proto";
 import "config.proto";

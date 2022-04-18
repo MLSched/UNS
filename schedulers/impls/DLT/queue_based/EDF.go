@@ -1,12 +1,12 @@
 package queue_based
 
 import (
-	"UNS/pb_gen/configs"
-	eventobjs "UNS/pb_gen/events"
-	"UNS/pb_gen/objects"
-	base2 "UNS/schedulers/impls/DLT/base"
-	"UNS/schedulers/interfaces"
-	"UNS/schedulers/partition"
+	"github.com/MLSched/UNS/pb_gen/configs"
+	eventobjs "github.com/MLSched/UNS/pb_gen/events"
+	"github.com/MLSched/UNS/pb_gen/objects"
+	base2 "github.com/MLSched/UNS/schedulers/impls/DLT/base"
+	"github.com/MLSched/UNS/schedulers/interfaces"
+	"github.com/MLSched/UNS/schedulers/partition"
 	"math"
 	"sort"
 )

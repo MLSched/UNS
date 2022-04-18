@@ -1,6 +1,6 @@
 package pb_gen
 
-import "UNS/pb_gen/objects"
+import "github.com/MLSched/UNS/pb_gen/objects"
 
 type JobAllocation struct {
 	*objects.JobAllocation

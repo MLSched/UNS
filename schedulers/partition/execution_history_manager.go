@@ -1,7 +1,7 @@
 package partition
 
 import (
-	"UNS/pb_gen/objects"
+	"github.com/MLSched/UNS/pb_gen/objects"
 	"sync"
 )
 
