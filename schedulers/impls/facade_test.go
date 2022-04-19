@@ -18,6 +18,7 @@ import (
 	"log"
 	"math"
 	"testing"
+	"time"
 )
 
 func MockUNS(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
@@ -102,15 +103,20 @@ func TestOneShotSchedule(t *testing.T) {
 			events.ReplySucceeded(event)
 		}()
 	}
+	now := time.Now().UnixNano()
+	pc.Time = &now
 	//scheduler := MockUNS(pusher, pc)
 	//scheduler := MockSJF(pusher, pc)
 	//scheduler := MockEDF(pusher, pc)
-	//scheduler := MockEDFFast(pusher, pc)
-	scheduler := MockHydra(pusher, pc)
+	scheduler := MockEDFFast(pusher, pc)
+	//scheduler := MockHydra(pusher, pc)
 	scheduler.StartService()
 	//for _, job := range config.GetJobs() {
 	//	job.SubmitTimeNanoSecond = 0
 	//}
+	for _, job := range config.Jobs {
+		job.SubmitTimeNanoSecond = now
+	}
 	err := localPC.UpdateJobs(&eventobjs.RMUpdateJobsEvent{NewJobs: config.GetJobs()})
 	if err != nil {
 		panic(err)

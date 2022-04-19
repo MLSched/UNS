@@ -46,10 +46,11 @@ func (c *solverCommon) CalJCTAndDDLViolations(jctOffset types.Time, gpu types.GP
 	JCTs := make([]types.Time, 0, len(jobs))
 	ddlViolations := make([]types.Duration, 0, len(jobs))
 	ddlViolatedJobs := make([]types.Job, 0)
+	prevJobTotalJCT := types.Time(0)
 	for _, job := range jobs {
 		// 此处是预测job的JCT，不是计算已经完成的任务的JCT，所以不可以调用job.JCT()，因为job.JCT()只有当任务实际已经完成时才能返回结果。
-		currJobJCT := jctOffset + types.Time(job.RemainingDuration(gpu.Type())) - job.JobMeta().SubmitTime()
-		jctOffset = currJobJCT
+		currJobJCT := prevJobTotalJCT + jctOffset + types.Time(job.RemainingDuration(gpu.Type())) - job.JobMeta().SubmitTime()
+		prevJobTotalJCT += currJobJCT
 		JCTs = append(JCTs, currJobJCT)
 		if currJobJCT > job.JobMeta().DDL() {
 			ddlViolations = append(ddlViolations, types.Duration(currJobJCT-job.JobMeta().DDL()))

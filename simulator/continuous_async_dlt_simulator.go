@@ -97,6 +97,9 @@ func (s *ContinuousAsyncDLTSimulator) checkSubmitJobs() {
 			time.Sleep(asyncCheckSubmitInterval)
 		}
 		log.Printf("submit jobs, now %s, submit time %s\n", time.Unix(0, s.partitionContext.Now()), submitTime.String())
+		for _, job := range batchJobs {
+			job.SubmitTimeNanoSecond = submitTime.UnixNano()
+		}
 		s.partitionEditLocked(func() {
 			err := s.partitionContext.UpdateJobs(&eventobjs.RMUpdateJobsEvent{
 				NewJobs: batchJobs,

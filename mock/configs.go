@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 )
 
-var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
+var simulatorConfigurationPath = "/Users/purchaser/go/src/github.com/MLSched/UNS/cases/sync_simulator_configuration.json"
 
 func DLTSimulatorConfiguration() *configs.DLTSimulatorConfiguration {
 	config := &configs.DLTSimulatorConfiguration{}
