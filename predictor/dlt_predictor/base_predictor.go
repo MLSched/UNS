@@ -122,6 +122,9 @@ func (p *BasePredictor) PredictSolely(partitionContext *partition.Context, alloc
 		p.updateJobStartExecutionTime(ctx, jobAllocation, start.GetValue())
 	}
 	for _, jobAllocation := range allocations {
+		if jobAllocation.GetJobID() == "0060756049f80c9958dd713b" {
+			log.Printf("")
+		}
 		miniBatchDurations, err := p.getSpaceSharingMiniBatchDuration(ctx, []*pb_gen.JobAllocation{jobAllocation})
 		if err != nil {
 			return nil, err

@@ -298,7 +298,7 @@ func (s *BasicScheduleScheme) FillKMeansCluster(scheduler *Scheduler, kMeansClus
 		_, scheduler.waitingJobs = jobs_util.GetJobsSliceUtil().RemoveJobsSlice(bestJobIdx, scheduler.waitingJobs)
 		duration := time.Since(start)
 		kMeansRoundsDurations = append(kMeansRoundsDurations, duration)
-		fmt.Printf("kMeans round finished, waitingJobsLength = %3d\n", len(scheduler.waitingJobs))
+		//fmt.Printf("kMeans round finished, waitingJobsLength = %3d\n", len(scheduler.waitingJobs))
 	}
 	s.Record.KMeansRoundDurations = append(s.Record.KMeansRoundDurations, kMeansRoundsDurations...)
 }
@@ -485,7 +485,7 @@ func (s *jobDistanceSolver) Distance(kMeansCenterGPU types.GPU, kMeansPointJobs 
 	duration := time.Since(start)
 	s.distanceMemo.Store(memoKey, distanceResp)
 	if distanceResp.distance < 0 {
-		log.Printf("<0?")
+		//log.Printf("<0?")
 	}
 	record.UseMemorized = false
 	record.DistanceAlgoCallDuration = duration

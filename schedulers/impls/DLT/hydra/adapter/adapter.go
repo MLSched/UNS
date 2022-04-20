@@ -8,6 +8,7 @@ import (
 	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
 	"github.com/MLSched/UNS/schedulers/partition"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"log"
 	"strconv"
 )
 
@@ -219,6 +220,11 @@ func profileJobs(pc *partition.Context, predictor predictorinterfaces.Predictor,
 		}
 	}
 	pr, err := predictor.PredictSolely(pc, jobAllocations)
+	pr.Range(func(allocation *objects.TaskAllocation, result predictorinterfaces.EachPredictResult) {
+		if allocation.GetJobID() == "0060756049f80c9958dd713b" {
+			log.Printf("%v, %v", allocation, *result.GetFinishNanoTime())
+		}
+	})
 	if err != nil {
 		panic(fmt.Sprintf("hydra profileJobs failed, err = %v", err))
 	}

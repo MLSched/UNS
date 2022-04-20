@@ -14,11 +14,9 @@ import (
 	"github.com/MLSched/UNS/schedulers/interfaces"
 	"github.com/MLSched/UNS/schedulers/partition"
 	mapset "github.com/deckarep/golang-set"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
 	"math"
 	"testing"
-	"time"
 )
 
 func MockUNS(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
@@ -103,7 +101,8 @@ func TestOneShotSchedule(t *testing.T) {
 			events.ReplySucceeded(event)
 		}()
 	}
-	now := time.Now().UnixNano()
+	//now := int64(time.Now().UnixNano())
+	now := int64(0)
 	pc.Time = &now
 	//scheduler := MockUNS(pusher, pc)
 	//scheduler := MockSJF(pusher, pc)
@@ -115,6 +114,10 @@ func TestOneShotSchedule(t *testing.T) {
 	//	job.SubmitTimeNanoSecond = 0
 	//}
 	for _, job := range config.Jobs {
+		if job.Deadline != math.MaxInt64 {
+			job.Deadline -= job.SubmitTimeNanoSecond
+			job.Deadline += now
+		}
 		job.SubmitTimeNanoSecond = now
 	}
 	err := localPC.UpdateJobs(&eventobjs.RMUpdateJobsEvent{NewJobs: config.GetJobs()})
@@ -125,10 +128,8 @@ func TestOneShotSchedule(t *testing.T) {
 	go func() {
 		scheduler.HandleEvent(&events.Event{
 			Data: &eventobjs.RMUpdateJobsEvent{
-				NewJobs: config.GetJobs(),
-				CurrentNanoTime: &wrappers.Int64Value{
-					Value: 0,
-				},
+				NewJobs:         config.GetJobs(),
+				CurrentNanoTime: nil,
 			},
 			ResultChan: resultChan,
 		})
@@ -164,7 +165,7 @@ func TestOneShotSchedule(t *testing.T) {
 		}
 		if job.GetDeadline() != math.MaxInt64 {
 			withDeadlineCount++
-			deadlineViolationDuration := JCT - job.GetDeadline()
+			deadlineViolationDuration := finish - job.GetDeadline()
 			if deadlineViolationDuration > 0 {
 				totalDeadlineViolation += deadlineViolationDuration
 				totalDeadlineViolatedCount++

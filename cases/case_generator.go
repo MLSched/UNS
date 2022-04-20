@@ -25,15 +25,15 @@ var schedulerID = "SCHEDULER_ID"
 
 var dataDir = "/Users/purchaser/datasets/ali-cluster/cluster-trace-gpu-v2020/data"
 
-var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/async_predictor_data.json"
-var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/async_simulator_configuration.json"
+//var predictorDataPath = "/Users/purchaser/go/src/github.com/MLSched/UNS/cases/async_predictor_data.json"
+//var simulatorConfigurationPath = "/Users/purchaser/go/src/github.com/MLSched/UNS/cases/async_simulator_configuration.json"
 
-//var predictorDataPath = "/Users/purchaser/go/src/UNS/cases/sync_predictor_data.json"
-//var simulatorConfigurationPath = "/Users/purchaser/go/src/UNS/cases/sync_simulator_configuration.json"
+var predictorDataPath = "/Users/purchaser/go/src/github.com/MLSched/UNS/cases/sync_predictor_data.json"
+var simulatorConfigurationPath = "/Users/purchaser/go/src/github.com/MLSched/UNS/cases/sync_simulator_configuration.json"
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 10
+var jobCount = 80
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -58,11 +58,11 @@ var jobExecutionTimeScaleFactor = float64(0.00001)
 
 //var jobExecutionTimeScaleFactor = float64(5)
 
-var syncMode = false
+//var syncMode = false
 
-//var syncMode = true
+var syncMode = true
 
-var deadlineProb = float64(0.5)
+var deadlineProb = float64(0.3)
 var deadlineDistribution = []float64{1.2, 2}
 
 var onlySingleTaskJob = true
@@ -112,13 +112,13 @@ var instance2Count = map[*Instance]int64{
 	//}): 4,
 	NewInstance(map[int64][]string{
 		0: {V100},
-	}): 20,
+	}): 5,
 	NewInstance(map[int64][]string{
 		0: {A100},
-	}): 25,
-	NewInstance(map[int64][]string{
-		0: {GTX2080Ti},
-	}): 15,
+	}): 5,
+	//NewInstance(map[int64][]string{
+	//	0: {GTX2080Ti},
+	//}): 5,
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti, GTX2080Ti},
 	//	1: {GTX2080Ti, GTX2080Ti},
@@ -276,13 +276,13 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 
 //var schedulerConfiguration = unsSchedulerConfiguration
 
-//var schedulerConfiguration = hydraSchedulerConfiguration
+var schedulerConfiguration = hydraSchedulerConfiguration
 
 //var schedulerConfiguration = sjfSchedulerConfiguration
 
 //var schedulerConfiguration = edfSchedulerConfiguration
 
-var schedulerConfiguration = edfFastSchedulerConfiguration
+//var schedulerConfiguration = edfFastSchedulerConfiguration
 
 func init() {
 	rand.Seed(1)

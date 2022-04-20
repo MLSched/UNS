@@ -53,7 +53,7 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 	//initHydraBABHeuristicScheduler(100 * time.Millisecond)
 	//scheduler := initHydraHeuristicScheduler()
 	//scheduler := initHydraBABHeuristicScheduler(1000 * time.Millisecond)
-	scheduler := initHydraBABHeuristicScheduler(5 * time.Millisecond)
+	scheduler := initHydraBABHeuristicScheduler(500 * time.Millisecond)
 	scheduler.SetCluster(ctx.Cluster)
 	scheduler.OnScheduleEvent(types.NewScheduleEventJobsArrived(ctx.UnallocatedJobMetas))
 	unallocatedJobs := ctx.PC.AllocationViews.UnallocatedJobs
