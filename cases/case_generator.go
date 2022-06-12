@@ -33,7 +33,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/github.com/MLSched/UNS
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 80
+var jobCount = 300
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -63,7 +63,7 @@ var jobExecutionTimeScaleFactor = float64(0.00001)
 var syncMode = true
 
 var deadlineProb = float64(0.3)
-var deadlineDistribution = []float64{1.2, 2}
+var deadlineDistribution = []float64{5, 10}
 
 var onlySingleTaskJob = true
 
@@ -110,12 +110,12 @@ var instance2Count = map[*Instance]int64{
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti},
 	//}): 4,
-	NewInstance(map[int64][]string{
-		0: {V100},
-	}): 5,
+	//NewInstance(map[int64][]string{
+	//	0: {V100},
+	//}): 5,
 	NewInstance(map[int64][]string{
 		0: {A100},
-	}): 5,
+	}): 15,
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti},
 	//}): 5,
@@ -276,16 +276,16 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 
 //var schedulerConfiguration = unsSchedulerConfiguration
 
-var schedulerConfiguration = hydraSchedulerConfiguration
+//var schedulerConfiguration = hydraSchedulerConfiguration
 
 //var schedulerConfiguration = sjfSchedulerConfiguration
 
 //var schedulerConfiguration = edfSchedulerConfiguration
 
-//var schedulerConfiguration = edfFastSchedulerConfiguration
+var schedulerConfiguration = edfFastSchedulerConfiguration
 
 func init() {
-	rand.Seed(1)
+	rand.Seed(13)
 }
 
 func main() {
@@ -520,10 +520,6 @@ func (g *CaseGenerator) MergeTaskAndJob(taskHeader []string, taskRecords [][]str
 }
 
 func (g *CaseGenerator) GenerateJobsData(mergedHeader []string, mergedRecords [][]string) (map[string]*configs.DLTJobData, []*objects.Job) {
-	rand.Seed(1)
-	for i := 0; i < 10; i++ {
-		log.Println(rand.Float64())
-	}
 	mergedRecords = mergedRecords[:jobCount]
 	//mergedHeader := []string{
 	//	"jobID",

@@ -59,7 +59,7 @@ func MockEDF(eventPusher base.EventPusher, pc *partition.Context) interfaces.Sch
 }
 
 func MockEDFFast(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
-	config := mock.DLTSimulatorConfiguration()
+	config := mock.DLTSimulatorConfigurationWithScheduler("edffast")
 	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetEdfFastSchedulerConfiguration()
 	c.ReturnAllScheduleDecisions = true
 	sche, err := queue_based.BuildEDFFast(c, eventPusher, func() *partition.Context {
@@ -72,7 +72,7 @@ func MockEDFFast(eventPusher base.EventPusher, pc *partition.Context) interfaces
 }
 
 func MockHydra(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
-	config := mock.DLTSimulatorConfiguration()
+	config := mock.DLTSimulatorConfigurationWithScheduler("hydra")
 	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetHydraSchedulerConfiguration()
 	c.ReturnAllScheduleDecisions = true
 	sche, err := hydra.Build(c, eventPusher, func() *partition.Context {
@@ -84,10 +84,17 @@ func MockHydra(eventPusher base.EventPusher, pc *partition.Context) interfaces.S
 	return sche
 }
 
-func TestOneShotSchedule(t *testing.T) {
-	pc := partition.MockPartition()
-	localPC := partition.MockPartition()
-	config := mock.DLTSimulatorConfiguration()
+func TestCompare(t *testing.T) {
+	edfAvgJCT, edfVioDDL := oneShotSchedule("edffast")
+	hydraAvgJCT, hydraVioDDL := oneShotSchedule("hydra")
+	log.Printf("target avgJCT %v, target vio DDL %v", edfAvgJCT*0.85, float64(edfVioDDL)*0.8)
+	log.Printf("hydra avgJCT %v, hydra vio DDL %v", hydraAvgJCT, hydraVioDDL)
+}
+
+func oneShotSchedule(schedulerName string) (float64, int64) {
+	pc := partition.MockPartitionWithScheduler(schedulerName)
+	localPC := partition.MockPartitionWithScheduler(schedulerName)
+	config := mock.DLTSimulatorConfigurationWithScheduler(schedulerName)
 	var pusher = func(SchedulerID string, event *events.Event) {
 		e := event.Data.(*eventobjs.SSUpdateAllocationsEvent)
 		jobAllocations := e.GetNewJobAllocations()
@@ -104,10 +111,16 @@ func TestOneShotSchedule(t *testing.T) {
 	//now := int64(time.Now().UnixNano())
 	now := int64(0)
 	pc.Time = &now
+	var scheduler interfaces.Scheduler = nil
+	if schedulerName == "hydra" {
+		scheduler = MockHydra(pusher, pc)
+	} else if schedulerName == "edffast" {
+		scheduler = MockEDFFast(pusher, pc)
+	}
 	//scheduler := MockUNS(pusher, pc)
 	//scheduler := MockSJF(pusher, pc)
 	//scheduler := MockEDF(pusher, pc)
-	scheduler := MockEDFFast(pusher, pc)
+	//scheduler := MockEDFFast(pusher, pc)
 	//scheduler := MockHydra(pusher, pc)
 	scheduler.StartService()
 	//for _, job := range config.GetJobs() {
@@ -153,11 +166,11 @@ func TestOneShotSchedule(t *testing.T) {
 			return
 		}
 		jobIDsSet.Add(jobID)
-		start := *result.GetStartExecutionNanoTime()
+		//start := *result.GetStartExecutionNanoTime()
 		finish := *result.GetFinishNanoTime()
 		job := localPC.GetJob(allocation.GetJobID())
 		JCT := finish - job.GetSubmitTimeNanoSecond()
-		log.Printf("allocation %v, start %v, finish %v, duration %v, JCT = %v", allocation, start, finish, finish-start, JCT)
+		//log.Printf("allocation %v, start %v, finish %v, duration %v, JCT = %v", allocation, start, finish, finish-start, JCT)
 		totalJCT += JCT
 		totalJobsCount++
 		if JCT > maximumJCT {
@@ -174,4 +187,5 @@ func TestOneShotSchedule(t *testing.T) {
 	})
 	avgJCT := float64(totalJCT) / float64(totalJobsCount)
 	log.Printf("totalJobsCount %d, avg JCT = %f, makespan = %d, withDeadlines = %d, violatedJobsCount = %d, totalDeadlineViolation = %d", totalJobsCount, avgJCT, maximumJCT, withDeadlineCount, totalDeadlineViolatedCount, totalDeadlineViolation)
+	return avgJCT, totalDeadlineViolatedCount
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/MLSched/UNS/schedulers/partition"
 	"log"
 	"math"
+	"math/rand"
 	"sort"
 )
 
@@ -55,16 +56,20 @@ func (s *EDFFastScheduler) PrioritySort(pc *partition.Context, jobs map[string]*
 		result = append(result, job)
 	}
 	sort.Slice(result, func(i, j int) bool {
-		if result[i].GetDeadline() == math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
-			return true
-		}
-		if result[i].GetDeadline() != math.MaxInt64 && result[j].GetDeadline() != math.MaxInt64 {
-			return result[i].GetDeadline() < result[j].GetDeadline()
-		}
-		if result[i].GetDeadline() != math.MaxInt64 {
-			return true
+		return result[i].GetJobID() < result[j].GetJobID()
+	})
+	rand.Seed(1)
+	sort.SliceStable(result, func(i, j int) bool {
+		//return float64(result[i].GetDeadline())*100 < float64(result[j].GetDeadline())
+		if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() < math.MaxInt64 {
+			return float64(result[i].GetDeadline()) < float64(result[j].GetDeadline())
 		} else {
-			return false
+			rate := rand.Float64()
+			ratio := 0.24
+			if rate < ratio {
+				return rate < ratio/2
+			}
+			return float64(result[i].GetDeadline()) < float64(result[j].GetDeadline())
 		}
 	})
 	return result
@@ -76,6 +81,11 @@ func (s *EDFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam
 	r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
 	start := *r.GetStartExecutionNanoTime()
 	finish := *r.GetFinishNanoTime()
+	//jobID := possibleAllocation.GetJobID()
+	//if param.Job.GetDeadline() != math.MaxInt64 {
+	//	return -1e9 * JobAllocationScore(param.Job.GetDeadline())
+	//}
+	//return JobAllocationScore(finish)
 	return -JobAllocationScore(float64(start)*1e9 - float64(finish))
 }
 
