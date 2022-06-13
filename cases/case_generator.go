@@ -107,15 +107,15 @@ var consolidationLevels = []configs.ConsolidationLevel{configs.ConsolidationLeve
 var gpuMemoryCostDistributions = []int64{int64(0.5 * float64(GiB)), int64(16 * GiB)}
 
 var instance2Count = map[*Instance]int64{
-	//NewInstance(map[int64][]string{
-	//	0: {GTX2080Ti},
-	//}): 4,
-	//NewInstance(map[int64][]string{
-	//	0: {V100},
-	//}): 5,
+	NewInstance(map[int64][]string{
+		0: {GTX2080Ti},
+	}): 2,
+	NewInstance(map[int64][]string{
+		0: {V100},
+	}): 4,
 	NewInstance(map[int64][]string{
 		0: {A100},
-	}): 15,
+	}): 8,
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti},
 	//}): 5,
@@ -276,16 +276,16 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 
 //var schedulerConfiguration = unsSchedulerConfiguration
 
-//var schedulerConfiguration = hydraSchedulerConfiguration
+var schedulerConfiguration = hydraSchedulerConfiguration
 
 //var schedulerConfiguration = sjfSchedulerConfiguration
 
 //var schedulerConfiguration = edfSchedulerConfiguration
 
-var schedulerConfiguration = edfFastSchedulerConfiguration
+//var schedulerConfiguration = edfFastSchedulerConfiguration
 
 func init() {
-	rand.Seed(13)
+	rand.Seed(4112111)
 }
 
 func main() {
