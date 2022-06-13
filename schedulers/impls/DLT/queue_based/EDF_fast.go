@@ -62,18 +62,49 @@ func (s *EDFFastScheduler) PrioritySort(pc *partition.Context, jobs map[string]*
 	sort.SliceStable(result, func(i, j int) bool {
 		//return float64(result[i].GetDeadline())*100 < float64(result[j].GetDeadline())
 		if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() < math.MaxInt64 {
-			return float64(result[i].GetDeadline()) < float64(result[j].GetDeadline())
+			rate := rand.Float64()
+			ratio := 0.1
+			if rate < ratio {
+				return rate < ratio/2
+			}
+			return float64(result[i].GetDeadline()) > float64(result[j].GetDeadline())
 		} else if result[i].GetDeadline() == math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
 			rate := rand.Float64()
-			return rate < 0.5
+			return rate < 0.2
+		} else if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
+			rate := rand.Float64()
+			ratio := 0.2
+			if rate < ratio {
+				return rate < ratio/2
+			}
+			return false
 		} else {
 			rate := rand.Float64()
 			ratio := 0.3
 			if rate < ratio {
 				return rate < ratio/2
 			}
-			return float64(result[i].GetDeadline()) < float64(result[j].GetDeadline())
+			return true
 		}
+
+		//if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() < math.MaxInt64 {
+		//	rate := rand.Float64()
+		//	ratio := 0.9
+		//	if rate < ratio {
+		//		return rate < ratio/2
+		//	}
+		//	return float64(result[i].GetDeadline()) < float64(result[j].GetDeadline())
+		//} else if result[i].GetDeadline() == math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
+		//	rate := rand.Float64()
+		//	return rate < 0.5
+		//} else {
+		//	rate := rand.Float64()
+		//	ratio := 0.5
+		//	if rate < ratio {
+		//		return rate < ratio/2
+		//	}
+		//	return float64(result[i].GetDeadline()) < float64(result[j].GetDeadline())
+		//}
 	})
 	return result
 }
@@ -90,7 +121,7 @@ func (s *EDFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam
 	//}
 	//return JobAllocationScore(finish)
 	rate := rand.Float64()
-	if rate < 0.19 {
+	if rate < 0.21 {
 		return -JobAllocationScore(rand.Int())
 	}
 	return -JobAllocationScore(float64(start)*1e9 - float64(finish))

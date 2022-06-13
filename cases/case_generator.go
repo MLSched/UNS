@@ -63,7 +63,7 @@ var jobExecutionTimeScaleFactor = float64(0.00001)
 var syncMode = true
 
 var deadlineProb = float64(0.3)
-var deadlineDistribution = []float64{5, 10}
+var deadlineDistribution = []float64{12, 15}
 
 var onlySingleTaskJob = true
 
@@ -285,7 +285,7 @@ var schedulerConfiguration = hydraSchedulerConfiguration
 //var schedulerConfiguration = edfFastSchedulerConfiguration
 
 func init() {
-	rand.Seed(4112111)
+	rand.Seed(51231)
 }
 
 func main() {

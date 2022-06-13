@@ -85,13 +85,16 @@ func MockHydra(eventPusher base.EventPusher, pc *partition.Context) interfaces.S
 }
 
 func TestCompare(t *testing.T) {
-	edfAvgJCT, edfVioDDL := oneShotSchedule("edffast")
-	hydraAvgJCT, hydraVioDDL := oneShotSchedule("hydra")
-	log.Printf("target avgJCT %v, target vio DDL %v", edfAvgJCT*0.85, float64(edfVioDDL)*0.8)
-	log.Printf("hydra avgJCT %v, hydra vio DDL %v", hydraAvgJCT, hydraVioDDL)
+	edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("edffast")
+	hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("hydra")
+	vioDDLRatio := float64(edfVioDDL)/float64(withDDL) - 0.2
+	hydraVioDDLRatio := float64(hydraVioDDL) / float64(withDDL)
+	log.Printf("edf vio DDL %v", edfVioDDL)
+	log.Printf("target avgJCT %v, target vio DDL ratio %v", edfAvgJCT*0.85, vioDDLRatio)
+	log.Printf("hydra avgJCT %v, hydra vio DDL %v, ratio %v", hydraAvgJCT, hydraVioDDL, hydraVioDDLRatio)
 }
 
-func oneShotSchedule(schedulerName string) (float64, int64) {
+func oneShotSchedule(schedulerName string) (float64, int64, int64) {
 	pc := partition.MockPartitionWithScheduler(schedulerName)
 	localPC := partition.MockPartitionWithScheduler(schedulerName)
 	config := mock.DLTSimulatorConfigurationWithScheduler(schedulerName)
@@ -187,5 +190,5 @@ func oneShotSchedule(schedulerName string) (float64, int64) {
 	})
 	avgJCT := float64(totalJCT) / float64(totalJobsCount)
 	log.Printf("totalJobsCount %d, avg JCT = %f, makespan = %d, withDeadlines = %d, violatedJobsCount = %d, totalDeadlineViolation = %d", totalJobsCount, avgJCT, maximumJCT, withDeadlineCount, totalDeadlineViolatedCount, totalDeadlineViolation)
-	return avgJCT, totalDeadlineViolatedCount
+	return avgJCT, totalDeadlineViolatedCount, withDeadlineCount
 }
