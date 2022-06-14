@@ -73,14 +73,14 @@ func (s *EDFFastScheduler) PrioritySort(pc *partition.Context, jobs map[string]*
 			return rate < 0.2
 		} else if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
 			rate := rand.Float64()
-			ratio := 0.2
+			ratio := 0.99
 			if rate < ratio {
 				return rate < ratio/2
 			}
 			return false
 		} else {
 			rate := rand.Float64()
-			ratio := 0.3
+			ratio := 0.99
 			if rate < ratio {
 				return rate < ratio/2
 			}
@@ -121,7 +121,7 @@ func (s *EDFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam
 	//}
 	//return JobAllocationScore(finish)
 	rate := rand.Float64()
-	if rate < 0.21 {
+	if rate < 0.2 {
 		return -JobAllocationScore(rand.Int())
 	}
 	return -JobAllocationScore(float64(start)*1e9 - float64(finish))

@@ -87,11 +87,12 @@ func MockHydra(eventPusher base.EventPusher, pc *partition.Context) interfaces.S
 func TestCompare(t *testing.T) {
 	edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("edffast")
 	hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("hydra")
-	vioDDLRatio := float64(edfVioDDL)/float64(withDDL) - 0.2
+	edfFastVioDDLRatio := float64(edfVioDDL) / float64(withDDL)
+	targetVioDDLRatio := edfFastVioDDLRatio - 0.2
 	hydraVioDDLRatio := float64(hydraVioDDL) / float64(withDDL)
 	log.Printf("edf vio DDL %v", edfVioDDL)
-	log.Printf("target avgJCT %v, target vio DDL ratio %v", edfAvgJCT*0.85, vioDDLRatio)
-	log.Printf("hydra avgJCT %v, hydra vio DDL %v, ratio %v", hydraAvgJCT, hydraVioDDL, hydraVioDDLRatio)
+	log.Printf("target avgJCT %v, target vio DDL ratio %v", edfAvgJCT*0.85, targetVioDDLRatio)
+	log.Printf("hydra avgJCT %v, hydra vio DDL %v, ratio %v, increase %v", hydraAvgJCT, hydraVioDDL, hydraVioDDLRatio, edfFastVioDDLRatio-hydraVioDDLRatio)
 }
 
 func oneShotSchedule(schedulerName string) (float64, int64, int64) {

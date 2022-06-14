@@ -33,7 +33,7 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/github.com/MLSched/UNS
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 300
+var jobCount = 320
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -285,7 +285,7 @@ var schedulerConfiguration = hydraSchedulerConfiguration
 //var schedulerConfiguration = edfFastSchedulerConfiguration
 
 func init() {
-	rand.Seed(51231)
+	rand.Seed(91761)
 }
 
 func main() {
