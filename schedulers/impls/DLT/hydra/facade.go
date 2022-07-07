@@ -69,7 +69,7 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 				panic(fmt.Sprintf("unallocated job ? %v", j))
 			}
 			task := j.GetTaskGroup().GetTasks()[0]
-			accID := adapter.AccID(queue.GPU().ID())
+			accID := queue.GPU().AccID()
 
 			taskAllocation := &objects.TaskAllocation{
 				NodeID:                   ctx.PC.MetalViews.AcceleratorID2NodeID[accID],
