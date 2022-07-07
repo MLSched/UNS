@@ -70,7 +70,6 @@ func (s *Scheduler) DoSchedule() *eventsobjs.SSUpdateAllocationsEvent {
 			}
 			task := j.GetTaskGroup().GetTasks()[0]
 			accID := queue.GPU().AccID()
-
 			taskAllocation := &objects.TaskAllocation{
 				NodeID:                   ctx.PC.MetalViews.AcceleratorID2NodeID[accID],
 				JobID:                    j.GetJobID(),
