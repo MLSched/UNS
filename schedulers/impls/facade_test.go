@@ -10,6 +10,7 @@ import (
 	UNSMethods "github.com/MLSched/UNS/schedulers/impls/DLT/UNS/methods"
 	"github.com/MLSched/UNS/schedulers/impls/DLT/base"
 	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra"
+	"github.com/MLSched/UNS/schedulers/impls/DLT/large_scale"
 	"github.com/MLSched/UNS/schedulers/impls/DLT/queue_based"
 	"github.com/MLSched/UNS/schedulers/interfaces"
 	"github.com/MLSched/UNS/schedulers/partition"
@@ -71,6 +72,32 @@ func MockEDFFast(eventPusher base.EventPusher, pc *partition.Context) interfaces
 	return sche
 }
 
+func MockLSSearch(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
+	config := mock.DLTSimulatorConfigurationWithScheduler("lssearch")
+	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetLsSearchSchedulerConfiguration()
+	c.ReturnAllScheduleDecisions = true
+	sche, err := large_scale.BuildLSSearch(c, eventPusher, func() *partition.Context {
+		return pc
+	})
+	if err != nil {
+		panic(err)
+	}
+	return sche
+}
+
+func MockLSCompare(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
+	config := mock.DLTSimulatorConfigurationWithScheduler("lscompare")
+	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetLsCompareSchedulerConfiguration()
+	c.ReturnAllScheduleDecisions = true
+	sche, err := large_scale.BuildLSCompare(c, eventPusher, func() *partition.Context {
+		return pc
+	})
+	if err != nil {
+		panic(err)
+	}
+	return sche
+}
+
 func MockHydra(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
 	config := mock.DLTSimulatorConfigurationWithScheduler("hydra")
 	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetHydraSchedulerConfiguration()
@@ -85,8 +112,10 @@ func MockHydra(eventPusher base.EventPusher, pc *partition.Context) interfaces.S
 }
 
 func TestCompare(t *testing.T) {
-	edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("edffast")
-	hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("hydra")
+	//edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("edffast")
+	//hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("hydra")
+	edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("lscompare")
+	hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("lssearch")
 	edfFastVioDDLRatio := float64(edfVioDDL) / float64(withDDL)
 	targetVioDDLRatio := edfFastVioDDLRatio - 0.2
 	hydraVioDDLRatio := float64(hydraVioDDL) / float64(withDDL)
@@ -120,6 +149,10 @@ func oneShotSchedule(schedulerName string) (float64, int64, int64) {
 		scheduler = MockHydra(pusher, pc)
 	} else if schedulerName == "edffast" {
 		scheduler = MockEDFFast(pusher, pc)
+	} else if schedulerName == "lssearch" {
+		scheduler = MockLSSearch(pusher, pc)
+	} else if schedulerName == "lscompare" {
+		scheduler = MockLSCompare(pusher, pc)
 	}
 	//scheduler := MockUNS(pusher, pc)
 	//scheduler := MockSJF(pusher, pc)

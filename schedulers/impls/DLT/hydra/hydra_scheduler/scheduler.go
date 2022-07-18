@@ -6,7 +6,6 @@ import (
 	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/jobs_util"
 	"github.com/MLSched/UNS/schedulers/impls/DLT/hydra/types"
 	"github.com/MLSched/UNS/utils"
-	"log"
 	"math"
 	"sort"
 	"strconv"
@@ -326,9 +325,6 @@ func (s *BasicScheduleScheme) KMeansRoundInParallel(scheduler *Scheduler, kMeans
 						//fmt.Printf("distanceResp.jobSeq %+v, jobsInCluster %+v\n", util.Pretty(distanceResp.jobsSeq), jobsInCluster)
 						panic("len(distanceResp.jobsSeq) != (len(jobsInCluster) + 1)")
 					}
-					if distanceResp.distance == 0 {
-						log.Printf("")
-					}
 					mu.Lock()
 					defer mu.Unlock()
 					if distanceResp.distance <= minDis {
@@ -492,9 +488,7 @@ func (s *jobDistanceSolver) Distance(kMeansCenterGPU types.GPU, kMeansPointJobs 
 	locked(func() {
 		s.Record.NonMemorizedCallCount++
 	})
-	if distanceResp.distance == 0 {
-		log.Printf("")
-	}
+
 	return distanceResp
 }
 
@@ -570,9 +564,6 @@ func (m *MinCostDistanceAlgo) Distance(gpuCluster types.Cluster, kMeansCenterGPU
 	jobs_util.GetJobsSliceUtil().ReorderToSRTF(kMeansCenterGPU.Type(), jobs)
 	costResp := costSolver.Cost(kMeansCenterGPU, jobs)
 	if !costResp.DDLViolated {
-		if costResp.Cost == 0 {
-			log.Printf("")
-		}
 		return &distanceResp{
 			jobsSeq:  jobs,
 			distance: costResp.Cost,

@@ -122,9 +122,6 @@ func (p *BasePredictor) PredictSolely(partitionContext *partition.Context, alloc
 		p.updateJobStartExecutionTime(ctx, jobAllocation, start.GetValue())
 	}
 	for _, jobAllocation := range allocations {
-		if jobAllocation.GetJobID() == "0060756049f80c9958dd713b" {
-			log.Printf("")
-		}
 		miniBatchDurations, err := p.getSpaceSharingMiniBatchDuration(ctx, []*pb_gen.JobAllocation{jobAllocation})
 		if err != nil {
 			return nil, err
@@ -206,9 +203,6 @@ func (p *BasePredictor) predictAllocationsWithStartExecutionTimeKnown(ctx *Predi
 		return err
 	}
 	for allocation, finishTime := range r {
-		if finishTime == *p.getStartExecutionNanoTimeInSession(ctx, allocation) {
-			log.Printf("")
-		}
 		p.updateJobFinishTime(ctx, allocation, finishTime)
 	}
 	return nil
@@ -360,9 +354,6 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 			miniBatches := jobID2RemainingMiniBatches[runningJobID]
 			miniBatchDuration := jobID2MiniBatchDuration[runningJobID]
 			finishTime := currTime + int64(math.Ceil(miniBatches*float64(miniBatchDuration)))
-			if finishTime == currTime {
-				log.Printf("")
-			}
 			runningJobFinishTimes[runningJobID] = finishTime
 			if finishTime < closestFinishedJobTime {
 				closestFinishedJobTime = finishTime
@@ -386,9 +377,6 @@ func (p *BasePredictor) predictSpaceSharingAllocations(ctx *PredictSessionContex
 					// finished job.
 					jobID2RemainingMiniBatches[allocation.GetJobID()] = 0
 					result[allocation] = currTime + duration2Finish
-					if result[allocation] == *p.getStartExecutionNanoTimeInSession(ctx, allocation) {
-						log.Printf("")
-					}
 					continue
 				}
 				passedMiniBatches := float64(duration) / float64(jobID2MiniBatchDuration[allocation.GetJobID()])
@@ -527,7 +515,7 @@ func (p *BasePredictor) getSpaceSharingMiniBatchDuration(ctx *PredictSessionCont
 			return nil, interfaces.UnsupportedDLTGangTypeError.Set(reason)
 		}
 	} else {
-		reason := fmt.Sprintf("github.com/MLSched/UNSupported task group type %s", taskGroupType)
+		reason := fmt.Sprintf("Unsupported task group type %s", taskGroupType)
 		return nil, interfaces.UnsupportedTaskGroupTypeError.Set(reason)
 	}
 }

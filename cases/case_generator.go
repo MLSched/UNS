@@ -33,7 +33,8 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/github.com/MLSched/UNS
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-var jobCount = 320
+//var jobCount = 320
+var jobCount = 10000
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -109,13 +110,13 @@ var gpuMemoryCostDistributions = []int64{int64(0.5 * float64(GiB)), int64(16 * G
 var instance2Count = map[*Instance]int64{
 	NewInstance(map[int64][]string{
 		0: {GTX2080Ti},
-	}): 2,
+	}): 300,
 	NewInstance(map[int64][]string{
 		0: {V100},
-	}): 4,
+	}): 300,
 	NewInstance(map[int64][]string{
 		0: {A100},
-	}): 8,
+	}): 300,
 	//NewInstance(map[int64][]string{
 	//	0: {GTX2080Ti},
 	//}): 5,
@@ -272,17 +273,65 @@ var unsSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2Sch
 	},
 }}
 
+var lsSearchSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+	partitionID: {
+		SchedulerType: configs.SchedulerType_schedulerTypeLSSearch,
+		Configuration: &configs.SchedulerConfiguration_LsSearchSchedulerConfiguration{LsSearchSchedulerConfiguration: &configs.LSSearchSchedulerConfiguration{
+			SchedulerID:       schedulerID,
+			ResourceManagerID: resourceManagerID,
+			PartitionID:       partitionID,
+			IntervalNano:      1e16,
+			SyncMode:          syncMode,
+			PredictorConfiguration: &configs.PredictorConfiguration{
+				PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+				Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+					DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+						DataSourcePath: predictorDataPath,
+					},
+				},
+			},
+			NonSpaceSharing: false,
+		}},
+	},
+}}
+
+var lsCompareSchedulerConfiguration = &configs.SchedulersConfiguration{PartitionID2SchedulerConfiguration: map[string]*configs.SchedulerConfiguration{
+	partitionID: {
+		SchedulerType: configs.SchedulerType_schedulerTypeLSCompare,
+		Configuration: &configs.SchedulerConfiguration_LsCompareSchedulerConfiguration{LsCompareSchedulerConfiguration: &configs.LSCompareSchedulerConfiguration{
+			SchedulerID:       schedulerID,
+			ResourceManagerID: resourceManagerID,
+			PartitionID:       partitionID,
+			IntervalNano:      1e16,
+			SyncMode:          syncMode,
+			PredictorConfiguration: &configs.PredictorConfiguration{
+				PredictorType: configs.PredictorType_predictorTypeDLTDataOriented,
+				Configuration: &configs.PredictorConfiguration_DLTPredictorDataOrientedConfiguration{
+					DLTPredictorDataOrientedConfiguration: &configs.DLTPredictorDataOrientedConfiguration{
+						DataSourcePath: predictorDataPath,
+					},
+				},
+			},
+			NonSpaceSharing: false,
+		}},
+	},
+}}
+
 //var schedulerConfiguration = naiveSchedulerConfiguration
 
 //var schedulerConfiguration = unsSchedulerConfiguration
 
-var schedulerConfiguration = hydraSchedulerConfiguration
+//var schedulerConfiguration = hydraSchedulerConfiguration
 
 //var schedulerConfiguration = sjfSchedulerConfiguration
 
 //var schedulerConfiguration = edfSchedulerConfiguration
 
 //var schedulerConfiguration = edfFastSchedulerConfiguration
+
+var schedulerConfiguration = lsSearchSchedulerConfiguration
+
+//var schedulerConfiguration = lsCompareSchedulerConfiguration
 
 func init() {
 	rand.Seed(91761)

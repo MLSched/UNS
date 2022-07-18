@@ -8,6 +8,7 @@ import (
 	"github.com/MLSched/UNS/pb_gen/objects"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -24,6 +25,8 @@ type Context struct {
 	FinishedJobs   map[string]*objects.Job
 
 	ExecutionHistoryManager *ExecutionHistoryManager
+
+	NodeRange []int
 
 	*Util
 
@@ -59,6 +62,23 @@ func Build(partition *objects.Partition) (*Context, error) {
 		UnfinishedJobs:          make(map[string]*objects.Job),
 		FinishedJobs:            make(map[string]*objects.Job),
 		ExecutionHistoryManager: NewExecutionHistoryManager(),
+		NodeRange:               []int{0, math.MaxInt},
+	}
+	ctx.refreshMetalViews()
+	ctx.RefreshAllocationViews()
+	return ctx, nil
+}
+
+func BuildWithNodeRange(partition *objects.Partition, nodeRange []int) (*Context, error) {
+	ctx := &Context{
+		Meta:                    partition,
+		mu:                      &sync.RWMutex{},
+		Util:                    &Util{},
+		Allocations:             make(map[string]*pb_gen.JobAllocation),
+		UnfinishedJobs:          make(map[string]*objects.Job),
+		FinishedJobs:            make(map[string]*objects.Job),
+		ExecutionHistoryManager: NewExecutionHistoryManager(),
+		NodeRange:               nodeRange,
 	}
 	ctx.refreshMetalViews()
 	ctx.RefreshAllocationViews()
@@ -77,7 +97,10 @@ func (c *Context) refreshMetalViews() {
 		AcceleratorIDs:            make([]string, 0),
 		AcceleratorIDsSet:         make(map[string]bool),
 	}
-	for _, node := range c.Meta.GetNodes() {
+	for idx, node := range c.Meta.GetNodes() {
+		if idx < c.NodeRange[0] || idx >= c.NodeRange[1] {
+			continue
+		}
 		c.MetalViews.NodeID2Node[node.GetNodeID()] = node
 		accelerators := make([]*objects.Accelerator, 0)
 		for _, CPUSocket := range node.GetCPUSockets() {
@@ -236,6 +259,23 @@ func (c *Context) Clone(cloneAllocations bool) *Context {
 	cloned.Time = c.Time
 	cloned.RefreshAllocationViews()
 	return cloned
+}
+
+func (c *Context) Split(n int) []*Context {
+	if len(c.getAllocationsSlice()) != 0 {
+		panic("必须在没有任务的情况下进行Split")
+	}
+	nodesCount := len(c.MetalViews.NodeID2Node)
+	nodeRangeSize := nodesCount / n
+	pcs := make([]*Context, 0, n)
+	for i := 0; i < n; i++ {
+		cloned, _ := BuildWithNodeRange(c.Meta, []int{i * nodeRangeSize, (i + 1) * nodeRangeSize})
+		cloned.ExecutionHistoryManager = c.ExecutionHistoryManager.Clone()
+		cloned.Time = c.Time
+		cloned.RefreshAllocationViews()
+		pcs = append(pcs, cloned)
+	}
+	return pcs
 }
 
 func (c *Context) GetUnfinishedJob(jobID string) *objects.Job {

@@ -28,6 +28,8 @@ message SchedulerConfiguration {
     EDFSchedulerConfiguration edfSchedulerConfiguration = 5;
     HydraSchedulerConfiguration hydraSchedulerConfiguration = 6;
     EDFFastSchedulerConfiguration edfFastSchedulerConfiguration = 7;
+    LSSearchSchedulerConfiguration lsSearchSchedulerConfiguration = 8;
+    LSCompareSchedulerConfiguration lsCompareSchedulerConfiguration = 9;
   }
 }
 
@@ -39,6 +41,8 @@ enum SchedulerType {
   schedulerTypeEDF = 3;
   schedulerTypeHydra = 4;
   schedulerTypeEDFFast = 5;
+  schedulerTypeLSSearch = 6;
+  schedulerTypeLSCompare = 7;
 }
 
 message NaiveSchedulerConfiguration {
@@ -97,6 +101,28 @@ message HydraSchedulerConfiguration {
 }
 
 message UNSSchedulerConfiguration {
+  string SchedulerID = 1;
+  string resourceManagerID = 2;
+  string partitionID = 3;
+  int64 intervalNano = 4;
+  bool syncMode = 5;
+  PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
+  bool returnAllScheduleDecisions = 8;
+}
+
+message LSCompareSchedulerConfiguration {
+  string SchedulerID = 1;
+  string resourceManagerID = 2;
+  string partitionID = 3;
+  int64 intervalNano = 4;
+  bool syncMode = 5;
+  PredictorConfiguration predictorConfiguration = 6;
+  bool nonSpaceSharing = 7;
+  bool returnAllScheduleDecisions = 8;
+}
+
+message LSSearchSchedulerConfiguration {
   string SchedulerID = 1;
   string resourceManagerID = 2;
   string partitionID = 3;

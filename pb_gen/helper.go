@@ -23,6 +23,12 @@ var extractSchedulerConfigurationMap = map[configs.SchedulerType]func(configurat
 	configs.SchedulerType_schedulerTypeEDFFast: func(configuration *configs.SchedulerConfiguration) interface{} {
 		return configuration.GetEdfFastSchedulerConfiguration()
 	},
+	configs.SchedulerType_schedulerTypeLSCompare: func(configuration *configs.SchedulerConfiguration) interface{} {
+		return configuration.GetLsCompareSchedulerConfiguration()
+	},
+	configs.SchedulerType_schedulerTypeLSSearch: func(configuration *configs.SchedulerConfiguration) interface{} {
+		return configuration.GetLsSearchSchedulerConfiguration()
+	},
 }
 
 func GetNaiveSchedulerConfiguration(configuration *configs.SchedulerConfiguration) *configs.NaiveSchedulerConfiguration {
