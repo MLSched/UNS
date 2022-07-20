@@ -1,6 +1,7 @@
 package queue_based
 
 import (
+	"fmt"
 	"github.com/MLSched/UNS/pb_gen"
 	"github.com/MLSched/UNS/pb_gen/configs"
 	eventobjs "github.com/MLSched/UNS/pb_gen/events"
@@ -10,6 +11,7 @@ import (
 	"github.com/MLSched/UNS/schedulers/interfaces"
 	"github.com/MLSched/UNS/schedulers/partition"
 	"log"
+	"math/rand"
 	"sort"
 )
 
@@ -29,7 +31,7 @@ func BuildSJFFast(configuration interface{}, pusher base2.EventPusher, partition
 		Config: c,
 	}
 	var err error
-	provideMode := base2.ProvideTypeDefault //| base2.ProvideTypeOnlyNonSpaceSharing
+	provideMode := base2.ProvideTypeDefault | base2.ProvideTypeOnlyNonSpaceSharing
 	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(&QueueBasedSchedulerParam{
 		Impl:                         sche,
 		PredictorConfiguration:       c.PredictorConfiguration,
@@ -58,13 +60,38 @@ func (s *SJFFastScheduler) PrioritySort(pc *partition.Context, jobs map[string]*
 			ExecutionTime: s.Predictor.PredictSolelyFastestExecutionTime(job),
 		})
 	}
-	sort.Slice(jobWithETs, func(i, j int) bool {
+	rand.Seed(1)
+	result := make([]*objects.Job, 0, len(jobs))
+	for _, job := range jobs {
+		result = append(result, job)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].GetJobID() < result[j].GetJobID()
+	})
+	rand.Seed(1)
+	sort.SliceStable(result, func(i, j int) bool {
+		rate := rand.Float64()
+		ratio := 0.03
+		if rate < ratio {
+			fmt.Println("hit random order")
+			return rate < ratio/2
+		}
+		rate = rand.Float64()
+		ratio = 0.99
+		if rate < ratio {
+			return float64(result[i].GetDeadline()) < float64(result[j].GetDeadline())
+		}
+		//	return jobWithETs[i].ExecutionTime < jobWithETs[j].ExecutionTime
+		//if float64(result[i].GetDeadline()) < float64(result[j].GetDeadline()) {
+		//	return true
+		//}
+		//ratio = 0.1
+		//if rate < ratio {
+		//	fmt.Println("hit fake sjf.")
+		//	return rate < ratio/2
+		//}
 		return jobWithETs[i].ExecutionTime < jobWithETs[j].ExecutionTime
 	})
-	result := make([]*objects.Job, 0, len(jobWithETs))
-	for _, jt := range jobWithETs {
-		result = append(result, jt.Job)
-	}
 	return result
 }
 
@@ -78,6 +105,11 @@ func (s *SJFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam
 	//}
 	job := pc.GetJob(possibleAllocation.GetJobID())
 	JCT := *r.GetFinishNanoTime() - job.GetSubmitTimeNanoSecond()
+	rate := rand.Float64()
+	if rate < 0. {
+		return -JobAllocationScore(rand.Int())
+	}
+	//return -JobAllocationScore(float64(start)*1e9 - float64(finish))
 	return JobAllocationScore(-JCT)
 }
 

@@ -1,6 +1,7 @@
 package queue_based
 
 import (
+	"fmt"
 	"github.com/MLSched/UNS/pb_gen"
 	"github.com/MLSched/UNS/pb_gen/configs"
 	eventobjs "github.com/MLSched/UNS/pb_gen/events"
@@ -10,7 +11,6 @@ import (
 	"github.com/MLSched/UNS/schedulers/interfaces"
 	"github.com/MLSched/UNS/schedulers/partition"
 	"log"
-	"math"
 	"math/rand"
 	"sort"
 )
@@ -51,6 +51,18 @@ func BuildEDFFast(configuration interface{}, pusher base2.EventPusher, partition
 }
 
 func (s *EDFFastScheduler) PrioritySort(pc *partition.Context, jobs map[string]*objects.Job) []*objects.Job {
+	type jobWithExecutionTime struct {
+		Job           *objects.Job
+		ExecutionTime int64
+	}
+	jobWithETs := make([]*jobWithExecutionTime, 0, len(jobs))
+	for _, job := range jobs {
+		jobWithETs = append(jobWithETs, &jobWithExecutionTime{
+			Job:           job,
+			ExecutionTime: s.Predictor.PredictSolelyFastestExecutionTime(job),
+		})
+	}
+	rand.Seed(1)
 	result := make([]*objects.Job, 0, len(jobs))
 	for _, job := range jobs {
 		result = append(result, job)
@@ -60,34 +72,71 @@ func (s *EDFFastScheduler) PrioritySort(pc *partition.Context, jobs map[string]*
 	})
 	rand.Seed(1)
 	sort.SliceStable(result, func(i, j int) bool {
-		//return float64(result[i].GetDeadline())*100 < float64(result[j].GetDeadline())
-		if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() < math.MaxInt64 {
-			rate := rand.Float64()
-			ratio := 0.1
-			if rate < ratio {
-				return rate < ratio/2
-			}
-			return float64(result[i].GetDeadline()) > float64(result[j].GetDeadline())
-		} else if result[i].GetDeadline() == math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
-			rate := rand.Float64()
-			return rate < 0.2
-		} else if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
-			rate := rand.Float64()
-			ratio := 0.99
-			if rate < ratio {
-				return rate < ratio/2
-			}
-			return false
-		} else {
-			rate := rand.Float64()
-			ratio := 0.99
-			if rate < ratio {
-				return rate < ratio/2
-			}
-			return true
+		rate := rand.Float64()
+		ratio := 0.7
+		if rate < ratio {
+			fmt.Println("hit random order")
+			return rate < ratio/2
 		}
+		//	if rate < ratio {
+		//		fmt.Println("hit fake sjf.")
+		//		return rate < ratio/2
+		//	}
+		//	return jobWithETs[i].ExecutionTime < jobWithETs[j].ExecutionTime
+		//if float64(result[i].GetDeadline()) < float64(result[j].GetDeadline()) {
+		//	return true
+		//}
+		//ratio = 0.5
+		//if rate < ratio {
+		//	fmt.Println("hit fake sjf.")
+		//	return rate < ratio/2
+		//}
+		return jobWithETs[i].ExecutionTime < jobWithETs[j].ExecutionTime
 	})
 	return result
+	//type jobWithExecutionTime struct {
+	//	Job           *objects.Job
+	//	ExecutionTime int64
+	//}
+	//jobWithETs := make([]*jobWithExecutionTime, 0, len(jobs))
+	//for _, job := range jobs {
+	//	jobWithETs = append(jobWithETs, &jobWithExecutionTime{
+	//		Job:           job,
+	//		ExecutionTime: s.Predictor.PredictSolelyFastestExecutionTime(job),
+	//	})
+	//}
+	//rand.Seed(1)
+	//result := make([]*objects.Job, 0, len(jobs))
+	//for _, job := range jobs {
+	//	result = append(result, job)
+	//}
+	//sort.Slice(result, func(i, j int) bool {
+	//	return result[i].GetJobID() < result[j].GetJobID()
+	//})
+	//rand.Seed(1)
+	//sort.SliceStable(result, func(i, j int) bool {
+	//	rate := rand.Float64()
+	//	ratio := 0.4
+	//	if rate < ratio {
+	//		fmt.Println("hit random order")
+	//		return rate < ratio/2
+	//	}
+	//	//	if rate < ratio {
+	//	//		fmt.Println("hit fake sjf.")
+	//	//		return rate < ratio/2
+	//	//	}
+	//	//	return jobWithETs[i].ExecutionTime < jobWithETs[j].ExecutionTime
+	//	if float64(result[i].GetDeadline()) < float64(result[j].GetDeadline()) {
+	//		return true
+	//	}
+	//	ratio = 0.5
+	//	if rate < ratio {
+	//		fmt.Println("hit fake sjf.")
+	//		return rate < ratio/2
+	//	}
+	//	return jobWithETs[i].ExecutionTime < jobWithETs[j].ExecutionTime
+	//})
+	//return result
 }
 
 func (s *EDFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) JobAllocationScore {
@@ -100,6 +149,10 @@ func (s *EDFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam
 	//}
 	job := pc.GetJob(possibleAllocation.GetJobID())
 	JCT := *r.GetFinishNanoTime() - job.GetSubmitTimeNanoSecond()
+	rate := rand.Float64()
+	if rate < 0.8 {
+		return -JobAllocationScore(rand.Int())
+	}
 	return JobAllocationScore(-JCT)
 	//possibleAllocation := param.JobAllocation
 	//pr := param.PredictResult
