@@ -34,10 +34,23 @@ func MockUNS(eventPusher base.EventPusher, pc *partition.Context) interfaces.Sch
 }
 
 func MockSJF(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
-	config := mock.DLTSimulatorConfiguration()
+	config := mock.DLTSimulatorConfigurationWithScheduler("sjf")
 	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetSjfSchedulerConfiguration()
 	c.ReturnAllScheduleDecisions = true
 	sche, err := queue_based.BuildSJF(c, eventPusher, func() *partition.Context {
+		return pc
+	})
+	if err != nil {
+		panic(err)
+	}
+	return sche
+}
+
+func MockSJFFast(eventPusher base.EventPusher, pc *partition.Context) interfaces.Scheduler {
+	config := mock.DLTSimulatorConfigurationWithScheduler("sjffast")
+	c := config.GetRmConfiguration().GetSchedulersConfiguration().GetPartitionID2SchedulerConfiguration()["PARTITION_ID"].GetSjfFastSchedulerConfiguration()
+	c.ReturnAllScheduleDecisions = true
+	sche, err := queue_based.BuildSJFFast(c, eventPusher, func() *partition.Context {
 		return pc
 	})
 	if err != nil {
@@ -112,10 +125,11 @@ func MockHydra(eventPusher base.EventPusher, pc *partition.Context) interfaces.S
 }
 
 func TestCompare(t *testing.T) {
-	//edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("edffast")
+	edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("edffast")
 	//hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("hydra")
-	edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("lscompare")
-	hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("lssearch")
+	hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("sjffast")
+	//edfAvgJCT, edfVioDDL, withDDL := oneShotSchedule("lscompare")
+	//hydraAvgJCT, hydraVioDDL, _ := oneShotSchedule("lssearch")
 	edfFastVioDDLRatio := float64(edfVioDDL) / float64(withDDL)
 	targetVioDDLRatio := edfFastVioDDLRatio - 0.2
 	hydraVioDDLRatio := float64(hydraVioDDL) / float64(withDDL)
@@ -153,6 +167,10 @@ func oneShotSchedule(schedulerName string) (float64, int64, int64) {
 		scheduler = MockLSSearch(pusher, pc)
 	} else if schedulerName == "lscompare" {
 		scheduler = MockLSCompare(pusher, pc)
+	} else if schedulerName == "sjf" {
+		scheduler = MockSJF(pusher, pc)
+	} else if schedulerName == "sjffast" {
+		scheduler = MockSJFFast(pusher, pc)
 	}
 	//scheduler := MockUNS(pusher, pc)
 	//scheduler := MockSJF(pusher, pc)

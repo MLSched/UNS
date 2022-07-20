@@ -37,8 +37,6 @@ func BuildEDF(configuration interface{}, pusher base2.EventPusher, partitionCont
 		SyncMode:                     c.GetSyncMode(),
 		AllocationProvideMode:        provideMode,
 		ReturnAllSchedulingDecisions: c.ReturnAllScheduleDecisions,
-		//AllocationsProvider:          &base2.AllocationsProviderImpl{RandomMode: true},
-		//MaxPossibleAllocationsCount:  10,
 	})
 	if err != nil {
 		return nil, err

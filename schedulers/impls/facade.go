@@ -22,6 +22,7 @@ var factories = map[configs.SchedulerType]Factory{
 	configs.SchedulerType_schedulerTypeEDF:       queue_based.BuildEDF,
 	configs.SchedulerType_schedulerTypeHydra:     hydra.Build,
 	configs.SchedulerType_schedulerTypeEDFFast:   queue_based.BuildEDFFast,
+	configs.SchedulerType_schedulerTypeSJFFast:   queue_based.BuildSJFFast,
 	configs.SchedulerType_schedulerTypeLSSearch:  large_scale.BuildLSSearch,
 	configs.SchedulerType_schedulerTypeLSCompare: large_scale.BuildLSCompare,
 }
@@ -30,5 +31,5 @@ func Build(schedulerBuildParams *base.SchedulerBuildParams) (interfaces.Schedule
 	if factory, ok := factories[schedulerBuildParams.SchedulerConfiguration.GetSchedulerType()]; ok {
 		return factory(pb_gen.ExtractSchedulerConfiguration(schedulerBuildParams.SchedulerConfiguration), schedulerBuildParams.EventPusher, schedulerBuildParams.PartitionContextAware)
 	}
-	return nil, fmt.Errorf("github.com/MLSched/UNSupported scheduler type, type is [%s]", schedulerBuildParams.SchedulerConfiguration.GetSchedulerType())
+	return nil, fmt.Errorf("unsupported scheduler type, type is [%s]", schedulerBuildParams.SchedulerConfiguration.GetSchedulerType())
 }

@@ -23,6 +23,9 @@ var extractSchedulerConfigurationMap = map[configs.SchedulerType]func(configurat
 	configs.SchedulerType_schedulerTypeEDFFast: func(configuration *configs.SchedulerConfiguration) interface{} {
 		return configuration.GetEdfFastSchedulerConfiguration()
 	},
+	configs.SchedulerType_schedulerTypeSJFFast: func(configuration *configs.SchedulerConfiguration) interface{} {
+		return configuration.GetSjfFastSchedulerConfiguration()
+	},
 	configs.SchedulerType_schedulerTypeLSCompare: func(configuration *configs.SchedulerConfiguration) interface{} {
 		return configuration.GetLsCompareSchedulerConfiguration()
 	},

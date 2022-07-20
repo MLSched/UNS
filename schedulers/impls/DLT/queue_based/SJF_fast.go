@@ -10,39 +10,35 @@ import (
 	"github.com/MLSched/UNS/schedulers/interfaces"
 	"github.com/MLSched/UNS/schedulers/partition"
 	"log"
-	"math"
-	"math/rand"
 	"sort"
 )
 
-type EDFFastScheduler struct {
+type SJFFastScheduler struct {
 	*QueueBasedSchedulerTemplate
 
-	Config *configs.EDFFastSchedulerConfiguration
+	Config *configs.SJFFastSchedulerConfiguration
 }
 
-func (s *EDFFastScheduler) GetSchedulerID() string {
+func (s *SJFFastScheduler) GetSchedulerID() string {
 	return s.Config.GetSchedulerID()
 }
 
-func BuildEDFFast(configuration interface{}, pusher base2.EventPusher, partitionContextAware base2.PartitionContextAware) (interfaces.Scheduler, error) {
-	c := configuration.(*configs.EDFFastSchedulerConfiguration)
-	sche := &EDFFastScheduler{
+func BuildSJFFast(configuration interface{}, pusher base2.EventPusher, partitionContextAware base2.PartitionContextAware) (interfaces.Scheduler, error) {
+	c := configuration.(*configs.SJFFastSchedulerConfiguration)
+	sche := &SJFFastScheduler{
 		Config: c,
 	}
 	var err error
-	provideMode := base2.ProvideTypeDefault | base2.ProvideTypeOnlyNonSpaceSharing
+	provideMode := base2.ProvideTypeDefault //| base2.ProvideTypeOnlyNonSpaceSharing
 	sche.QueueBasedSchedulerTemplate, err = BuildTemplate(&QueueBasedSchedulerParam{
-		Impl:                   sche,
-		PredictorConfiguration: c.PredictorConfiguration,
-		Pusher:                 pusher,
-		PartitionContextAware:  partitionContextAware,
-		IntervalNano:           c.GetIntervalNano(),
-		SyncMode:               c.GetSyncMode(),
-		AllocationProvideMode:  provideMode,
-		//AllocationsProvider:          &base2.AllocationsProviderImpl{RandomMode: true},
+		Impl:                         sche,
+		PredictorConfiguration:       c.PredictorConfiguration,
+		Pusher:                       pusher,
+		PartitionContextAware:        partitionContextAware,
+		IntervalNano:                 c.GetIntervalNano(),
+		SyncMode:                     c.GetSyncMode(),
+		AllocationProvideMode:        provideMode,
 		ReturnAllSchedulingDecisions: c.ReturnAllScheduleDecisions,
-		//MaxPossibleAllocationsCount:  3,
 	})
 	if err != nil {
 		return nil, err
@@ -50,47 +46,29 @@ func BuildEDFFast(configuration interface{}, pusher base2.EventPusher, partition
 	return sche, nil
 }
 
-func (s *EDFFastScheduler) PrioritySort(pc *partition.Context, jobs map[string]*objects.Job) []*objects.Job {
-	result := make([]*objects.Job, 0, len(jobs))
-	for _, job := range jobs {
-		result = append(result, job)
+func (s *SJFFastScheduler) PrioritySort(pc *partition.Context, jobs map[string]*objects.Job) []*objects.Job {
+	type jobWithExecutionTime struct {
+		Job           *objects.Job
+		ExecutionTime int64
 	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].GetJobID() < result[j].GetJobID()
+	jobWithETs := make([]*jobWithExecutionTime, 0, len(jobs))
+	for _, job := range jobs {
+		jobWithETs = append(jobWithETs, &jobWithExecutionTime{
+			Job:           job,
+			ExecutionTime: s.Predictor.PredictSolelyFastestExecutionTime(job),
+		})
+	}
+	sort.Slice(jobWithETs, func(i, j int) bool {
+		return jobWithETs[i].ExecutionTime < jobWithETs[j].ExecutionTime
 	})
-	rand.Seed(1)
-	sort.SliceStable(result, func(i, j int) bool {
-		//return float64(result[i].GetDeadline())*100 < float64(result[j].GetDeadline())
-		if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() < math.MaxInt64 {
-			rate := rand.Float64()
-			ratio := 0.1
-			if rate < ratio {
-				return rate < ratio/2
-			}
-			return float64(result[i].GetDeadline()) > float64(result[j].GetDeadline())
-		} else if result[i].GetDeadline() == math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
-			rate := rand.Float64()
-			return rate < 0.2
-		} else if result[i].GetDeadline() < math.MaxInt64 && result[j].GetDeadline() == math.MaxInt64 {
-			rate := rand.Float64()
-			ratio := 0.99
-			if rate < ratio {
-				return rate < ratio/2
-			}
-			return false
-		} else {
-			rate := rand.Float64()
-			ratio := 0.99
-			if rate < ratio {
-				return rate < ratio/2
-			}
-			return true
-		}
-	})
+	result := make([]*objects.Job, 0, len(jobWithETs))
+	for _, jt := range jobWithETs {
+		result = append(result, jt.Job)
+	}
 	return result
 }
 
-func (s *EDFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) JobAllocationScore {
+func (s *SJFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam) JobAllocationScore {
 	possibleAllocation := param.JobAllocation
 	pr := param.PredictResult
 	pc := param.PC
@@ -101,19 +79,9 @@ func (s *EDFFastScheduler) GetJobAllocationScore(param *JobAllocationScorerParam
 	job := pc.GetJob(possibleAllocation.GetJobID())
 	JCT := *r.GetFinishNanoTime() - job.GetSubmitTimeNanoSecond()
 	return JobAllocationScore(-JCT)
-	//possibleAllocation := param.JobAllocation
-	//pr := param.PredictResult
-	//r := pr.GetResult(possibleAllocation.GetTaskAllocations()[0])
-	//start := *r.GetStartExecutionNanoTime()
-	//finish := *r.GetFinishNanoTime()
-	//rate := rand.Float64()
-	//if rate < 0.2 {
-	//	return -JobAllocationScore(rand.Int())
-	//}
-	//return -JobAllocationScore(float64(start)*1e9 - float64(finish))
 }
 
-func (s *EDFFastScheduler) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
+func (s *SJFFastScheduler) DoSchedule() *eventobjs.SSUpdateAllocationsEvent {
 	originalPC := s.GetPartitionContext().Clone(false)
 	log.Printf("unallocated accIDs = %v", originalPC.AllocationViews.UnallocatedAcceleratorIDs)
 	t := originalPC.Now()

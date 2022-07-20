@@ -33,8 +33,9 @@ var simulatorConfigurationPath = "/Users/purchaser/go/src/github.com/MLSched/UNS
 
 var gpuTypes = []string{A100, V100, GTX2080Ti}
 
-//var jobCount = 320
-var jobCount = 10000
+var jobCount = 320
+
+//var jobCount = 10000
 var miniBatchDurationNanoSecondDistribution = []int{0.1 * 1e9, 3 * 1e9}
 var BaseGPU = A100
 var GPUEfficiencyRatio = map[string][]float64{
@@ -63,8 +64,8 @@ var jobExecutionTimeScaleFactor = float64(0.00001)
 
 var syncMode = true
 
-var deadlineProb = float64(0.3)
-var deadlineDistribution = []float64{12, 15}
+var deadlineProb = float64(1)
+var deadlineDistribution = []float64{1.5, 5}
 
 var onlySingleTaskJob = true
 
@@ -327,9 +328,9 @@ var lsCompareSchedulerConfiguration = &configs.SchedulersConfiguration{Partition
 
 //var schedulerConfiguration = edfSchedulerConfiguration
 
-//var schedulerConfiguration = edfFastSchedulerConfiguration
+var schedulerConfiguration = edfFastSchedulerConfiguration
 
-var schedulerConfiguration = lsSearchSchedulerConfiguration
+//var schedulerConfiguration = lsSearchSchedulerConfiguration
 
 //var schedulerConfiguration = lsCompareSchedulerConfiguration
 
